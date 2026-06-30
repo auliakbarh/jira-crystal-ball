@@ -30,7 +30,11 @@ by value/effort within each group. ✅ = done.
 - [ ] **Notifications** — new blocker / standup start → Slack or email.
 
 ## Robustness / quality
-- [ ] **Automated tests** — no unit/integration tests yet.
+- ✅ **Automated tests (vitest)** — `npm test` in each workspace. Client: `lib/helpers.test.ts`
+      (formatDuration, working-days, status buckets, lead rotation incl. CUTI/SAKIT) + `lib/csv.test.ts`.
+      Server: `rateLimit.test.ts` (lockout after 5 fails, reset on success). More coverage still welcome.
+- ✅ **Split `resolvers.ts` per domain** — now `server/src/resolvers/{shared,squad,standup,confluence,index}.ts`;
+      `resolvers.ts` re-exports the merged map. Shared helpers + field resolvers live in `shared.ts`.
 - ✅ **Prisma migrations** — migration history under `prisma/migrations/` (baselined
       `0_init`); `db:migrate:deploy` on release.
 - ✅ **Toasts + error boundary** — `ToastProvider` + `ErrorBoundary`; `alert()` removed.
@@ -47,4 +51,5 @@ by value/effort within each group. ✅ = done.
 ## UX
 - [ ] **Mobile layout** for the wide standup table.
 - ✅ **Keyboard navigation** — Enter / Alt+↑↓ to move between standup cells.
+- ✅ **Help page** — `/help` route (`pages/Help.tsx`) explains how to use the dashboard.
 - [ ] **Proper i18n** (UI currently English with a few mixed strings).

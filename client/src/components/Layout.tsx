@@ -66,6 +66,9 @@ export default function Layout() {
                 Settings
               </NavLink>
             )}
+            <NavLink to="/help" className={linkClass}>
+              Help
+            </NavLink>
           </nav>
 
           <div className="ml-auto flex items-center gap-2">

@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Board from "./pages/Board";
 import PreviousSprints from "./pages/PreviousSprints";
 import Settings from "./pages/Settings";
+import Help from "./pages/Help";
 
 function Protected({ children }: { children: JSX.Element }) {
   const { token } = useAuth();
@@ -38,6 +39,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="board" element={<Board />} />
         <Route path="previous" element={<PreviousSprints />} />
+        <Route path="help" element={<Help />} />
         <Route
           path="settings"
           element={
