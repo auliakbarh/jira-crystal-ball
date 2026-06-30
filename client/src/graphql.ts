@@ -357,6 +357,8 @@ export const ACTIVITY_LOG = gql`
       actor
       ticketKey
       message
+      prevText
+      newText
       createdAt
     }
   }

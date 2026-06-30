@@ -473,6 +473,14 @@ export const resolvers = {
         throw new Error(`Standup is being led by ${session!.leadName} — you can't edit now.`);
       }
 
+      // Capture the previous note to log what changed.
+      const before = await ctx.prisma.standupEntry.findUnique({
+        where: {
+          sprintId_date_ticketKey: { sprintId: input.sprintId, date: input.date, ticketKey: input.ticketKey },
+        },
+      });
+      const prevText = before?.updateText ?? "";
+
       const data = {
         sprintId: input.sprintId,
         date: input.date,
@@ -547,6 +555,8 @@ export const resolvers = {
         data.qaAssignee && `QA ${data.qaAssignee}`,
       ].filter(Boolean);
       if (roles.length) parts.push(roles.join(", "));
+      const newText = data.updateText ?? "";
+      const noteChanged = newText.trim() !== prevText.trim();
       await ctx.prisma.activityLog.create({
         data: {
           squadId: sprint.squadId,
@@ -554,6 +564,8 @@ export const resolvers = {
           actor: ctx.userName || "Someone",
           ticketKey: input.ticketKey,
           message: `updated ${input.ticketKey} — ${parts.join(" · ")}`,
+          prevText: noteChanged ? prevText : null,
+          newText: noteChanged ? newText : null,
         },
       });
 

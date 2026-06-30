@@ -59,6 +59,16 @@ export default function ActivityPanel({ squadId }: { squadId: string }) {
                   <span className="text-xs text-gray-400">{timeAgo(l.createdAt)}</span>
                 </div>
                 <div className="text-gray-600 dark:text-gray-400">{l.message}</div>
+                {(l.prevText || l.newText) && (
+                  <div className="mt-0.5 rounded bg-gray-50 px-1.5 py-1 text-xs dark:bg-gray-800/60">
+                    <div className="text-red-600 line-through dark:text-red-400/80">
+                      {l.prevText ? l.prevText : <span className="italic opacity-60">(empty)</span>}
+                    </div>
+                    <div className="text-green-700 dark:text-green-300">
+                      {l.newText ? l.newText : <span className="italic opacity-60">(cleared)</span>}
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

@@ -71,6 +71,8 @@ model ActivityLog {
   actor     String
   ticketKey String?
   message   String
+  prevText  String?  // previous standup note (before this update)
+  newText   String?  // new standup note (after this update)
   createdAt DateTime @default(now())
 
   @@index([squadId, createdAt])

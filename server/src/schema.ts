@@ -155,6 +155,8 @@ export const typeDefs = /* GraphQL */ `
     actor: String!
     ticketKey: String
     message: String!
+    prevText: String
+    newText: String
     createdAt: String!
   }
 
