@@ -1,0 +1,24 @@
+{
+  "name": "jira-crystal-ball",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web tool for standup meetings backed by JIRA board data",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm -w server run dev",
+    "dev:client": "npm -w client run dev",
+    "build": "npm -w server run build && npm -w client run build",
+    "start": "npm -w server run start",
+    "db:up": "docker compose up -d db",
+    "db:push": "npm -w server run db:push",
+    "db:seed": "npm -w server run seed",
+    "setup": "npm install && npm run db:up && npm run db:push && npm run db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
