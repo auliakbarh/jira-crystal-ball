@@ -13,6 +13,7 @@ import { buildContext, contextFromAuthHeader } from "./context.js";
 import { env } from "./env.js";
 import { prisma } from "./db.js";
 import { startScheduler } from "./scheduler.js";
+import { startTarotPresenceSweep } from "./tarotPresence.js";
 
 const schema = makeExecutableSchema({ typeDefs, resolvers });
 
@@ -69,4 +70,5 @@ httpServer.listen(env.port, () => {
   console.log(`🔮 JIRA Crystal Ball GraphQL ready at http://localhost:${env.port}/graphql`);
   console.log(`   Subscriptions (WebSocket) at ws://localhost:${env.port}/graphql`);
   startScheduler();
+  startTarotPresenceSweep();
 });

@@ -9,6 +9,7 @@ import { playSound } from "../../lib/sound";
 import Tooltip from "../Tooltip";
 import PokerCard from "./PokerCard";
 import Participants from "./Participants";
+import RoundTimer from "./RoundTimer";
 import { ResultsTable } from "./HostRoom";
 
 export default function GuestRoom({ room, uid, refetchRoom }: any) {
@@ -27,12 +28,14 @@ export default function GuestRoom({ room, uid, refetchRoom }: any) {
     if (room.status === "ACTIVE") setSawActive(true);
   }, [room.status]);
 
-  // Local vote state, reset whenever the round (ticket/cycle) changes.
+  // Local vote state. On a round change (or reload) seed from the server's record
+  // of this viewer's own vote so a refresh doesn't drop a confirmed selection.
   const [selected, setSelected] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   useEffect(() => {
-    setSelected(null);
-    setConfirmed(false);
+    setSelected(room.viewerVote?.value ?? null);
+    setConfirmed(!!room.viewerVote?.confirmed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round?.id]);
 
   const onlineVoters = room.participants.filter((p: any) => !p.isHost && p.online);
@@ -119,6 +122,9 @@ export default function GuestRoom({ room, uid, refetchRoom }: any) {
                   </a>
                   {round.ticketType && <span className="chip bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">{round.ticketType}</span>}
                   {round.ticketPriority && <span className={`chip ${priorityColor(round.ticketPriority)}`}>{round.ticketPriority}</span>}
+                  {round.createdAt && !round.revealed && (
+                    <span className="ml-auto text-xs text-gray-400"><RoundTimer startedAt={round.createdAt} /></span>
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{round.ticketSummary}</p>
               </div>

@@ -58,6 +58,33 @@ export default function TarotRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
+  // Leave immediately if the tab is closed/hidden (beforeunload won't await a
+  // normal mutation). fetch(keepalive) can carry the auth header and outlive the
+  // page; presence staleness is the fallback if it doesn't land.
+  useEffect(() => {
+    if (!roomId) return;
+    const onHide = () => {
+      const url = import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:4000/graphql";
+      const token = localStorage.getItem("jcb_token");
+      try {
+        void fetch(url, {
+          method: "POST",
+          keepalive: true,
+          headers: { "Content-Type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({
+            query: "mutation($r:ID!,$k:String!){leaveTarotRoom(roomId:$r,key:$k)}",
+            variables: { r: roomId, k: uid },
+          }),
+        });
+      } catch {
+        /* best-effort */
+      }
+    };
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
+
   // Heartbeat keeps this participant "online".
   useEffect(() => {
     if (!roomId) return;

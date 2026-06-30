@@ -217,7 +217,12 @@ joins. Real-time updates use GraphQL subscriptions over WebSocket.
   a **suggestion** (the most-picked value; blank on a draw).
 - The host then **Sets the story point** (suggestion pre-filled) and fills **per-role
   FE/BE/QA** points in a popup — each capped at the ticket effort — or runs **Next cycle**
-  to re-vote.
+  to re-vote. If a member won't vote, the host can **Reveal now** (needs ≥1 confirmed card).
+  An **elapsed timer** shows how long the current round has run.
+
+**Live + reload-safe.** The roster updates in real time as people join/leave (closing a tab
+drops you within a few seconds via a presence sweep). If a guest **refreshes** mid-round,
+their confirmed card is **restored** rather than reset.
 
 **Special cards.** ❓ = *information unclear / needs discussion*; ☕ = *need a break*.
 Hover a special card for the full meaning.
@@ -235,12 +240,24 @@ rooms. ❓ and ☕ are always available.
 **Sync to Jira.** Once all tickets are pointed, the host can **write the points back to
 the Jira board**: a popup maps **effort → Story Points** and the per-role points to the
 squad's configured fields (same fields as Settings → Squads). Pick **at least one** field,
-then **Sync**. **Reset Jira** restores each ticket's field values captured *before* the
-last sync (the previous values are snapshotted so the sync is reversible).
+then **Sync**. A ticket that fails (permission / missing field) **doesn't stop the rest** —
+you're told how many synced and which failed. **Reset Jira** restores each ticket's field
+values captured *before* the last sync (the previous values are snapshotted so the sync is
+reversible). Only a **signed-in user** (host or admin) can sync — **guests cannot** write to
+the board.
 
 **Guest end states.** When the room is **ended** — or a guest is **kicked** — guests are
-shown a thank-you and a button back to the Tarot landing. Ended rooms keep their results
-as **history** (attendance + decided points per ticket, including per-role points).
+shown a thank-you and a button to **view results**. Opening an *already* ended room jumps
+straight to the results (no thank-you).
+
+**History.** An ended room keeps its full record: **attendance** (everyone who joined),
+decided points per ticket (effort + FE/BE/QA, grouped by parent/story, ticket links to
+Jira). A **host or admin** can still **Sync / Reset Jira** from history. Ended rooms are
+**auto-purged** after a retention window (`TAROT_ROOM_RETENTION_DAYS`, default 30; 0
+disables) and can otherwise only be **deleted by an admin**.
+
+**Activity log.** Key actions (create, estimate, sync, reset, end) are recorded in the
+squad's **Update Log**.
 
 ## 10. Reset the database (admin only)
 

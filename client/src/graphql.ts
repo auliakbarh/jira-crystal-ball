@@ -618,6 +618,10 @@ export const TAROT_ROOM_FIELDS = gql`
     endedAt
     isHost
     viewerKicked
+    viewerVote {
+      value
+      confirmed
+    }
     participants {
       id
       name
@@ -635,6 +639,7 @@ export const TAROT_ROOM_FIELDS = gql`
       ticketUrl
       status
       cycle
+      createdAt
       voteCount
       revealed
       syncPercent
@@ -777,6 +782,15 @@ export const NEXT_TAROT_CYCLE = gql`
   }
 `;
 
+export const FORCE_REVEAL_TAROT_ROUND = gql`
+  mutation ForceRevealTarotRound($roomId: ID!, $key: String!) {
+    forceRevealTarotRound(roomId: $roomId, key: $key) {
+      id
+      status
+    }
+  }
+`;
+
 export const DECIDE_TAROT_POINT = gql`
   mutation DecideTarotPoint($roomId: ID!, $key: String!, $effort: Float!, $pointFE: Float, $pointBE: Float, $pointQA: Float) {
     decideTarotPoint(roomId: $roomId, key: $key, effort: $effort, pointFE: $pointFE, pointBE: $pointBE, pointQA: $pointQA) {
@@ -809,6 +823,7 @@ export const SYNC_TAROT_TO_JIRA = gql`
     syncTarotToJira(roomId: $roomId, key: $key, fields: $fields) {
       updated
       tickets
+      failed
     }
   }
 `;

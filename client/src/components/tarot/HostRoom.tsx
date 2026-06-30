@@ -14,17 +14,22 @@ import {
   SYNC_TAROT_TO_JIRA,
   TAROT_TICKETS,
   JIRA_ENV,
+  FORCE_REVEAL_TAROT_ROUND,
 } from "../../graphql";
 import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 import { statusColor, priorityColor, issueTypeRank } from "../../lib/helpers";
 import { cardDisplay } from "../../lib/tarot";
 import { setSoundMuted, soundMuted } from "../../lib/sound";
 import PokerCard from "./PokerCard";
 import Participants from "./Participants";
+import RoundTimer from "./RoundTimer";
 
 export default function HostRoom({ room, uid, tick, refetchRoom }: any) {
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
+  const canSync = !user?.isGuest; // guests can't write to the Jira board
   const roomId = room.id;
   const ended = room.status === "ENDED";
 
@@ -43,6 +48,7 @@ export default function HostRoom({ room, uid, tick, refetchRoom }: any) {
   const [resetSync] = useMutation(RESET_TAROT_SYNC);
   const [setScale] = useMutation(SET_TAROT_SCALE);
   const [kick] = useMutation(KICK_TAROT_PARTICIPANT);
+  const [forceReveal] = useMutation(FORCE_REVEAL_TAROT_ROUND);
 
   const [muted, setMuted] = useState(soundMuted());
   const [modal, setModal] = useState<null | "decide" | "sync" | "scale" | "reset" | "delete" | "resetJira">(null);
@@ -114,8 +120,8 @@ export default function HostRoom({ room, uid, tick, refetchRoom }: any) {
           </button>
           <button className="btn-ghost" onClick={() => setModal("scale")}>⚙ Scale</button>
           <button className="btn-ghost text-amber-600" onClick={() => setModal("reset")}>Reset points</button>
-          {allPointed && <button className="btn-ghost text-blue-600" disabled={busy} onClick={() => setModal("sync")}>⇅ Sync Jira</button>}
-          {hasSynced && (
+          {allPointed && canSync && <button className="btn-ghost text-blue-600" disabled={busy} onClick={() => setModal("sync")}>⇅ Sync Jira</button>}
+          {hasSynced && canSync && (
             <button className="btn-ghost text-amber-600" disabled={busy} onClick={() => setModal("resetJira")}>
               {busy ? "Resetting…" : "↺ Reset Jira"}
             </button>
@@ -136,7 +142,10 @@ export default function HostRoom({ room, uid, tick, refetchRoom }: any) {
                     {round.ticketKey}
                   </a>
                   <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">{round.ticketSummary}</span>
-                  <div className="mt-0.5 text-xs text-gray-400">Cycle #{round.cycle} · {round.voteCount}/{onlineVoters.length} voted</div>
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-400">
+                    <span>Cycle #{round.cycle} · {round.voteCount}/{onlineVoters.length} voted</span>
+                    {round.createdAt && <RoundTimer startedAt={round.createdAt} />}
+                  </div>
                 </div>
                 {round.revealed && (
                   <div className="text-right text-sm">
@@ -161,6 +170,16 @@ export default function HostRoom({ room, uid, tick, refetchRoom }: any) {
                 <button className="btn-ghost" disabled={busy} onClick={() => call(() => nextCycle({ variables: { roomId, key: uid } }), { success: "New voting cycle started." })}>
                   ↻ Next cycle
                 </button>
+                {!round.revealed && (
+                  <button
+                    className="btn-ghost text-blue-600"
+                    disabled={busy || round.voteCount === 0}
+                    title={round.voteCount === 0 ? "No confirmed votes yet" : "Reveal cards now"}
+                    onClick={() => call(() => forceReveal({ variables: { roomId, key: uid } }), { success: "Cards revealed." })}
+                  >
+                    👁 Reveal now
+                  </button>
+                )}
                 <button className="btn-primary" disabled={!round.revealed || busy} onClick={() => setModal("decide")}>
                   ✓ Set story point
                 </button>
@@ -258,8 +277,11 @@ export default function HostRoom({ room, uid, tick, refetchRoom }: any) {
           onSync={(fields: string[]) =>
             call(
               () => syncJira({ variables: { roomId, key: uid, fields } }).then((r) => {
-                const n = r.data?.syncTarotToJira?.updated ?? 0;
-                toast.success(`Synced ${n} ticket${n === 1 ? "" : "s"} to Jira.`);
+                const res = r.data?.syncTarotToJira;
+                const n = res?.updated ?? 0;
+                const f = res?.failed?.length ?? 0;
+                if (f) toast.error(`Synced ${n}, ${f} failed: ${res.failed.slice(0, 5).join(", ")}`);
+                else toast.success(`Synced ${n} ticket${n === 1 ? "" : "s"} to Jira.`);
               }),
               { after: () => setModal(null) },
             )
@@ -317,6 +339,8 @@ export default function HostRoom({ room, uid, tick, refetchRoom }: any) {
 function EndedHost({ room, uid, refetchRoom }: any) {
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
+  const canSync = !user?.isGuest;
   const roomId = room.id;
   const [syncJira] = useMutation(SYNC_TAROT_TO_JIRA);
   const [resetSync] = useMutation(RESET_TAROT_SYNC);
@@ -350,8 +374,8 @@ function EndedHost({ room, uid, refetchRoom }: any) {
           <p className="text-sm text-gray-500">Session ended · history. Ended rooms can only be deleted by an admin.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {hasResults && <button className="btn-ghost text-blue-600" disabled={busy} onClick={() => setModal("sync")}>⇅ Sync Jira</button>}
-          {hasSynced && (
+          {hasResults && canSync && <button className="btn-ghost text-blue-600" disabled={busy} onClick={() => setModal("sync")}>⇅ Sync Jira</button>}
+          {hasSynced && canSync && (
             <button className="btn-ghost text-amber-600" disabled={busy} onClick={() => setModal("resetJira")}>
               {busy ? "Resetting…" : "↺ Reset Jira"}
             </button>
@@ -370,8 +394,11 @@ function EndedHost({ room, uid, refetchRoom }: any) {
           onSync={(fields: string[]) =>
             call(
               () => syncJira({ variables: { roomId, key: uid, fields } }).then((r) => {
-                const n = r.data?.syncTarotToJira?.updated ?? 0;
-                toast.success(`Synced ${n} ticket${n === 1 ? "" : "s"} to Jira.`);
+                const res = r.data?.syncTarotToJira;
+                const n = res?.updated ?? 0;
+                const f = res?.failed?.length ?? 0;
+                if (f) toast.error(`Synced ${n}, ${f} failed: ${res.failed.slice(0, 5).join(", ")}`);
+                else toast.success(`Synced ${n} ticket${n === 1 ? "" : "s"} to Jira.`);
               }),
               { after: () => setModal(null) },
             )

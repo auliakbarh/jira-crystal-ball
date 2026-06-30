@@ -392,6 +392,8 @@ export const typeDefs = /* GraphQL */ `
     castTarotVote(roomId: ID!, key: String!, value: String!, confirmed: Boolean!): Boolean!
     # Host re-opens voting for the current ticket (cards reshuffle face-down).
     nextTarotCycle(roomId: ID!, key: String!): TarotRound!
+    # Host forces the reveal early (needs at least one confirmed vote).
+    forceRevealTarotRound(roomId: ID!, key: String!): TarotRound!
     # Host sets the ticket's story point + per-role points (each <= effort).
     decideTarotPoint(roomId: ID!, key: String!, effort: Float!, pointFE: Float, pointBE: Float, pointQA: Float): TarotResult!
     # Host: clear all decided points in the room (guarded by typing RESET client-side).
@@ -452,6 +454,7 @@ export const typeDefs = /* GraphQL */ `
     ticketUrl: String
     status: String! # VOTING | REVEALED | DECIDED
     cycle: Int!
+    createdAt: String! # round start time (for the elapsed timer)
     voteCount: Int! # confirmed votes so far
     revealed: Boolean!
     votes: [TarotVoteResult!]! # empty until revealed
@@ -498,9 +501,15 @@ export const typeDefs = /* GraphQL */ `
     endedAt: String
     isHost: Boolean! # true when the requesting key is the host
     viewerKicked: Boolean! # true when the requesting key was kicked from the room
+    viewerVote: TarotViewerVote # the requester's own vote in the current round (for reload rehydrate)
     participants: [TarotParticipant!]!
     currentRound: TarotRound
     results: [TarotResult!]!
+  }
+
+  type TarotViewerVote {
+    value: String!
+    confirmed: Boolean!
   }
 
   # Lightweight row for the room landing list.
@@ -517,6 +526,7 @@ export const typeDefs = /* GraphQL */ `
   type TarotSyncResult {
     updated: Int!
     tickets: [String!]!
+    failed: [String!]!
   }
 
   # Fired when a sprint's standup lock or any of its cells/blockers change.

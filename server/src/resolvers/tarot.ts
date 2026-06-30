@@ -11,62 +11,33 @@ import {
   getIssueFieldValues,
   updateIssueFields,
 } from "../jira.js";
+import { presetValues, deckStrings, isOnline, voteStats, capRolePoint, PRESETS } from "./tarotLogic.js";
 
-// Presence: a participant is "online" while their heartbeat is recent.
-const TAROT_STALE_MS = 15_000;
-const SPECIAL_CARDS = ["?", "coffee"];
+// Re-export pure helpers (kept in tarotLogic.ts so they're unit-testable).
+export { presetValues, deckStrings, isOnline, voteStats };
 
-const PRESETS: Record<string, number[]> = {
-  FIBONACCI: [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89],
-  SCRUM: [0, 0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100],
-};
-
-function presetValues(scaleType: string, scaleValues?: string | null): number[] {
-  if (scaleType === "CUSTOM") {
-    try {
-      const arr = JSON.parse(scaleValues ?? "[]");
-      if (Array.isArray(arr)) return arr.map(Number).filter((n) => Number.isFinite(n));
-    } catch {
-      /* fall through */
-    }
-    return [];
+// Record a tarot action in the squad's ActivityLog (best-effort; never blocks).
+async function logTarot(ctx: Context, squadId: string, message: string, ticketKey?: string | null) {
+  try {
+    await ctx.prisma.activityLog.create({
+      data: { squadId, actor: ctx.userName ?? "someone", message, ticketKey: ticketKey ?? null },
+    });
+  } catch {
+    /* logging must not break the action */
   }
-  return PRESETS[scaleType] ?? PRESETS.FIBONACCI;
-}
-
-// The full deck shown to players: numeric cards (as strings) + special cards.
-function deckStrings(scaleType: string, scaleValues?: string | null): string[] {
-  return [...presetValues(scaleType, scaleValues).map((n) => String(n)), ...SPECIAL_CARDS];
-}
-
-function isOnline(p: { leftAt: Date | null; kicked: boolean; lastSeen: Date }): boolean {
-  return !p.leftAt && !p.kicked && Date.now() - new Date(p.lastSeen).getTime() < TAROT_STALE_MS;
-}
-
-// Vote statistics for a revealed round.
-function voteStats(votes: { value: string }[]) {
-  const counts = new Map<string, number>();
-  for (const v of votes) counts.set(v.value, (counts.get(v.value) ?? 0) + 1);
-  const total = votes.length;
-  let topCount = 0;
-  for (const c of counts.values()) topCount = Math.max(topCount, c);
-  const syncPercent = total > 0 ? Math.round((topCount / total) * 100) : null;
-
-  // Suggestion = single most-picked NUMERIC value; null on draw or no numbers.
-  const numeric = [...counts.entries()].filter(([k]) => !SPECIAL_CARDS.includes(k));
-  let suggestion: string | null = null;
-  if (numeric.length) {
-    const max = Math.max(...numeric.map(([, c]) => c));
-    const tops = numeric.filter(([, c]) => c === max);
-    suggestion = tops.length === 1 ? tops[0][0] : null;
-  }
-  return { syncPercent, suggestion };
 }
 
 async function loadRoomOrThrow(ctx: Context, roomId: string) {
   const room = await ctx.prisma.tarotRoom.findUnique({ where: { id: roomId } });
   if (!room) throw new Error("Room not found");
   return room;
+}
+
+// Jira write-back must be done by a signed-in user (a guest host may not mutate
+// the real Jira board). An admin always qualifies.
+function assertNotGuest(ctx: Context) {
+  if (!ctx.userId || ctx.userId === "guest")
+    throw new Error("Only a signed-in user (host or admin) can sync to Jira.");
 }
 
 function assertHost(room: { hostKey: string }, key: string) {
@@ -109,6 +80,7 @@ async function buildRoom(ctx: Context, roomId: string, key?: string | null) {
         ticketUrl: round.ticketUrl,
         status: round.status,
         cycle: round.cycle,
+        createdAt: round.createdAt.toISOString(),
         voteCount: votes.length,
         revealed,
         votes: revealed
@@ -151,6 +123,16 @@ async function buildRoom(ctx: Context, roomId: string, key?: string | null) {
 
   const viewer = key ? parts.find((p) => p.key === key) : null;
 
+  // The requester's own vote in the current round, so a guest who reloads can
+  // rehydrate their selection/confirmation instead of being shown a fresh deck.
+  let viewerVote: { value: string; confirmed: boolean } | null = null;
+  if (room.currentRoundId && viewer) {
+    const mv = await ctx.prisma.tarotVote.findUnique({
+      where: { roundId_participantId: { roundId: room.currentRoundId, participantId: viewer.id } },
+    });
+    if (mv) viewerVote = { value: mv.value, confirmed: mv.confirmed };
+  }
+
   return {
     id: room.id,
     squadId: room.squadId,
@@ -164,6 +146,7 @@ async function buildRoom(ctx: Context, roomId: string, key?: string | null) {
     endedAt: room.endedAt ? room.endedAt.toISOString() : null,
     isHost: !!key && room.hostKey === key,
     viewerKicked: !!viewer?.kicked,
+    viewerVote,
     participants,
     currentRound,
     results: results.map(mapResult),
@@ -271,8 +254,6 @@ export const tarotResolvers = {
       ctx: Context,
     ) => {
       requireAuth(ctx);
-      const existing = await ctx.prisma.tarotRoom.findFirst({ where: { squadId, status: "ACTIVE" } });
-      if (existing) throw new Error("An active room already exists for this squad.");
       const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
       if (!squad) throw new Error("Squad not found");
 
@@ -291,31 +272,52 @@ export const tarotResolvers = {
         /* ignore — name is cosmetic */
       }
 
-      // Per-squad incrementing planning number → "<Squad> - Sprint Planning #N - <date>".
-      const last = await ctx.prisma.tarotRoom.findFirst({
-        where: { squadId },
-        orderBy: { seq: "desc" },
-        select: { seq: true },
-      });
-      const seq = (last?.seq ?? 0) + 1;
-      const name = `${squad.name} - Sprint Planning #${seq} - ${toISODate(new Date())}`;
+      const today = toISODate(new Date());
+      const cleanHost = hostName.trim() || "Host";
 
-      const room = await ctx.prisma.tarotRoom.create({
-        data: {
-          squadId,
-          name,
-          seq,
-          hostName: hostName.trim() || "Host",
-          hostKey,
-          scaleType: scaleType as any,
-          scaleValues: JSON.stringify(values),
-          sprintName,
-        },
-      });
-      await ctx.prisma.tarotParticipant.create({
-        data: { roomId: room.id, name: hostName.trim() || "Host", key: hostKey, isHost: true },
-      });
+      // Re-check "one active room per squad" and allocate the seq + create the room
+      // inside a SERIALIZABLE transaction, so two simultaneous creates can't both
+      // pass the check (write-skew). The loser aborts → mapped to a friendly error.
+      let room;
+      try {
+        room = await ctx.prisma.$transaction(
+          async (tx) => {
+            const existing = await tx.tarotRoom.findFirst({ where: { squadId, status: "ACTIVE" } });
+            if (existing) throw new Error("ACTIVE_EXISTS");
+            const last = await tx.tarotRoom.findFirst({
+              where: { squadId },
+              orderBy: { seq: "desc" },
+              select: { seq: true },
+            });
+            const seq = (last?.seq ?? 0) + 1;
+            const created = await tx.tarotRoom.create({
+              data: {
+                squadId,
+                name: `${squad.name} - Sprint Planning #${seq} - ${today}`,
+                seq,
+                hostName: cleanHost,
+                hostKey,
+                scaleType: scaleType as any,
+                scaleValues: JSON.stringify(values),
+                sprintName,
+              },
+            });
+            await tx.tarotParticipant.create({
+              data: { roomId: created.id, name: cleanHost, key: hostKey, isHost: true },
+            });
+            return created;
+          },
+          { isolationLevel: "Serializable" },
+        );
+      } catch (e: any) {
+        // ACTIVE_EXISTS or a serialization conflict (P2034) both mean a room is up.
+        if (e?.message === "ACTIVE_EXISTS" || e?.code === "P2034")
+          throw new Error("An active room already exists for this squad.");
+        throw e;
+      }
+
       publishTarotEvent(room.id, "join", hostName);
+      await logTarot(ctx, squadId, `Tarot: created room "${room.name}"`);
       return buildRoom(ctx, room.id, hostKey);
     },
 
@@ -514,6 +516,23 @@ export const tarotResolvers = {
       return built!.currentRound;
     },
 
+    // Host forces the reveal early (e.g. an online member won't vote). Requires
+    // at least one confirmed vote so there's something to reveal.
+    forceRevealTarotRound: async (_p: unknown, { roomId, key }: { roomId: string; key: string }, ctx: Context) => {
+      requireAuth(ctx);
+      const room = await loadRoomOrThrow(ctx, roomId);
+      assertHost(room, key);
+      if (!room.currentRoundId) throw new Error("No active round");
+      const round = await ctx.prisma.tarotRound.findUnique({ where: { id: room.currentRoundId } });
+      if (!round || round.status !== "VOTING") throw new Error("Round is not open for voting");
+      const confirmed = await ctx.prisma.tarotVote.count({ where: { roundId: round.id, confirmed: true } });
+      if (confirmed === 0) throw new Error("No confirmed votes yet — nothing to reveal");
+      await ctx.prisma.tarotRound.update({ where: { id: round.id }, data: { status: "REVEALED" } });
+      publishTarotEvent(roomId, "reveal", null);
+      const built = await buildRoom(ctx, roomId, key);
+      return built!.currentRound;
+    },
+
     decideTarotPoint: async (
       _p: unknown,
       { roomId, key, effort, pointFE, pointBE, pointQA }: any,
@@ -529,16 +548,9 @@ export const tarotResolvers = {
 
       const e = Number(effort);
       if (!Number.isFinite(e) || e < 0) throw new Error("Invalid effort");
-      const cap = (v: any, label: string) => {
-        if (v === null || v === undefined) return null;
-        const n = Number(v);
-        if (!Number.isFinite(n) || n < 0) throw new Error(`Invalid ${label} point`);
-        if (n > e) throw new Error(`${label} point cannot exceed the ticket effort (${e})`);
-        return n;
-      };
-      const fe = cap(pointFE, "FE");
-      const be = cap(pointBE, "BE");
-      const qa = cap(pointQA, "QA");
+      const fe = capRolePoint(pointFE, e, "FE");
+      const be = capRolePoint(pointBE, e, "BE");
+      const qa = capRolePoint(pointQA, e, "QA");
 
       const result = await ctx.prisma.tarotResult.upsert({
         where: { roomId_ticketKey: { roomId, ticketKey: round.ticketKey } },
@@ -558,6 +570,7 @@ export const tarotResolvers = {
       await ctx.prisma.tarotRound.update({ where: { id: round.id }, data: { status: "DECIDED" } });
       await ctx.prisma.tarotRoom.update({ where: { id: roomId }, data: { currentRoundId: null } });
       publishTarotEvent(roomId, "decided", round.ticketKey);
+      await logTarot(ctx, room.squadId, `Tarot: estimated ${round.ticketKey} = ${e} (FE ${fe ?? "–"}/BE ${be ?? "–"}/QA ${qa ?? "–"})`, round.ticketKey);
       return mapResult(result);
     },
 
@@ -569,6 +582,7 @@ export const tarotResolvers = {
       await ctx.prisma.tarotRound.deleteMany({ where: { roomId } });
       await ctx.prisma.tarotRoom.update({ where: { id: roomId }, data: { currentRoundId: null } });
       publishTarotEvent(roomId, "reset", null);
+      await logTarot(ctx, room.squadId, "Tarot: reset all story points");
       return true;
     },
 
@@ -594,6 +608,7 @@ export const tarotResolvers = {
         data: { status: "ENDED", endedAt: new Date(), currentRoundId: null },
       });
       publishTarotEvent(roomId, "ended", null);
+      await logTarot(ctx, room.squadId, `Tarot: ended room "${room.name ?? room.id}"`);
       return true;
     },
 
@@ -616,6 +631,7 @@ export const tarotResolvers = {
       ctx: Context,
     ) => {
       requireAuth(ctx);
+      assertNotGuest(ctx);
       const room = await loadRoomOrThrow(ctx, roomId);
       await assertHostOrAdmin(ctx, room, key);
       const squad = await ctx.prisma.squad.findUnique({ where: { id: room.squadId } });
@@ -635,28 +651,41 @@ export const tarotResolvers = {
       const results = await ctx.prisma.tarotResult.findMany({ where: { roomId } });
       const fieldIds = mapping.map((m) => m.fieldId);
       const touched: string[] = [];
+      const failed: string[] = [];
+      // Per-ticket try/catch: one failing issue (permission, missing field) must
+      // not abort the whole sync — record it and continue with the rest.
       for (const r of results) {
-        // Snapshot prior values once so a reset can restore them.
-        const prev = await getIssueFieldValues(cfg, r.ticketKey, fieldIds).catch(() => ({}));
         const payload: Record<string, unknown> = {};
         for (const m of mapping) {
           const v = m.pick(r);
           if (v !== null && v !== undefined) payload[m.fieldId] = v;
         }
         if (Object.keys(payload).length === 0) continue;
-        await updateIssueFields(cfg, r.ticketKey, payload);
-        await ctx.prisma.tarotResult.update({
-          where: { id: r.id },
-          data: { jiraPrevValues: JSON.stringify(prev), syncedAt: new Date() },
-        });
-        touched.push(r.ticketKey);
+        try {
+          // Snapshot prior values first so a reset can restore them.
+          const prev = await getIssueFieldValues(cfg, r.ticketKey, fieldIds).catch(() => ({}));
+          await updateIssueFields(cfg, r.ticketKey, payload);
+          await ctx.prisma.tarotResult.update({
+            where: { id: r.id },
+            data: { jiraPrevValues: JSON.stringify(prev), syncedAt: new Date() },
+          });
+          touched.push(r.ticketKey);
+        } catch {
+          failed.push(r.ticketKey);
+        }
       }
       publishTarotEvent(roomId, "synced", null);
-      return { updated: touched.length, tickets: touched };
+      await logTarot(
+        ctx,
+        room.squadId,
+        `Tarot: synced ${touched.length} ticket(s) to Jira${failed.length ? `, ${failed.length} failed` : ""}`,
+      );
+      return { updated: touched.length, tickets: touched, failed };
     },
 
     resetTarotSync: async (_p: unknown, { roomId, key }: { roomId: string; key: string }, ctx: Context) => {
       requireAuth(ctx);
+      assertNotGuest(ctx);
       const room = await loadRoomOrThrow(ctx, roomId);
       await assertHostOrAdmin(ctx, room, key);
       const squad = await ctx.prisma.squad.findUnique({ where: { id: room.squadId } });
