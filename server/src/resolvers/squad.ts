@@ -8,6 +8,8 @@ import {
   fetchBoardIssues,
   fetchActiveSprintIssues,
   fetchActiveSprintInfo,
+  fetchNextSprintIssues,
+  fetchNextSprintInfo,
   testConnection,
   listFields,
   listUsers,
@@ -86,6 +88,15 @@ export const squadResolvers = {
       return fetchActiveSprintIssues(cfg, { force: !!refresh });
     },
 
+    nextSprintTickets: async (_p: unknown, { squadId, refresh }: { squadId: string; refresh?: boolean }, ctx: Context) => {
+      requireAuth(ctx);
+      const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
+      const cfg = jiraCfgForBoard(squad);
+      if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
+      if (!cfg.boardId) return [];
+      return fetchNextSprintIssues(cfg, { force: !!refresh });
+    },
+
     jiraActiveSprint: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {
       requireAuth(ctx);
       const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
@@ -93,6 +104,15 @@ export const squadResolvers = {
       if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
       if (!cfg.boardId) return null;
       return fetchActiveSprintInfo(cfg);
+    },
+
+    jiraNextSprint: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {
+      requireAuth(ctx);
+      const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
+      const cfg = jiraCfgForBoard(squad);
+      if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
+      if (!cfg.boardId) return null;
+      return fetchNextSprintInfo(cfg);
     },
 
     jiraFields: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {
@@ -158,7 +178,7 @@ export const squadResolvers = {
 
     updateSquad: async (_p: unknown, args: any, ctx: Context) => {
       requireAuth(ctx);
-      const { id, name, defaultBoardId, spFieldDefault, spFieldFE, spFieldBE, spFieldQA, confluenceSpaceKey, confluenceParentId } = args;
+      const { id, name, defaultBoardId, spFieldDefault, spFieldFE, spFieldBE, spFieldQA, confluenceSpaceKey, confluenceParentId, tarotScaleType, tarotScaleValues } = args;
       const squad = await ctx.prisma.squad.findUnique({ where: { id } });
       if (!squad) throw new Error("Squad not found — it may have been deleted. Reselect a squad.");
       const trimOrNull = (v?: string) => (v !== undefined ? v.trim() || null : undefined);
@@ -173,6 +193,8 @@ export const squadResolvers = {
           ...(spFieldQA !== undefined ? { spFieldQA: trimOrNull(spFieldQA) } : {}),
           ...(confluenceSpaceKey !== undefined ? { confluenceSpaceKey: trimOrNull(confluenceSpaceKey) } : {}),
           ...(confluenceParentId !== undefined ? { confluenceParentId: trimOrNull(confluenceParentId) } : {}),
+          ...(tarotScaleType !== undefined ? { tarotScaleType: (trimOrNull(tarotScaleType) as any) } : {}),
+          ...(tarotScaleValues !== undefined ? { tarotScaleValues: trimOrNull(tarotScaleValues) } : {}),
         },
       });
     },

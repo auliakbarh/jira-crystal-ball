@@ -9,3 +9,12 @@ export const standupTopic = (sprintId: string) => `STANDUP_CHANGED:${sprintId}`;
 export function publishStandupChange(sprintId: string, kind: string) {
   void pubsub.publish(standupTopic(sprintId), { standupChanged: { sprintId, kind } });
 }
+
+// --- Tarot (planning poker) room events ---------------------------------
+export const tarotTopic = (roomId: string) => `TAROT_ROOM:${roomId}`;
+
+// kind: join | leave | kick | vote | reveal | decided | round_start |
+//       next_cycle | reset | synced | ended | deleted
+export function publishTarotEvent(roomId: string, kind: string, actor?: string | null) {
+  void pubsub.publish(tarotTopic(roomId), { tarotRoomChanged: { roomId, kind, actor: actor ?? null } });
+}

@@ -36,13 +36,19 @@ model Squad {
   // Per-squad Confluence export target (fallback: global env CONFLUENCE_SPACE_KEY/PARENT_ID).
   confluenceSpaceKey String?
   confluenceParentId String?
+  // Tarot (planning poker) default story-point scale for this squad. A host can
+  // override per-room and "set as default" → these fields. scaleValues = JSON
+  // array of numbers used for CUSTOM (ignored for FIBONACCI/SCRUM presets).
+  tarotScaleType   TarotScaleType?
+  tarotScaleValues String?
   createdAt      DateTime @default(now())
 
-  members  TeamMember[]
-  sprints  Sprint[]
-  holidays Holiday[]
-  blockers Blocker[]
-  logs     ActivityLog[]
+  members    TeamMember[]
+  sprints    Sprint[]
+  holidays   Holiday[]
+  blockers   Blocker[]
+  logs       ActivityLog[]
+  tarotRooms TarotRoom[]
 }
 
 // A live "standup in progress" lock. One active session per sprint: only the
@@ -238,4 +244,126 @@ model Blocker {
   sourceEntryId String? @unique
 
   @@index([squadId])
+}
+
+// ---------------------------------------------------------------------------
+// Tarot — planning poker. One ACTIVE room per squad. Host (creator) runs the
+// session; guests join and vote. Live presence + votes pushed via subscriptions.
+// ---------------------------------------------------------------------------
+enum TarotRoomStatus {
+  ACTIVE
+  ENDED
+}
+
+enum TarotRoundStatus {
+  VOTING   // cards face-down, participants picking
+  REVEALED // all confirmed → cards flipped, host decides
+  DECIDED  // story point set for this ticket
+}
+
+enum TarotScaleType {
+  FIBONACCI
+  SCRUM
+  CUSTOM
+}
+
+model TarotRoom {
+  id            String   @id @default(cuid())
+  squad         Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  squadId       String
+  name          String? // "<Squad> - Sprint Planning #<seq> - <date>"
+  seq           Int      @default(1) // per-squad incrementing planning number
+  hostName      String
+  hostKey       String // client-held host token (host may be a guest, not a User)
+  status        TarotRoomStatus @default(ACTIVE)
+  scaleType     TarotScaleType  @default(FIBONACCI)
+  scaleValues   String // JSON array of numeric values (the deck for this room)
+  currentRoundId String? // active round (ticket currently being voted), if any
+  sprintName    String?
+  createdAt     DateTime @default(now())
+  endedAt       DateTime?
+
+  participants TarotParticipant[]
+  rounds       TarotRound[]
+  results      TarotResult[]
+
+  @@index([squadId, status])
+}
+
+// A room participant. Rows are kept after leaving for the attendance log.
+model TarotParticipant {
+  id       String   @id @default(cuid())
+  room     TarotRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId   String
+  name     String
+  key      String // client-held participant token (identity across reconnect)
+  isHost   Boolean  @default(false)
+  joinedAt DateTime @default(now())
+  lastSeen DateTime @default(now())
+  leftAt   DateTime?
+  kicked   Boolean  @default(false)
+
+  votes TarotVote[]
+
+  @@unique([roomId, key])
+  @@index([roomId])
+}
+
+// One voting cycle for a ticket. Re-voting ("next cycle") creates a new round.
+model TarotRound {
+  id             String   @id @default(cuid())
+  room           TarotRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId         String
+  ticketKey      String
+  ticketSummary  String?
+  ticketType     String?
+  ticketPriority String?
+  ticketUrl      String?
+  parentKey      String?
+  parentName     String?
+  status         TarotRoundStatus @default(VOTING)
+  cycle          Int      @default(1)
+  createdAt      DateTime @default(now())
+
+  votes TarotVote[]
+
+  @@index([roomId, ticketKey])
+}
+
+model TarotVote {
+  id              String   @id @default(cuid())
+  round           TarotRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  roundId         String
+  participant     TarotParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  participantId   String
+  participantName String
+  value           String  // numeric as string, or "?" / "coffee"
+  confirmed       Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([roundId, participantId])
+  @@index([roundId])
+}
+
+// Decided story point per ticket per room (history). effort = ticket point;
+// per-role points each capped at effort.
+model TarotResult {
+  id            String   @id @default(cuid())
+  room          TarotRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId        String
+  ticketKey     String
+  ticketSummary String?
+  parentKey     String?
+  parentName    String?
+  effort        Float
+  pointFE       Float?
+  pointBE       Float?
+  pointQA       Float?
+  decidedAt     DateTime @default(now())
+  // Jira sync: snapshot of prior field values (JSON) so a reset can restore them.
+  jiraPrevValues String?
+  syncedAt      DateTime?
+
+  @@unique([roomId, ticketKey])
+  @@index([roomId])
 }

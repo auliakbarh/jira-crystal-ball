@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { useSquad } from "../context/SquadContext";
 import { useAuth } from "../context/AuthContext";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   SQUAD,
   SQUADS,
@@ -69,10 +70,9 @@ function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
   const [reseed, setReseed] = useState(true);
   const [confirmText, setConfirmText] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const doReset = async () => {
-    if (confirmText !== "RESET") return;
-    if (!confirm("This permanently deletes ALL squads and their data. Continue?")) return;
     setMsg(null);
     try {
       await reset({ variables: { reseedDefaults: reseed } });
@@ -83,6 +83,8 @@ function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
       setConfirmText("");
     } catch (e: any) {
       setMsg(`Error: ${e.message}`);
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -105,11 +107,22 @@ function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
         />
-        <button className="btn-danger" onClick={doReset} disabled={loading || confirmText !== "RESET"}>
+        <button className="btn-danger" onClick={() => setConfirming(true)} disabled={loading || confirmText !== "RESET"}>
           {loading ? "Resetting…" : "Reset Database"}
         </button>
       </div>
       {msg && <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{msg}</div>}
+      {confirming && (
+        <ConfirmModal
+          title="Reset database"
+          message="This permanently deletes ALL squads and their data (members, leaves, holidays, sprints, standup entries, blockers, JIRA configs). User accounts are kept. This cannot be undone."
+          confirmLabel="Reset Database"
+          danger
+          busy={loading}
+          onConfirm={doReset}
+          onClose={() => setConfirming(false)}
+        />
+      )}
     </section>
   );
 }
@@ -126,8 +139,9 @@ function SquadsSection({
 }) {
   const { data, refetch } = useQuery(SQUADS);
   const [create] = useMutation(CREATE_SQUAD);
-  const [del] = useMutation(DELETE_SQUAD);
+  const [del, { loading: deleting }] = useMutation(DELETE_SQUAD);
   const [name, setName] = useState("");
+  const [delTarget, setDelTarget] = useState<{ id: string; label: string } | null>(null);
   const squads = data?.squads ?? [];
 
   const add = async () => {
@@ -138,13 +152,16 @@ function SquadsSection({
     if (res.data?.createSquad?.id) setSquadId(res.data.createSquad.id);
   };
 
-  const remove = async (id: string, label: string) => {
-    if (!confirm(`Delete squad "${label}"? All its sprints, members, blockers and JIRA config are removed.`))
-      return;
+  const remove = (id: string, label: string) => setDelTarget({ id, label });
+
+  const performDelete = async () => {
+    if (!delTarget) return;
+    const { id } = delTarget;
     await del({ variables: { id } });
     const rest = squads.filter((s: any) => s.id !== id);
     await refetch();
     if (currentId === id && rest[0]) setSquadId(rest[0].id);
+    setDelTarget(null);
   };
 
   return (
@@ -177,6 +194,17 @@ function SquadsSection({
           />
         ))}
       </ul>
+      {delTarget && (
+        <ConfirmModal
+          title="Delete squad"
+          message={`Delete squad "${delTarget.label}"? All its sprints, members, blockers and JIRA config are removed. This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          busy={deleting}
+          onConfirm={performDelete}
+          onClose={() => setDelTarget(null)}
+        />
+      )}
     </section>
   );
 }
@@ -205,6 +233,15 @@ function SquadRow({
   const [spQA, setSpQA] = useState(squad.spFieldQA ?? "");
   const [confSpace, setConfSpace] = useState(squad.confluenceSpaceKey ?? "");
   const [confParent, setConfParent] = useState(squad.confluenceParentId ?? "");
+  const [tarotType, setTarotType] = useState(squad.tarotScaleType ?? "");
+  const [tarotValues, setTarotValues] = useState(() => {
+    try {
+      const arr = JSON.parse(squad.tarotScaleValues ?? "[]");
+      return Array.isArray(arr) ? arr.join(", ") : "";
+    } catch {
+      return "";
+    }
+  });
   const [update, { loading }] = useMutation(UPDATE_SQUAD);
 
   // Lazy-load the board's JIRA fields (id + name) when editing, to help pick SP fields.
@@ -227,6 +264,11 @@ function SquadRow({
         spFieldQA: spQA,
         confluenceSpaceKey: confSpace,
         confluenceParentId: confParent,
+        tarotScaleType: tarotType,
+        tarotScaleValues:
+          tarotType === "CUSTOM"
+            ? JSON.stringify(tarotValues.split(/[,\s]+/).map(Number).filter((n) => Number.isFinite(n)))
+            : "",
       },
     });
     setEditing(false);
@@ -311,6 +353,32 @@ function SquadRow({
               onChange={(e) => setConfParent(e.target.value)}
             />
           </div>
+        </div>
+        <div className="text-xs text-gray-500">
+          Tarot (planning poker) default scale — used when a host opens a new room (the host
+          can still override per-room). <code>?</code> and <code>☕</code> cards are always added.
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="label">Default scale</label>
+            <select className="input max-w-[160px]" value={tarotType} onChange={(e) => setTarotType(e.target.value)}>
+              <option value="">— (Fibonacci)</option>
+              <option value="FIBONACCI">Fibonacci</option>
+              <option value="SCRUM">Scrum</option>
+              <option value="CUSTOM">Custom</option>
+            </select>
+          </div>
+          {tarotType === "CUSTOM" && (
+            <div>
+              <label className="label">Custom values</label>
+              <input
+                className="input max-w-[260px]"
+                placeholder="e.g. 1, 2, 3, 5, 8, 13"
+                value={tarotValues}
+                onChange={(e) => setTarotValues(e.target.value)}
+              />
+            </div>
+          )}
         </div>
         {/* Quick reference: list of fields with ids (filterable by browser datalist above) */}
         {fields.length > 0 && (

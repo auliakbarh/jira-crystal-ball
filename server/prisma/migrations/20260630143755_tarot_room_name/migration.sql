@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "TarotRoom" ADD COLUMN     "name" TEXT,
+ADD COLUMN     "seq" INTEGER NOT NULL DEFAULT 1;

@@ -7,6 +7,9 @@ import Health from "./pages/Health";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import Board from "./pages/Board";
+import Clairvoyance from "./pages/Clairvoyance";
+import Tarot from "./pages/Tarot";
+import TarotRoom from "./pages/TarotRoom";
 import PreviousSprints from "./pages/PreviousSprints";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
@@ -38,6 +41,9 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="board" element={<Board />} />
+        <Route path="clairvoyance" element={<Clairvoyance />} />
+        <Route path="tarot" element={<Tarot />} />
+        <Route path="tarot/:roomId" element={<TarotRoom />} />
         <Route path="previous" element={<PreviousSprints />} />
         <Route path="help" element={<Help />} />
         <Route

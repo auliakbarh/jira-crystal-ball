@@ -347,6 +347,153 @@ async function _fetchActiveSprintInfo(cfg: JiraConfigLike): Promise<JiraSprintIn
   };
 }
 
+/**
+ * Fetch issues belonging to the board's NEXT (future) sprint — the immediately
+ * upcoming sprint (current + 1). Resolves the first future-state sprint on the
+ * board, then pulls its issues. Returns [] when no future sprint exists yet.
+ * Used by the Clairvoyance (grooming) view and Tarot ticket list.
+ */
+export function fetchNextSprintIssues(cfg: JiraConfigLike, opts: JiraFetchOpts = {}): Promise<JiraTicket[]> {
+  return cached("nextIssues", cfg, !!opts.force, () => _fetchNextSprintIssues(cfg));
+}
+
+async function firstFutureSprintId(base: string, boardId: string, headers: Record<string, string>): Promise<number | null> {
+  const res = await fetch(`${base}/rest/agile/1.0/board/${boardId}/sprint?state=future`, { headers });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA future-sprint lookup failed (${res.status}): ${body.slice(0, 300)}`);
+  }
+  const data: any = await res.json();
+  const sprint = (data.values ?? [])[0]; // first future sprint = next (current + 1)
+  return sprint ? (sprint.id as number) : null;
+}
+
+async function _fetchNextSprintIssues(cfg: JiraConfigLike): Promise<JiraTicket[]> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const headers = jiraHeaders(cfg);
+  const boardId = await resolveBoardId(cfg, base);
+  const spIds = await resolveSpIds(cfg);
+
+  const sid = await firstFutureSprintId(base, boardId, headers);
+  if (sid == null) return [];
+
+  const fields = `summary,status,assignee,issuetype,parent,epic,priority,closedSprints${spFieldsParam(spIds) ? "," + spFieldsParam(spIds) : ""}`;
+  const all: JiraTicket[] = [];
+  const seen = new Set<string>();
+  let startAt = 0;
+  for (let page = 0; page < 50; page++) {
+    const params = new URLSearchParams({ startAt: String(startAt), maxResults: "100", fields });
+    const res = await fetch(
+      `${base}/rest/agile/1.0/board/${boardId}/sprint/${sid}/issue?${params.toString()}`,
+      { headers },
+    );
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`JIRA next-sprint issues failed (${res.status}): ${body.slice(0, 300)}`);
+    }
+    const data: any = await res.json();
+    const issues: any[] = data.issues ?? [];
+    for (const issue of issues) {
+      if (seen.has(issue.key)) continue;
+      seen.add(issue.key);
+      all.push(mapIssue(base, issue, spIds));
+    }
+    startAt += issues.length;
+    const total = typeof data.total === "number" ? data.total : startAt;
+    if (issues.length === 0 || startAt >= total) break;
+  }
+  return all;
+}
+
+/** First future (next) sprint on the board, or null. */
+export function fetchNextSprintInfo(cfg: JiraConfigLike, opts: JiraFetchOpts = {}): Promise<JiraSprintInfo | null> {
+  return cached("nextInfo", cfg, !!opts.force, () => _fetchNextSprintInfo(cfg));
+}
+
+async function _fetchNextSprintInfo(cfg: JiraConfigLike): Promise<JiraSprintInfo | null> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const headers = jiraHeaders(cfg);
+  const boardId = await resolveBoardId(cfg, base);
+
+  const res = await fetch(`${base}/rest/agile/1.0/board/${boardId}/sprint?state=future`, { headers });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA future-sprint lookup failed (${res.status}): ${body.slice(0, 300)}`);
+  }
+  const data: any = await res.json();
+  const sprint = (data.values ?? [])[0];
+  if (!sprint) return null;
+  const name = String(sprint.name ?? "");
+  const afterSprint = name.match(/sprint\s*#?\s*(\d+)/i);
+  const lastNum = name.match(/(\d+)(?!.*\d)/);
+  const numStr = afterSprint?.[1] ?? lastNum?.[1];
+  return {
+    id: sprint.id,
+    number: numStr ? parseInt(numStr, 10) : null,
+    name: sprint.name ?? `Sprint ${sprint.id}`,
+    startDate: isoToDate(sprint.startDate),
+    endDate: isoToDate(sprint.endDate),
+  };
+}
+
+// --- Write-back (Tarot → Jira sync) -------------------------------------
+export interface SpIdsResolved {
+  default: string | null;
+  fe: string | null;
+  be: string | null;
+  qa: string | null;
+}
+
+/** Resolve a squad's configured SP field names/ids to custom field ids. */
+export function resolveSquadSpIds(cfg: JiraConfigLike): Promise<SpIdsResolved> {
+  return resolveSpIds(cfg);
+}
+
+/** Read the current numeric values of the given field ids for one issue. */
+export async function getIssueFieldValues(
+  cfg: JiraConfigLike,
+  issueKey: string,
+  fieldIds: string[],
+): Promise<Record<string, number | null>> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const ids = fieldIds.filter(Boolean);
+  if (ids.length === 0) return {};
+  const params = new URLSearchParams({ fields: ids.join(",") });
+  const res = await fetch(`${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}?${params.toString()}`, {
+    headers: jiraHeaders(cfg),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA issue read failed for ${issueKey} (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const data: any = await res.json();
+  const f = data.fields ?? {};
+  const out: Record<string, number | null> = {};
+  for (const id of ids) out[id] = numOrNull(f[id]);
+  return out;
+}
+
+/** Write field values to an issue. PUT /rest/api/3/issue/{key} { fields }. */
+export async function updateIssueFields(
+  cfg: JiraConfigLike,
+  issueKey: string,
+  fields: Record<string, unknown>,
+): Promise<void> {
+  if (Object.keys(fields).length === 0) return;
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const res = await fetch(`${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}`, {
+    method: "PUT",
+    headers: jiraHeaders(cfg),
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA issue update failed for ${issueKey} (${res.status}): ${body.slice(0, 300)}`);
+  }
+  // Bust caches so subsequent reads reflect the new value.
+  for (const k of jiraCache.keys()) jiraCache.delete(k);
+}
+
 export interface JiraField {
   id: string;
   name: string;

@@ -183,7 +183,66 @@ Each ticket shows a card with:
 Grouping and these snapshots work for any sprint recorded after this version (each saved
 entry stores the ticket's epic/parent at the time).
 
-## 8. Reset the database (admin only)
+## 8. Clairvoyance (Sprint Grooming)
+
+The **Clairvoyance** menu is a **read-only** view of the **next sprint**'s tickets — the
+JIRA *future*-state sprint that follows the active one (sprint + 1) — pulled live from
+JIRA. It's meant to support the **Sprint Grooming** session.
+
+Each row shows the ticket **key** (links to JIRA), **type**, **summary**, **status** and
+**priority**, **grouped by parent/story**. If the next sprint has no items, or hasn't been
+created yet in JIRA, an empty state with a **↻ Reload** button is shown. Results are
+cached ~60s server-side; Reload forces a re-pull.
+
+## 9. Tarot (Planning Poker)
+
+The **Tarot** menu runs collaborative estimation of the next sprint's tickets — it
+supports **Sprint Planning**. Available to anyone logged in (guest or admin).
+
+**Rooms.** The landing page lists rooms (newest first); **+ Create room** is top-right.
+Only **one ACTIVE room per squad** is allowed — while one is active, others **Join** it
+instead of creating a new one. The creator becomes the **Host**; the room id and host are
+stored, and the host runs the session.
+
+**Live presence.** Everyone in a room sees the participant roster update in real time
+(online dots), on both the host and guest screens. A **sound effect** plays when someone
+joins. Real-time updates use GraphQL subscriptions over WebSocket.
+
+**Voting flow.**
+- The **host** picks a ticket from the next-sprint list and **Starts** a session.
+- **Guests** see the deck face-up, **click a card** to select, then **click it again to
+  confirm** (you can change your pick until you confirm). A sound plays on select/confirm.
+- Once **every online voter has confirmed**, cards **reveal** — each participant's name +
+  value (sorted by point), the **team-synchronization %** (how much the team agreed), and
+  a **suggestion** (the most-picked value; blank on a draw).
+- The host then **Sets the story point** (suggestion pre-filled) and fills **per-role
+  FE/BE/QA** points in a popup — each capped at the ticket effort — or runs **Next cycle**
+  to re-vote.
+
+**Special cards.** ❓ = *information unclear / needs discussion*; ☕ = *need a break*.
+Hover a special card for the full meaning.
+
+**Scales.** The host can set the point system — **Fibonacci** (default), **Scrum**, or a
+**Custom** list of numbers — and optionally **set it as the squad default** for future
+rooms. ❓ and ☕ are always available.
+
+**Host management (guarded).**
+- **Reset points** — clears every decided point in the room (type `RESET`).
+- **End room** — only allowed when **every** next-sprint ticket has a point.
+- **Delete room** — type `DELETE`. An **ended** room can only be deleted by an **admin**.
+- **Kick** a participant from the roster (kicked guests are sent back to the landing).
+
+**Sync to Jira.** Once all tickets are pointed, the host can **write the points back to
+the Jira board**: a popup maps **effort → Story Points** and the per-role points to the
+squad's configured fields (same fields as Settings → Squads). Pick **at least one** field,
+then **Sync**. **Reset Jira** restores each ticket's field values captured *before* the
+last sync (the previous values are snapshotted so the sync is reversible).
+
+**Guest end states.** When the room is **ended** — or a guest is **kicked** — guests are
+shown a thank-you and a button back to the Tarot landing. Ended rooms keep their results
+as **history** (attendance + decided points per ticket, including per-role points).
+
+## 10. Reset the database (admin only)
 
 Admins see a **Danger Zone** at the bottom of **Settings**. **Reset Database** deletes
 every squad and all data under them (members, leaves, holidays, sprints, standup entries,
@@ -191,12 +250,12 @@ blockers, JIRA configs) — user logins are kept. Tick **Recreate default squads
 re-add Athens / Berlin / Cairo afterwards. You must type `RESET` to enable the button.
 This cannot be undone.
 
-## 9. Health check
+## 11. Health check
 
 Open **`/health`** (no login needed) for a status page showing the GraphQL API, database
 and JIRA-credential checks, auto-refreshing every 15s. Unknown URLs show a 404 page.
 
-## 10. Theme
+## 12. Theme
 
 Use the 🌙 / ☀️ button in the header to toggle dark/light mode. Your choice is remembered.
 
