@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@apollo/client";
-import { SAVE_ENTRY, BLOCKERS, DASHBOARD, ACTIVITY_LOG } from "../graphql";
+import { SAVE_ENTRY, BLOCKERS, DASHBOARD, ACTIVITY_LOG, STANDUP_ENTRIES } from "../graphql";
 import { statusColor, priorityColor } from "../lib/helpers";
 import Tooltip from "./Tooltip";
 import Modal from "./Modal";
@@ -71,6 +71,7 @@ export default function StandupRow({
     refetchQueries: [
       { query: BLOCKERS, variables: { squadId, includeResolved: false } },
       { query: DASHBOARD, variables: { sprintId, date } },
+      { query: STANDUP_ENTRIES, variables: { sprintId } },
       { query: ACTIVITY_LOG, variables: { squadId, limit: 20, offset: 0, search: "" } },
     ],
   });
