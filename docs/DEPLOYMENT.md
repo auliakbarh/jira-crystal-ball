@@ -112,9 +112,26 @@ served from a different origin. To restrict it, front the API with a reverse pro
 limit `Access-Control-Allow-Origin`, or migrate to the Express integration with a
 configured `cors` middleware.
 
+## Generating a JWT secret
+
+`JWT_SECRET` signs login tokens — it must be a long, unpredictable random string (≥32
+bytes). Generate one with any of:
+
+```bash
+openssl rand -base64 48           # OpenSSL (most systems)
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"   # Node
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"                  # Python
+head -c 48 /dev/urandom | base64   # *nix fallback
+```
+
+Paste the output into `server/.env` as `JWT_SECRET="…"`. Keep it secret (never commit it),
+use a **different** value per environment, and inject it via your platform's secrets
+manager in production. Rotating it invalidates all existing sessions (everyone is logged
+out) — expected.
+
 ## Security checklist (do before production)
 
-- [ ] Set a strong, unique `JWT_SECRET`.
+- [ ] Set a strong, unique `JWT_SECRET` (see "Generating a JWT secret" above).
 - [ ] Change the seeded admin password (or seed with your own credentials).
 - [ ] Serve everything over HTTPS.
 - [ ] **Protect the JIRA API token.** It now lives in `JIRA_API_TOKEN` (server env), not

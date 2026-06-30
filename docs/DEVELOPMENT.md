@@ -59,7 +59,7 @@ Defaults work out of the box for local dev. Edit `server/.env` only if needed:
 | Var | Default | Notes |
 | --- | --- | --- |
 | `DATABASE_URL` | `postgresql://jcb:jcb_password@localhost:5432/jira_crystal_ball?schema=public` | point at your DB |
-| `JWT_SECRET` | dev placeholder | fine for dev; change for prod |
+| `JWT_SECRET` | dev placeholder | fine for dev; for prod generate one: `openssl rand -base64 48` |
 | `PORT` | `4000` | GraphQL server port |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | `admin@example.com` / `admin123` | seeded login |
 | `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | empty | global JIRA creds; set to pull tickets |
