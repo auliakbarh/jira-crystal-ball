@@ -316,9 +316,9 @@ export default function StandupRow({
         </div>
       </td>
 
-      <td className="p-2 text-center align-top">
+      <td className="p-2 pr-4 text-center align-top">
         <button className="btn-ghost text-xs" onClick={doSave} disabled={loading || !canEdit}>
-          {loading ? "…" : saved ? "✓" : "Save"}
+          {loading ? "…" : saved ? "✓" : "💾"}
         </button>
         {expand && (
           <Modal

@@ -202,7 +202,7 @@ export default function StandupTable({
             <th className="p-2">Update</th>
             <th className="p-2">Progress</th>
             <th className="p-2">Blocker Note</th>
-            <th className="p-2"></th>
+            <th className="w-24 p-2 pr-4"></th>
           </tr>
         </thead>
         <tbody>
