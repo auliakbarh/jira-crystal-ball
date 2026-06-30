@@ -96,9 +96,13 @@ export default function StandupRow({
     { name: qa, val: qaProg },
   ].filter((r) => r.name.trim());
   const hasAssignees = filledRoles.length > 0;
-  const overallProgress = hasAssignees
-    ? Math.round(filledRoles.reduce((s, r) => s + (Number(r.val) || 0), 0) / filledRoles.length)
-    : Number(progress) || 0;
+  // A Done ticket is always 100%, regardless of slider/assignee values.
+  const isDone = /done|closed|resolved/i.test(status ?? "");
+  const overallProgress = isDone
+    ? 100
+    : hasAssignees
+      ? Math.round(filledRoles.reduce((s, r) => s + (Number(r.val) || 0), 0) / filledRoles.length)
+      : Number(progress) || 0;
 
   const doSave = async () => {
     await save({

@@ -742,21 +742,35 @@ export const resolvers = {
       // Merged "Ticket" cell: a native Jira issue macro renders the issue's
       // type icon, key, status and summary live (works on the same Atlassian
       // Cloud site / linked Jira). Falls back to a styled cell when no base URL.
-      const spTag = (t: any) => (t.storyPoints != null ? ` <code>${t.storyPoints} SP</code>` : "");
+      // Story points merged into the ticket cell: a "N SP" lozenge plus a
+      // per-role breakdown (FE/BE/QA) when role fields are configured.
+      const spTag = (t: any) => {
+        const lines: string[] = [];
+        if (t.storyPoints != null) lines.push(`<strong>Story Point:</strong> ${t.storyPoints} SP`);
+        if (t.spFE != null) lines.push(`<strong>FE Story Point:</strong> ${t.spFE} SP`);
+        if (t.spBE != null) lines.push(`<strong>BE Story Point:</strong> ${t.spBE} SP`);
+        if (t.spQA != null) lines.push(`<strong>QA Story Point:</strong> ${t.spQA} SP`);
+        if (lines.length === 0) return "";
+        return `<p style="color:#6b778c;font-size:12px;">${lines.join("<br/>")}</p>`;
+      };
       const ticketCell = (t: any) => {
         if (jiraBase) {
           return `<ac:structured-macro ac:name="jira" ac:schema-version="1"><ac:parameter ac:name="key">${escapeHtml(t.key)}</ac:parameter></ac:structured-macro>${spTag(t)}`;
         }
-        return `<p><strong>${escapeHtml(t.key)}</strong> ${escapeHtml(t.issueType ?? "")} ${statusLozenge(t.status)}${spTag(t)}</p><p>${escapeHtml(t.summary ?? "")}</p>`;
+        return `<p><strong>${escapeHtml(t.key)}</strong> ${escapeHtml(t.issueType ?? "")} ${statusLozenge(t.status)}</p><p>${escapeHtml(t.summary ?? "")}</p>${spTag(t)}`;
       };
 
-      const progressCell = (p: number) => {
-        const v = Math.max(0, Math.min(100, p ?? 0));
+      // A Done ticket counts as 100% regardless of the logged value.
+      const effProgress = (t: any) =>
+        /done|closed|resolved/i.test(t.status ?? "") ? 100 : Math.max(0, Math.min(100, t.progress ?? 0));
+
+      const progressCell = (t: any) => {
+        const v = effProgress(t);
         const colour = v >= 100 ? "Green" : v >= 50 ? "Blue" : v > 0 ? "Yellow" : "Grey";
         return `<ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">${colour}</ac:parameter><ac:parameter ac:name="title">${v}%</ac:parameter></ac:structured-macro>`;
       };
 
-      const row = (t: any) => {
+      const row = (t: any, n: number) => {
         const updates = t.updates.map((u: any) => `<p><strong>${escapeHtml(u.date.slice(5))}</strong> ${escapeHtml(u.text)}</p>`).join("") || "—";
         const blockers = t.blockers.map((b: any) => `<p>🚧 <strong>${escapeHtml(b.date.slice(5))}</strong> ${escapeHtml(b.text)}</p>`).join("") || "—";
         const pctTag = (p?: number) => (typeof p === "number" ? ` (${p}%)` : "");
@@ -769,9 +783,10 @@ export const resolvers = {
             .filter(Boolean)
             .join("<br/>") || "—";
         return `<tr>
+          <td><p>${n}</p></td>
           <td>${ticketCell(t)}</td>
           <td>${assignees}</td>
-          <td>${progressCell(t.progress)}</td>
+          <td>${progressCell(t)}</td>
           <td>${updates}</td>
           <td>${blockers}</td>
         </tr>`;
@@ -790,11 +805,12 @@ export const resolvers = {
         const label = g.parentKey
           ? `<ac:structured-macro ac:name="jira" ac:schema-version="1"><ac:parameter ac:name="key">${escapeHtml(g.parentKey)}</ac:parameter></ac:structured-macro>`
           : "<em>No parent</em>";
-        return `<tr><td colspan="5" data-highlight-colour="#deebff"><strong>📂 ${label}</strong> <span style="color:#6b778c;">(${g.tickets.length})</span></td></tr>`;
+        return `<tr><td colspan="6" data-highlight-colour="#deebff"><strong>📂 ${label}</strong> <span style="color:#6b778c;">(${g.tickets.length})</span></td></tr>`;
       };
 
+      let rowNo = 0;
       const bodyRows = groups
-        .map((g) => groupHeader(g) + g.tickets.map(row).join(""))
+        .map((g) => groupHeader(g) + g.tickets.map((t: any) => row(t, ++rowNo)).join(""))
         .join("");
 
       // --- Sprint status distribution ---
@@ -890,30 +906,41 @@ export const resolvers = {
 
       // Sprint progress: average of ticket progress.
       const avgProgress = total
-        ? Math.round(tickets.reduce((s: number, t: any) => s + (t.progress ?? 0), 0) / total)
+        ? Math.round(tickets.reduce((s: number, t: any) => s + effProgress(t), 0) / total)
         : 0;
 
       const html = `
         <h2>${escapeHtml(squad?.name ?? "Squad")} — Sprint ${sprint.number}${sprint.name ? ` (${escapeHtml(sprint.name)})` : ""}</h2>
         <p><strong>Range:</strong> ${startISO} → ${endISO} &nbsp;·&nbsp; ${sprintDays} working days</p>
-        <table>
+        <table data-table-width="760">
+          <colgroup><col style="width: 90.0px"/><col style="width: 80.0px"/><col style="width: 80.0px"/><col style="width: 110.0px"/><col style="width: 80.0px"/><col style="width: 100.0px"/><col style="width: 110.0px"/><col style="width: 110.0px"/></colgroup>
           <tbody>
-            <tr><th>Tickets</th><th>Done</th><th>In QA</th><th>In Progress</th><th>To Do</th><th>Carry-over</th><th>Avg</th><th>Story Points</th></tr>
             <tr>
-              <td><strong>${total}</strong></td>
-              <td>${dist.Done}</td>
-              <td>${dist["In QA"]}</td>
-              <td>${dist["In Progress"]}</td>
-              <td>${dist["To Do"]}</td>
-              <td>${carryOver}</td>
+              <th>Tickets</th><th>Done</th><th>In QA</th><th>In Progress</th><th>To Do</th>
+              <th>Carry-over</th><th>Avg Progress</th><th>Story Points</th>
+            </tr>
+            <tr>
+              <td><strong>${total}</strong> tickets</td>
+              <td>${dist.Done} tickets</td>
+              <td>${dist["In QA"]} tickets</td>
+              <td>${dist["In Progress"]} tickets</td>
+              <td>${dist["To Do"]} tickets</td>
+              <td>${carryOver} tickets</td>
               <td><strong>${avgProgress}%</strong></td>
               <td><strong>${doneSP}</strong> / ${totalSP} SP</td>
             </tr>
           </tbody>
         </table>
+        <p><em>Counts are ticket counts · <strong>Avg Progress</strong> = average ticket progress percentage (mean of each ticket's % done) · <strong>Story Points</strong> = done / total SP · <strong>Carry-over</strong> = tickets not Done (roll to next sprint).</em></p>
 
         <h3>📈 Sprint progress</h3>
         ${(() => {
+          const LEGEND: Record<string, string> = {
+            Done: "Green",
+            "In QA": "Yellow",
+            "In Progress": "Blue",
+            "To Do": "Grey",
+          };
           const segs = [
             { label: "Done", n: dist.Done, colour: "#36b37e" },
             { label: "In QA", n: dist["In QA"], colour: "#ffab00" },
@@ -922,14 +949,19 @@ export const resolvers = {
           ].filter((s) => s.n > 0);
           if (!total || segs.length === 0) return "<p>No tickets.</p>";
           const pct = (n: number) => Math.round((n / total) * 100);
-          const cols = segs.map((s) => `<col style="width: ${Math.max(pct(s.n), 1)}%"/>`).join("");
-          const cells = segs
+          // Proportional bar in PIXELS (Confluence ignores % col widths).
+          const BAR_W = 680;
+          const cols = segs.map((s) => `<col style="width: ${Math.max(Math.round((s.n / total) * BAR_W), 8)}.0px" />`).join("");
+          const cells = segs.map((s) => `<td data-highlight-colour="${s.colour}"><p>&nbsp;</p></td>`).join("");
+          // Legend on one line below the bar.
+          const legend = segs
             .map(
               (s) =>
-                `<td data-highlight-colour="${s.colour}"><p><strong>${escapeHtml(s.label)}</strong> ${s.n} (${pct(s.n)}%)</p></td>`,
+                `<ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">${LEGEND[s.label]}</ac:parameter><ac:parameter ac:name="title">${escapeHtml(s.label)} ${s.n} (${pct(s.n)}%)</ac:parameter></ac:structured-macro>`,
             )
-            .join("");
-          return `<table><colgroup>${cols}</colgroup><tbody><tr>${cells}</tr></tbody></table>
+            .join(" ");
+          return `<table data-table-width="680"><colgroup>${cols}</colgroup><tbody><tr>${cells}</tr></tbody></table>
+            <p>${legend}</p>
             <p>Average ticket progress: <strong>${avgProgress}%</strong></p>`;
         })()}
 
@@ -937,8 +969,8 @@ export const resolvers = {
         <p>Available <strong>${availableCount}</strong> · Annual Leave <strong>${manpower.CUTI}</strong> · Sick <strong>${manpower.SAKIT}</strong> · Permission <strong>${manpower.IZIN}</strong> · of ${members.length} member(s)</p>
         ${
           members.length
-            ? `<table data-layout="default">
-                 <colgroup><col style="width: 30%"/><col style="width: 12%"/><col style="width: 12%"/><col style="width: 46%"/></colgroup>
+            ? `<table data-table-width="760">
+                 <colgroup><col style="width: 230.0px"/><col style="width: 90.0px"/><col style="width: 110.0px"/><col style="width: 330.0px"/></colgroup>
                  <tbody>
                    <tr><th>Member</th><th>Role</th><th>Story Points</th><th>Status (this sprint)</th></tr>
                    ${rosterRows.join("")}
@@ -947,11 +979,11 @@ export const resolvers = {
             : "<p>No team members configured.</p>"
         }
         <h3>📋 Tickets</h3>
-        <table data-layout="full-width">
-          <colgroup><col style="width: 22%"/><col style="width: 13%"/><col style="width: 7%"/><col style="width: 40%"/><col style="width: 18%"/></colgroup>
+        <table data-table-width="800">
+          <colgroup><col style="width: 40.0px"/><col style="width: 170.0px"/><col style="width: 120.0px"/><col style="width: 95.0px"/><col style="width: 245.0px"/><col style="width: 130.0px"/></colgroup>
           <tbody>
             <tr>
-              <th>Ticket</th><th>Assignees</th><th>Progress</th><th>Updates</th><th>Blockers</th>
+              <th>No</th><th>Ticket</th><th>Assignees</th><th>Progress</th><th>Updates</th><th>Blockers</th>
             </tr>
             ${bodyRows}
           </tbody>
