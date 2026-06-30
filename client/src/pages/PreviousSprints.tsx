@@ -5,7 +5,6 @@ import { useToast } from "../context/ToastContext";
 import { CURRENT_SPRINT, STANDUP_ENTRIES, SQUAD, JIRA_ENV, BLOCKERS, EXPORT_CONFLUENCE, EXPORT_HISTORY, ACTIVE_SPRINT_TICKETS } from "../graphql";
 import { statusColor, statusBucket, dayBreakdown, issueTypeRank, LEAVE_LABELS, type StatusBucket } from "../lib/helpers";
 import Tooltip from "../components/Tooltip";
-import { toCsv, downloadCsv } from "../lib/csv";
 
 interface Entry {
   id: string;
@@ -241,27 +240,7 @@ export default function PreviousSprints() {
             <option value="story">Parent/Story</option>
           </select>
         </div>
-        <button
-          className="btn-ghost ml-auto"
-          disabled={entries.length === 0}
-          onClick={() => {
-            const headers = [
-              "date", "ticket", "issueType", "status", "epicKey", "epicName", "parentKey",
-              "FE", "BE", "QA", "progress", "update", "blocker",
-            ];
-            const rows = [...entries]
-              .sort((a, b) => a.date.localeCompare(b.date) || a.ticketKey.localeCompare(b.ticketKey))
-              .map((e) => [
-                e.date, e.ticketKey, e.issueType, e.ticketStatus, e.epicKey, e.epicName, e.parentKey,
-                e.feAssignee, e.beAssignee, e.qaAssignee, e.progress, e.updateText, e.blockerNote,
-              ]);
-            const label = selected ? `sprint-${selected.number}` : "sprint";
-            downloadCsv(`standup-${label}.csv`, toCsv(headers, rows));
-          }}
-        >
-          ⬇ Export CSV
-        </button>
-        <button className="btn-ghost" disabled={!effSprintId || exporting} onClick={doExportConfluence}>
+        <button className="btn-ghost ml-auto" disabled={!effSprintId || exporting} onClick={doExportConfluence}>
           {exporting
             ? "Exporting…"
             : alreadyExported

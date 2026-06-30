@@ -221,21 +221,23 @@ export default function Dashboard() {
           )}
           {syncMsg && <div className="mt-1 text-xs text-gray-400">{syncMsg}</div>}
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">
           {jiraConfigured && (
-            <button className="btn-ghost" onClick={() => doSync(false)} disabled={syncing} title="Pull active sprint from JIRA">
+            <button className="btn-ghost shrink-0" onClick={() => doSync(false)} disabled={syncing} title="Pull active sprint from JIRA">
               {syncing ? "Syncing…" : "↻ Sync from JIRA"}
             </button>
           )}
-          <label className="label mb-0">Standup date</label>
-          <input
-            type="date"
-            className="input max-w-[170px]"
-            value={date}
-            min={sprint?.startDate}
-            max={sprint?.endDate}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <div className="flex items-center gap-2">
+            <label className="label mb-0 shrink-0">Standup date</label>
+            <input
+              type="date"
+              className="input max-w-[170px]"
+              value={date}
+              min={sprint?.startDate}
+              max={sprint?.endDate}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 

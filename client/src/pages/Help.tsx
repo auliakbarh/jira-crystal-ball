@@ -40,7 +40,7 @@ const SECTIONS: { title: string; items: string[] }[] = [
     title: "Previous Sprints",
     items: [
       "Read-only history: sprint summary (status %, progress, blockers, man-power, story points), grouped tickets, per-ticket progress chart + update/blocker history.",
-      "Export to CSV, or Export to Confluence (creates/updates one report page; export history is listed).",
+      "Export to Confluence (creates/updates one report page; export history is listed).",
     ],
   },
   {
