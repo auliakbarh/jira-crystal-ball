@@ -139,6 +139,15 @@ export const typeDefs = /* GraphQL */ `
     active: Boolean!
     # True when the requesting client (by leadKey) is the current lead.
     isMine: Boolean!
+    startedAt: String!
+  }
+
+  type StandupLog {
+    id: ID!
+    leadName: String!
+    startedAt: String!
+    endedAt: String!
+    durationSec: Int!
   }
 
   type ActivityLog {
@@ -252,8 +261,9 @@ export const typeDefs = /* GraphQL */ `
     standupEntries(sprintId: ID!): [StandupEntry!]!
     dashboard(sprintId: ID!, date: Date): [DashboardRow!]!
     blockers(squadId: ID!, includeResolved: Boolean): [Blocker!]!
-    activityLog(squadId: ID!, limit: Int): [ActivityLog!]!
+    activityLog(squadId: ID!, limit: Int, offset: Int): [ActivityLog!]!
     activeStandup(sprintId: ID!, leadKey: String): StandupSession
+    standupLogs(squadId: ID!, limit: Int, offset: Int): [StandupLog!]!
   }
 
   type Mutation {

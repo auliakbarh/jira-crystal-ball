@@ -67,7 +67,7 @@ export default function StandupRow({
     refetchQueries: [
       { query: BLOCKERS, variables: { squadId, includeResolved: false } },
       { query: DASHBOARD, variables: { sprintId, date } },
-      { query: ACTIVITY_LOG, variables: { squadId, limit: 30 } },
+      { query: ACTIVITY_LOG, variables: { squadId, limit: 20, offset: 0 } },
     ],
   });
 

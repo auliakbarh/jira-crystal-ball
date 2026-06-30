@@ -49,6 +49,19 @@ model StandupSession {
   createdAt DateTime @default(now())
 }
 
+// Completed standup sessions — duration log per squad/board.
+model StandupLog {
+  id          String   @id @default(cuid())
+  squadId     String
+  sprintId    String?
+  leadName    String
+  startedAt   DateTime
+  endedAt     DateTime
+  durationSec Int
+
+  @@index([squadId, startedAt])
+}
+
 // Activity log of standup/board updates, shown on the Current Sprint screen.
 model ActivityLog {
   id        String   @id @default(cuid())

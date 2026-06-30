@@ -22,6 +22,26 @@ function sessionLive(s: { lastSeen: Date } | null): boolean {
   return !!s && Date.now() - new Date(s.lastSeen).getTime() < STANDUP_STALE_MS;
 }
 
+// Write a StandupLog row for a finishing session, then remove the session.
+async function finalizeStandup(ctx: Context, session: any, endedAt: Date) {
+  const sprint = await ctx.prisma.sprint.findUnique({ where: { id: session.sprintId } });
+  const started = new Date(session.createdAt);
+  const durationSec = Math.max(0, Math.round((endedAt.getTime() - started.getTime()) / 1000));
+  if (sprint) {
+    await ctx.prisma.standupLog.create({
+      data: {
+        squadId: sprint.squadId,
+        sprintId: session.sprintId,
+        leadName: session.leadName,
+        startedAt: started,
+        endedAt,
+        durationSec,
+      },
+    });
+  }
+  await ctx.prisma.standupSession.deleteMany({ where: { sprintId: session.sprintId } });
+}
+
 async function isAdminUser(ctx: Context): Promise<boolean> {
   if (!ctx.userId || ctx.userId === "guest") return false;
   const u = await ctx.prisma.user.findUnique({ where: { id: ctx.userId } });
@@ -222,25 +242,42 @@ export const resolvers = {
       });
     },
 
-    activityLog: (_p: unknown, { squadId, limit }: { squadId: string; limit?: number }, ctx: Context) => {
+    activityLog: (_p: unknown, { squadId, limit, offset }: { squadId: string; limit?: number; offset?: number }, ctx: Context) => {
       requireAuth(ctx);
       return ctx.prisma.activityLog.findMany({
         where: { squadId },
         orderBy: { createdAt: "desc" },
-        take: Math.min(limit ?? 30, 100),
+        skip: Math.max(0, offset ?? 0),
+        take: Math.min(limit ?? 20, 100),
       });
     },
 
     activeStandup: async (_p: unknown, { sprintId, leadKey }: { sprintId: string; leadKey?: string }, ctx: Context) => {
       requireAuth(ctx);
       const s = await ctx.prisma.standupSession.findUnique({ where: { sprintId } });
-      if (!sessionLive(s)) return null;
+      if (!s) return null;
+      if (!sessionLive(s)) {
+        // Lead vanished (tab closed / crash) — log the session and clear it.
+        await finalizeStandup(ctx, s, new Date(s.lastSeen));
+        return null;
+      }
       return {
         sprintId,
-        leadName: s!.leadName,
+        leadName: s.leadName,
         active: true,
-        isMine: !!leadKey && leadKey === s!.leadKey,
+        isMine: !!leadKey && leadKey === s.leadKey,
+        startedAt: new Date(s.createdAt).toISOString(),
       };
+    },
+
+    standupLogs: (_p: unknown, { squadId, limit, offset }: { squadId: string; limit?: number; offset?: number }, ctx: Context) => {
+      requireAuth(ctx);
+      return ctx.prisma.standupLog.findMany({
+        where: { squadId },
+        orderBy: { startedAt: "desc" },
+        skip: Math.max(0, offset ?? 0),
+        take: Math.min(limit ?? 20, 100),
+      });
     },
   },
 
@@ -385,16 +422,22 @@ export const resolvers = {
       requireAuth(ctx);
       const admin = await isAdminUser(ctx);
       const existing = await ctx.prisma.standupSession.findUnique({ where: { sprintId } });
-      // Someone else is actively leading and we're not them → only admin can take over.
-      if (sessionLive(existing) && existing!.leadKey !== leadKey && !admin) {
-        throw new Error(`Standup already led by ${existing!.leadName}`);
+      if (existing && !sessionLive(existing)) {
+        // Previous lead is gone — close out their session before claiming.
+        await finalizeStandup(ctx, existing, new Date(existing.lastSeen));
+      } else if (sessionLive(existing) && existing!.leadKey !== leadKey) {
+        // Someone else is actively leading and we're not them.
+        if (!admin) throw new Error(`Standup already led by ${existing!.leadName}`);
+        // Admin takes over: log the previous lead's session first.
+        await finalizeStandup(ctx, existing, new Date());
       }
+      const now = new Date();
       const s = await ctx.prisma.standupSession.upsert({
         where: { sprintId },
-        create: { sprintId, leadName, leadKey, lastSeen: new Date() },
-        update: { leadName, leadKey, lastSeen: new Date() },
+        create: { sprintId, leadName, leadKey, lastSeen: now },
+        update: { leadName, leadKey, lastSeen: now },
       });
-      return { sprintId, leadName: s.leadName, active: true, isMine: true };
+      return { sprintId, leadName: s.leadName, active: true, isMine: true, startedAt: new Date(s.createdAt).toISOString() };
     },
 
     standupHeartbeat: async (_p: unknown, { sprintId, leadKey }: any, ctx: Context) => {
@@ -409,9 +452,11 @@ export const resolvers = {
     endStandup: async (_p: unknown, { sprintId, leadKey }: any, ctx: Context) => {
       requireAuth(ctx);
       const admin = await isAdminUser(ctx);
-      await ctx.prisma.standupSession.deleteMany({
-        where: admin ? { sprintId } : { sprintId, leadKey },
-      });
+      const s = await ctx.prisma.standupSession.findUnique({ where: { sprintId } });
+      if (!s) return true;
+      // Only the holder or an admin may end it.
+      if (s.leadKey !== leadKey && !admin) return false;
+      await finalizeStandup(ctx, s, new Date());
       return true;
     },
 
@@ -562,6 +607,11 @@ export const resolvers = {
 
   ActivityLog: {
     createdAt: (l: any) => (l.createdAt instanceof Date ? l.createdAt.toISOString() : l.createdAt),
+  },
+
+  StandupLog: {
+    startedAt: (l: any) => (l.startedAt instanceof Date ? l.startedAt.toISOString() : l.startedAt),
+    endedAt: (l: any) => (l.endedAt instanceof Date ? l.endedAt.toISOString() : l.endedAt),
   },
 
   TeamMember: {

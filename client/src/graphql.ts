@@ -279,6 +279,19 @@ export const ACTIVE_STANDUP = gql`
       leadName
       active
       isMine
+      startedAt
+    }
+  }
+`;
+
+export const STANDUP_LOGS = gql`
+  query StandupLogs($squadId: ID!, $limit: Int, $offset: Int) {
+    standupLogs(squadId: $squadId, limit: $limit, offset: $offset) {
+      id
+      leadName
+      startedAt
+      endedAt
+      durationSec
     }
   }
 `;
@@ -290,6 +303,7 @@ export const START_STANDUP = gql`
       leadName
       active
       isMine
+      startedAt
     }
   }
 `;
@@ -337,8 +351,8 @@ export const BLOCKERS = gql`
 `;
 
 export const ACTIVITY_LOG = gql`
-  query ActivityLog($squadId: ID!, $limit: Int) {
-    activityLog(squadId: $squadId, limit: $limit) {
+  query ActivityLog($squadId: ID!, $limit: Int, $offset: Int) {
+    activityLog(squadId: $squadId, limit: $limit, offset: $offset) {
       id
       actor
       ticketKey

@@ -21,6 +21,9 @@ import ActivityPanel from "../components/ActivityPanel";
 import LeadSchedule from "../components/LeadSchedule";
 import SprintProgress from "../components/SprintProgress";
 import CurrentSprintSummary from "../components/CurrentSprintSummary";
+import Elapsed from "../components/Elapsed";
+import StandupDurationLog from "../components/StandupDurationLog";
+import { STANDUP_LOGS } from "../graphql";
 import Modal from "../components/Modal";
 import JiraConfigForm from "../components/JiraConfigForm";
 
@@ -58,9 +61,12 @@ export default function Dashboard() {
   const ledByOther = !!standup?.active && !standup.isMine;
   const canEdit = isAdmin || !standup?.active || isLeading;
 
-  const [startStandup] = useMutation(START_STANDUP);
+  const logsRefetch = squadId
+    ? [{ query: STANDUP_LOGS, variables: { squadId, limit: 20, offset: 0 } }]
+    : [];
+  const [startStandup] = useMutation(START_STANDUP, { refetchQueries: logsRefetch });
   const [heartbeat] = useMutation(STANDUP_HEARTBEAT);
-  const [endStandup] = useMutation(END_STANDUP);
+  const [endStandup] = useMutation(END_STANDUP, { refetchQueries: logsRefetch });
 
   const begin = async () => {
     const leadName = user?.name || "Lead";
@@ -239,6 +245,11 @@ export default function Dashboard() {
                   editing enabled
                 </span>
               </span>
+              {standup?.startedAt && (
+                <span className="chip bg-gray-100 dark:bg-gray-800" title="Elapsed since start">
+                  ⏱ <Elapsed startedAt={standup.startedAt} />
+                </span>
+              )}
               <button className="btn-ghost ml-auto" onClick={finish}>
                 ■ End standup
               </button>
@@ -294,6 +305,7 @@ export default function Dashboard() {
           <TeamPanel squadId={squadId} />
           <BlockersPanel squadId={squadId} sprintId={sprint?.id} />
           <ActivityPanel squadId={squadId} />
+          <StandupDurationLog squadId={squadId} />
         </div>
         <div className="lg:col-span-2">
           {sprint ? (
