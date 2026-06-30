@@ -182,7 +182,14 @@ export default function PreviousSprints() {
             </div>
           )}
           {g.tickets.map((t) => (
-            <TicketCard key={t.key} ticket={t} url={ticketUrl(t.key)} blockers={blockersByTicket.get(t.key) ?? []} />
+            <TicketCard
+              key={t.key}
+              ticket={t}
+              url={ticketUrl(t.key)}
+              blockers={blockersByTicket.get(t.key) ?? []}
+              sprintStart={selected?.startDate}
+              sprintEnd={selected?.endDate}
+            />
           ))}
         </div>
       ))}
@@ -356,7 +363,19 @@ function SprintSummary({
   );
 }
 
-function TicketCard({ ticket, url, blockers = [] }: { ticket: Ticket; url: string | null; blockers?: any[] }) {
+function TicketCard({
+  ticket,
+  url,
+  blockers = [],
+  sprintStart,
+  sprintEnd,
+}: {
+  ticket: Ticket;
+  url: string | null;
+  blockers?: any[];
+  sprintStart?: string;
+  sprintEnd?: string;
+}) {
   const sorted = [...ticket.entries].sort((a, b) => a.date.localeCompare(b.date));
   const updates = sorted.filter((e) => (e.updateText ?? "").trim());
   const sortedBlockers = [...blockers].sort((a, b) => a.foundDate.localeCompare(b.foundDate));
@@ -408,7 +427,11 @@ function TicketCard({ ticket, url, blockers = [] }: { ticket: Ticket; url: strin
         {/* Progress chart */}
         <div>
           <div className="label">Progress over time</div>
-          <ProgressChart points={sorted.map((e) => ({ date: e.date, progress: e.progress }))} />
+          <ProgressChart
+            points={sorted.map((e) => ({ date: e.date, progress: e.progress }))}
+            startDate={sprintStart}
+            endDate={sprintEnd}
+          />
         </div>
 
         {/* Update log rows */}
@@ -468,45 +491,85 @@ function daysBetween(aISO: string, bISO: string): number {
   return Math.round((b - a) / 86400000);
 }
 
-function ProgressChart({ points }: { points: { date: string; progress: number }[] }) {
+function ProgressChart({
+  points,
+  startDate,
+  endDate,
+}: {
+  points: { date: string; progress: number }[];
+  startDate?: string;
+  endDate?: string;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
   if (points.length === 0) return <p className="text-xs text-gray-400">No data.</p>;
 
-  const W = Math.max(points.length - 1, 1) * 44 + 24;
-  const H = 80;
-  const padX = 12;
-  const padY = 12;
+  // X axis spans the whole sprint range when known; points are placed by date.
+  const start = startDate ?? points[0].date;
+  const end = endDate ?? points[points.length - 1].date;
+  const totalDays = Math.max(1, daysBetween(start, end));
+
+  const H = 90;
+  const padX = 14;
+  const padY = 16;
+  const W = Math.max(totalDays * 16, 220) + padX * 2;
   const innerW = W - padX * 2;
   const innerH = H - padY * 2;
-  const x = (i: number) => padX + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
+  const x = (date: string) => padX + (Math.min(Math.max(daysBetween(start, date), 0), totalDays) / totalDays) * innerW;
   const y = (p: number) => padY + (1 - p / 100) * innerH;
 
-  const line = points.map((pt, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(pt.progress)}`).join(" ");
+  const line = points.map((pt, i) => `${i === 0 ? "M" : "L"} ${x(pt.date)} ${y(pt.progress)}`).join(" ");
+  const hp = hover != null ? points[hover] : null;
 
   return (
     <div className="overflow-x-auto">
       <svg width={W} height={H} className="text-brand">
-        {/* gridlines 0/50/100 */}
         {[0, 50, 100].map((g) => (
-          <g key={g}>
-            <line x1={padX} x2={W - padX} y1={y(g)} y2={y(g)} className="stroke-gray-200 dark:stroke-gray-700" strokeWidth={1} />
-          </g>
+          <line key={g} x1={padX} x2={W - padX} y1={y(g)} y2={y(g)} className="stroke-gray-200 dark:stroke-gray-700" strokeWidth={1} />
         ))}
         <path d={line} fill="none" stroke="currentColor" strokeWidth={2} />
-        {points.map((pt, i) => (
-          <g key={i}>
-            <circle cx={x(i)} cy={y(pt.progress)} r={3} fill="currentColor" />
-            <title>{`${pt.date}: ${pt.progress}%`}</title>
-          </g>
-        ))}
-        {/* x labels: first + last */}
-        <text x={padX} y={H - 1} className="fill-gray-400" fontSize={9}>
-          {points[0].date.slice(5)}
-        </text>
-        {points.length > 1 && (
-          <text x={W - padX} y={H - 1} textAnchor="end" className="fill-gray-400" fontSize={9}>
-            {points[points.length - 1].date.slice(5)}
-          </text>
+
+        {/* hover guide + tooltip */}
+        {hp && (
+          <>
+            <line x1={x(hp.date)} x2={x(hp.date)} y1={padY} y2={H - padY} className="stroke-gray-300 dark:stroke-gray-600" strokeDasharray="2 2" />
+            <circle cx={x(hp.date)} cy={y(hp.progress)} r={5} fill="currentColor" />
+            <g transform={`translate(${Math.min(Math.max(x(hp.date), 34), W - 34)}, 9)`}>
+              <rect x={-32} y={-8} width={64} height={16} rx={3} className="fill-gray-900 dark:fill-gray-700" />
+              <text x={0} y={3} textAnchor="middle" fontSize={9} className="fill-white">
+                {hp.date.slice(5)} · {hp.progress}%
+              </text>
+            </g>
+          </>
         )}
+
+        {points.map((pt, i) => (
+          <circle key={i} cx={x(pt.date)} cy={y(pt.progress)} r={3} fill="currentColor" />
+        ))}
+
+        {/* wide invisible hit areas for easy hover/tap */}
+        {points.map((pt, i) => (
+          <rect
+            key={`h${i}`}
+            x={x(pt.date) - 12}
+            y={0}
+            width={24}
+            height={H}
+            fill="transparent"
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(null)}
+            onClick={() => setHover((h) => (h === i ? null : i))}
+            style={{ cursor: "pointer" }}
+          >
+            <title>{`${pt.date}: ${pt.progress}%`}</title>
+          </rect>
+        ))}
+
+        <text x={padX} y={H - 2} className="fill-gray-400" fontSize={9}>
+          {start.slice(5)}
+        </text>
+        <text x={W - padX} y={H - 2} textAnchor="end" className="fill-gray-400" fontSize={9}>
+          {end.slice(5)}
+        </text>
       </svg>
     </div>
   );
