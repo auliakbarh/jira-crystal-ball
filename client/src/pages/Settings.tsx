@@ -201,6 +201,8 @@ function SquadRow({
   const [spFE, setSpFE] = useState(squad.spFieldFE ?? "");
   const [spBE, setSpBE] = useState(squad.spFieldBE ?? "");
   const [spQA, setSpQA] = useState(squad.spFieldQA ?? "");
+  const [confSpace, setConfSpace] = useState(squad.confluenceSpaceKey ?? "");
+  const [confParent, setConfParent] = useState(squad.confluenceParentId ?? "");
   const [update, { loading }] = useMutation(UPDATE_SQUAD);
 
   // Lazy-load the board's JIRA fields (id + name) when editing, to help pick SP fields.
@@ -221,6 +223,8 @@ function SquadRow({
         spFieldFE: spFE,
         spFieldBE: spBE,
         spFieldQA: spQA,
+        confluenceSpaceKey: confSpace,
+        confluenceParentId: confParent,
       },
     });
     setEditing(false);
@@ -281,6 +285,30 @@ function SquadRow({
           {spInput("SP FE", spFE, setSpFE)}
           {spInput("SP BE", spBE, setSpBE)}
           {spInput("SP QA", spQA, setSpQA)}
+        </div>
+        <div className="text-xs text-gray-500">
+          Confluence export target — leave blank to use the global env defaults
+          (<code>CONFLUENCE_SPACE_KEY</code> / <code>CONFLUENCE_PARENT_ID</code>).
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="label">Confluence Space Key</label>
+            <input
+              className="input max-w-[200px]"
+              placeholder="e.g. MYHERO"
+              value={confSpace}
+              onChange={(e) => setConfSpace(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label">Confluence Parent ID</label>
+            <input
+              className="input max-w-[200px]"
+              placeholder="e.g. 1119092737"
+              value={confParent}
+              onChange={(e) => setConfParent(e.target.value)}
+            />
+          </div>
         </div>
         {/* Quick reference: list of fields with ids (filterable by browser datalist above) */}
         {fields.length > 0 && (

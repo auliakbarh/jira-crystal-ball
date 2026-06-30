@@ -33,6 +33,9 @@ model Squad {
   spFieldFE      String?
   spFieldBE      String?
   spFieldQA      String?
+  // Per-squad Confluence export target (fallback: global env CONFLUENCE_SPACE_KEY/PARENT_ID).
+  confluenceSpaceKey String?
+  confluenceParentId String?
   createdAt      DateTime @default(now())
 
   members  TeamMember[]

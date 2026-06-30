@@ -38,6 +38,9 @@ export const typeDefs = /* GraphQL */ `
     spFieldFE: String
     spFieldBE: String
     spFieldQA: String
+    # Per-squad Confluence export target (fallback: global env).
+    confluenceSpaceKey: String
+    confluenceParentId: String
     members: [TeamMember!]!
     sprints: [Sprint!]!
     holidays: [Holiday!]!
@@ -304,6 +307,8 @@ export const typeDefs = /* GraphQL */ `
       spFieldFE: String
       spFieldBE: String
       spFieldQA: String
+      confluenceSpaceKey: String
+      confluenceParentId: String
     ): Squad!
     deleteSquad(id: ID!): Boolean!
 

@@ -20,8 +20,8 @@ Three pieces to deploy:
 | `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | **global** JIRA credentials (all squads) |
 | `JIRA_DEFAULT_BOARD_ID` / `JIRA_JQL` | optional fallback board id / JQL override |
 | `CONFLUENCE_BASE_URL` | Confluence site URL; blank → uses `JIRA_BASE_URL` |
-| `CONFLUENCE_SPACE_KEY` | space the export page is created in (e.g. `MYHERO`) |
-| `CONFLUENCE_PARENT_ID` | parent page/folder id the export nests under |
+| `CONFLUENCE_SPACE_KEY` | **global default** space the export page is created in (e.g. `MYHERO`); per-squad override in **Settings → Squads → Edit** |
+| `CONFLUENCE_PARENT_ID` | **global default** parent page/folder id the export nests under; per-squad override in **Settings → Squads → Edit** |
 
 ### Frontend (`client/.env`)
 
@@ -39,8 +39,8 @@ All of these come from your Atlassian Cloud site (`https://<org>.atlassian.net`)
 | `JIRA_EMAIL` | The Atlassian account email the token belongs to. |
 | `JIRA_API_TOKEN` | Create at **id.atlassian.com → Security → API tokens → Create API token**. One token works for both JIRA and Confluence REST. |
 | `JIRA_DEFAULT_BOARD_ID` | Open the board in JIRA; the URL ends `…/boards/<id>` — use that number. A project key (e.g. `ATH`) also works (first board of the project). |
-| `CONFLUENCE_SPACE_KEY` | In Confluence, open the space → **Space settings**, or read it from the URL: `…/wiki/spaces/<KEY>/…` (e.g. `MYHERO`). |
-| `CONFLUENCE_PARENT_ID` | Open the target page/folder in Confluence; the id is the number in the URL: `…/wiki/spaces/MYHERO/folder/<id>/…` or `…/pages/<id>/…`. To confirm via API: `GET {base}/wiki/api/v2/spaces?keys=MYHERO` for the space id. |
+| `CONFLUENCE_SPACE_KEY` | In Confluence, open the space → **Space settings**, or read it from the URL: `…/wiki/spaces/<KEY>/…` (e.g. `MYHERO`). **Global default**; a squad can override it (**Settings → Squads → Edit → Confluence Space Key**). |
+| `CONFLUENCE_PARENT_ID` | Open the target page/folder in Confluence; the id is the number in the URL: `…/wiki/spaces/MYHERO/folder/<id>/…` or `…/pages/<id>/…`. To confirm via API: `GET {base}/wiki/api/v2/spaces?keys=MYHERO` for the space id. **Global default**; per-squad override in **Settings → Squads → Edit → Confluence Parent ID**. |
 | `JIRA_STORY_POINTS_FIELD` | **Global default** Story Points field id, used when a squad has none. Per-squad fields (default + FE/BE/QA) are set in the admin UI (**Settings → Squads → Edit**), which lists every board field with its id to pick from. A value may be a custom field id (`customfield_10033`) or an exact field name ("Story Points QA") — prefer the **id** when several fields share a name. List fields: `GET /rest/api/3/field`. |
 
 Verify quickly from a shell (Basic auth = `email:token`):

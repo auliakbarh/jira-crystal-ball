@@ -131,7 +131,7 @@ export const squadResolvers = {
 
     updateSquad: async (_p: unknown, args: any, ctx: Context) => {
       requireAuth(ctx);
-      const { id, name, defaultBoardId, spFieldDefault, spFieldFE, spFieldBE, spFieldQA } = args;
+      const { id, name, defaultBoardId, spFieldDefault, spFieldFE, spFieldBE, spFieldQA, confluenceSpaceKey, confluenceParentId } = args;
       const squad = await ctx.prisma.squad.findUnique({ where: { id } });
       if (!squad) throw new Error("Squad not found — it may have been deleted. Reselect a squad.");
       const trimOrNull = (v?: string) => (v !== undefined ? v.trim() || null : undefined);
@@ -144,6 +144,8 @@ export const squadResolvers = {
           ...(spFieldFE !== undefined ? { spFieldFE: trimOrNull(spFieldFE) } : {}),
           ...(spFieldBE !== undefined ? { spFieldBE: trimOrNull(spFieldBE) } : {}),
           ...(spFieldQA !== undefined ? { spFieldQA: trimOrNull(spFieldQA) } : {}),
+          ...(confluenceSpaceKey !== undefined ? { confluenceSpaceKey: trimOrNull(confluenceSpaceKey) } : {}),
+          ...(confluenceParentId !== undefined ? { confluenceParentId: trimOrNull(confluenceParentId) } : {}),
         },
       });
     },

@@ -206,7 +206,9 @@ appended only on title clash); re-export **updates** the same page (version bump
 is recorded in `ExportLog`; the marker (`Sprint.confluence*`) shows "✓ on Confluence". A
 **scheduler** (`server/src/scheduler.ts`) auto-exports a sprint hourly once its end date
 passes. Env: `CONFLUENCE_BASE_URL` (blank → JIRA), `CONFLUENCE_SPACE_KEY`,
-`CONFLUENCE_PARENT_ID`.
+`CONFLUENCE_PARENT_ID` — the space key + parent id are **per-squad overridable**
+(`Squad.confluenceSpaceKey` / `confluenceParentId`, set in Settings → Squads → Edit;
+blank falls back to the env defaults). Credentials + base URL stay global.
 
 ## Frontend notes
 

@@ -63,6 +63,8 @@ export const SQUADS = gql`
       spFieldFE
       spFieldBE
       spFieldQA
+      confluenceSpaceKey
+      confluenceParentId
       jiraConfigured
     }
   }
@@ -137,6 +139,8 @@ export const UPDATE_SQUAD = gql`
     $spFieldFE: String
     $spFieldBE: String
     $spFieldQA: String
+    $confluenceSpaceKey: String
+    $confluenceParentId: String
   ) {
     updateSquad(
       id: $id
@@ -146,6 +150,8 @@ export const UPDATE_SQUAD = gql`
       spFieldFE: $spFieldFE
       spFieldBE: $spFieldBE
       spFieldQA: $spFieldQA
+      confluenceSpaceKey: $confluenceSpaceKey
+      confluenceParentId: $confluenceParentId
     ) {
       id
       name
@@ -154,6 +160,8 @@ export const UPDATE_SQUAD = gql`
       spFieldFE
       spFieldBE
       spFieldQA
+      confluenceSpaceKey
+      confluenceParentId
     }
   }
 `;

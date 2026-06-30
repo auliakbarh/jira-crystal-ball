@@ -46,7 +46,7 @@ const SECTIONS: { title: string; items: string[] }[] = [
   {
     title: "Settings (admin)",
     items: [
-      "Squads — add/switch/delete; edit name, board id, and Story Point fields (default + FE/BE/QA; pick from the board field list).",
+      "Squads — add/switch/delete; edit name, board id, Story Point fields (default + FE/BE/QA; pick from the board field list), and per-squad Confluence Space Key + Parent ID (blank = global env default).",
       "Members + leave (Annual/Sick/Permission + substitute), Sprints, Public Holidays, JIRA Board test.",
       "Danger Zone — reset the database (admin only).",
     ],

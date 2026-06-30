@@ -52,10 +52,19 @@ function pageUrl(data: any): string {
   return webui ? `${base()}/wiki${webui}` : `${base()}/wiki`;
 }
 
-/** Create a page (storage-format body) under the configured space/parent. */
-export async function createPage(title: string, storageHtml: string): Promise<CreatedPage> {
+/**
+ * Create a page (storage-format body). Space key + parent id default to the
+ * global env config but can be overridden per-squad via the optional opts.
+ */
+export async function createPage(
+  title: string,
+  storageHtml: string,
+  opts: { spaceKey?: string; parentId?: string } = {},
+): Promise<CreatedPage> {
   if (!confluenceConfigured()) throw new Error("CONFLUENCE_NOT_CONFIGURED");
-  const spaceId = await getSpaceId(env.confluence.spaceKey);
+  const spaceKey = opts.spaceKey || env.confluence.spaceKey;
+  const parentId = opts.parentId || env.confluence.parentId;
+  const spaceId = await getSpaceId(spaceKey);
 
   const payload: Record<string, unknown> = {
     spaceId,
@@ -63,7 +72,7 @@ export async function createPage(title: string, storageHtml: string): Promise<Cr
     title,
     body: { representation: "storage", value: storageHtml },
   };
-  if (env.confluence.parentId) payload.parentId = env.confluence.parentId;
+  if (parentId) payload.parentId = parentId;
 
   const res = await fetch(`${base()}/wiki/api/v2/pages`, {
     method: "POST",

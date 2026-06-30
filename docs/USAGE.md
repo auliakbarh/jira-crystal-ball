@@ -153,8 +153,10 @@ Carry-over counts **everything except Done** (In QA, In Progress, To Do) as roll
 the next sprint.
 
 Use **Export CSV** to download the entries, or **Export to Confluence** to publish a
-formatted report page (space `MYHERO`, under the configured parent) — it opens the page in
-a new tab. Confluence reuses the server's JIRA Atlassian credentials.
+formatted report page — it opens the page in a new tab. Confluence reuses the server's
+JIRA Atlassian credentials. The target **space key** and **parent page id** can be set
+**per-squad** (Settings → Squads → Edit); when left blank they fall back to the global
+env defaults (`CONFLUENCE_SPACE_KEY` / `CONFLUENCE_PARENT_ID`).
 
 Once a sprint has been exported it shows a **✓ on Confluence** badge; the button becomes
 **Update Confluence page** and re-exporting **overwrites the same page** (no duplicates).

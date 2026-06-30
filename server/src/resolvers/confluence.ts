@@ -311,17 +311,22 @@ async function exportSprint(ctx: Context, sprintId: string) {
   const sprintLabel = sprint.name ? `Sprint (${sprint.name})` : `Sprint ${sprint.number}`;
   const title = `${squad?.name ?? "Squad"} - ${sprintLabel}`;
 
+  const confluenceTarget = {
+    spaceKey: squad?.confluenceSpaceKey ?? undefined,
+    parentId: squad?.confluenceParentId ?? undefined,
+  };
+
   const isUpdate = !!sprint.confluencePageId;
   let page;
   if (isUpdate) {
     page = await updatePage(sprint.confluencePageId!, title, html);
   } else {
     try {
-      page = await createPage(title, html);
+      page = await createPage(title, html, confluenceTarget);
     } catch (e: any) {
       if (/title|already exists|400|409/i.test(e?.message ?? "")) {
         const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-        page = await createPage(`${title} - ${stamp}`, html);
+        page = await createPage(`${title} - ${stamp}`, html, confluenceTarget);
       } else {
         throw e;
       }
