@@ -242,10 +242,29 @@ export const resolvers = {
       });
     },
 
-    activityLog: (_p: unknown, { squadId, limit, offset }: { squadId: string; limit?: number; offset?: number }, ctx: Context) => {
+    activityLog: (
+      _p: unknown,
+      { squadId, limit, offset, search }: { squadId: string; limit?: number; offset?: number; search?: string },
+      ctx: Context,
+    ) => {
       requireAuth(ctx);
+      const q = (search ?? "").trim();
+      const like = { contains: q, mode: "insensitive" as const };
       return ctx.prisma.activityLog.findMany({
-        where: { squadId },
+        where: {
+          squadId,
+          ...(q
+            ? {
+                OR: [
+                  { actor: like },
+                  { ticketKey: like },
+                  { message: like },
+                  { prevText: like },
+                  { newText: like },
+                ],
+              }
+            : {}),
+        },
         orderBy: { createdAt: "desc" },
         skip: Math.max(0, offset ?? 0),
         take: Math.min(limit ?? 20, 100),

@@ -263,7 +263,7 @@ export const typeDefs = /* GraphQL */ `
     standupEntries(sprintId: ID!): [StandupEntry!]!
     dashboard(sprintId: ID!, date: Date): [DashboardRow!]!
     blockers(squadId: ID!, includeResolved: Boolean): [Blocker!]!
-    activityLog(squadId: ID!, limit: Int, offset: Int): [ActivityLog!]!
+    activityLog(squadId: ID!, limit: Int, offset: Int, search: String): [ActivityLog!]!
     activeStandup(sprintId: ID!, leadKey: String): StandupSession
     standupLogs(squadId: ID!, limit: Int, offset: Int): [StandupLog!]!
   }

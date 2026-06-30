@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { ACTIVITY_LOG } from "../graphql";
 import { SkeletonLines } from "./Skeleton";
@@ -17,13 +17,24 @@ function timeAgo(iso: string): string {
 }
 
 export default function ActivityPanel({ squadId }: { squadId: string }) {
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  // Debounce the query variable so we don't fire per keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
   const { data, loading, fetchMore } = useQuery(ACTIVITY_LOG, {
-    variables: { squadId, limit: PAGE, offset: 0 },
+    variables: { squadId, limit: PAGE, offset: 0, search },
     fetchPolicy: "cache-and-network",
   });
   const logs = data?.activityLog ?? [];
   const [done, setDone] = useState(false);
   const [more, setMore] = useState(false);
+
+  // Reset the "end of log" flag whenever the search term changes.
+  useEffect(() => setDone(false), [search]);
 
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -31,7 +42,7 @@ export default function ActivityPanel({ squadId }: { squadId: string }) {
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 48) {
       setMore(true);
       fetchMore({
-        variables: { offset: logs.length },
+        variables: { offset: logs.length, search },
         updateQuery: (prev, { fetchMoreResult }) => {
           const extra = fetchMoreResult?.activityLog ?? [];
           if (extra.length < PAGE) setDone(true);
@@ -44,11 +55,17 @@ export default function ActivityPanel({ squadId }: { squadId: string }) {
 
   return (
     <div className="card">
-      <h2 className="mb-3 text-base font-bold">🕒 Update Log</h2>
+      <h2 className="mb-2 text-base font-bold">🕒 Update Log</h2>
+      <input
+        className="input mb-3 text-sm"
+        placeholder="Search updates (ticket, name, note…)"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+      />
       {loading && logs.length === 0 ? (
         <SkeletonLines rows={5} />
       ) : logs.length === 0 ? (
-        <p className="text-sm text-gray-500">No updates yet today.</p>
+        <p className="text-sm text-gray-500">{search ? "No matches." : "No updates yet today."}</p>
       ) : (
         <div className="max-h-72 overflow-y-auto overscroll-contain pr-1" onScroll={onScroll}>
           <ul className="space-y-2">

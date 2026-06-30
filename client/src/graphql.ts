@@ -351,8 +351,8 @@ export const BLOCKERS = gql`
 `;
 
 export const ACTIVITY_LOG = gql`
-  query ActivityLog($squadId: ID!, $limit: Int, $offset: Int) {
-    activityLog(squadId: $squadId, limit: $limit, offset: $offset) {
+  query ActivityLog($squadId: ID!, $limit: Int, $offset: Int, $search: String) {
+    activityLog(squadId: $squadId, limit: $limit, offset: $offset, search: $search) {
       id
       actor
       ticketKey
