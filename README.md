@@ -1,5 +1,7 @@
 # 🔮 JIRA Crystal Ball
 
+> Created by **Aulia Akbar Harahap** · June 2026
+
 A web tool for running daily **standup meetings** on top of your JIRA board data.
 
 The lead picks the sprint and the date, the dashboard pulls every ticket from the

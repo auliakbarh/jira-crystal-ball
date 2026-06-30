@@ -1,5 +1,7 @@
 # Implementation Plan — JIRA Crystal Ball
 
+> Created by **Aulia Akbar Harahap** · June 2026
+
 ## 1. Goal
 
 Build a web dashboard used **during standup meetings**. The meeting lead drives the
@@ -16,7 +18,7 @@ sprints.
 | Pull JIRA board tickets | Global JIRA credentials from server env (`env.jira`); `jira.ts` calls the Agile board issues endpoint (or a JQL override) with Basic auth, scoped to the squad's optional board id. |
 | ENV configurable from a menu; popup if unset | Credentials live in the server `.env` (global). Per-squad **Board ID** (optional, may be blank) is set in **Settings → JIRA Board**. The Dashboard shows a blocking modal when env creds are absent (`jiraConfigured` reflects env). **Test connection** calls `/myself`. |
 | PostgreSQL | Prisma + PostgreSQL. |
-| Apollo GraphQL backend | Apollo Server 4 standalone. |
+| Apollo GraphQL backend | Apollo Server 4 on Express + `graphql-ws` (HTTP + WebSocket subscriptions) at `/graphql`. |
 | Simple auth with a login form | Email/password, bcrypt hash, JWT bearer token; `/login` page. |
 | Multi-squad | Every domain entity is scoped by `squadId`; squad switcher in the header and full add/switch/delete management in **Settings → Squads / Teams**. |
 | Menus: current sprint, previous sprints, dark/light, settings | React Router routes + theme toggle in the header. A **Board** menu lists the active sprint's tickets (`activeSprintTickets`) pulled live from JIRA. |
@@ -73,10 +75,11 @@ See [DOCUMENTATION.md](DOCUMENTATION.md) for the full schema and the GraphQL API
    blocker auto-sync and auto-resolve against a live DB.
 5. **Document** — this plan + technical docs, usage, deployment, summary.
 
-## 6. Out of scope / future work
+## 6. Beyond the original scope
 
-- Per-squad user membership & roles (currently any logged-in user sees all squads).
-- Encrypting the stored JIRA API token at rest (currently plaintext column — see
-  Security notes in DEPLOYMENT.md).
-- Real-time multi-user editing (currently save-on-blur with refetch).
-- Webhook-based JIRA sync and burndown charts.
+Many enhancements were built after the initial plan — story points (per-role field
+config), rich Confluence export with auto-export + history, WebSocket subscriptions,
+standup session lock, guest access, CSV export, login rate-limit, Prisma migrations,
+toasts, keyboard navigation, and more. See [IMPROVEMENTS.md](IMPROVEMENTS.md) for the full
+done/planned list. Still open: per-squad membership/roles, automated tests, CORS
+restriction, presence.

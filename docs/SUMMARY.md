@@ -1,87 +1,68 @@
 # Session Summary
 
+> Created by **Aulia Akbar Harahap** · June 2026
+
 ## What was built
 
 A complete, working **standup-meeting web tool** ("JIRA Crystal Ball") from an empty
 repository, per `INIT.md`.
 
 ### Backend (`server/`)
-- Apollo Server 4 (GraphQL) in TypeScript, ESM.
-- Prisma + PostgreSQL data model: `User`, `Squad`, `TeamMember`, `Leave`, `Holiday`,
-  `Sprint`, `JiraConfig`, `StandupEntry`, `Blocker`.
-- JWT auth (bcrypt-hashed passwords) with a `login` mutation and request-context guard.
-- JIRA Cloud REST client (Agile board issues + JQL search + connection test); the API
-  token stays server-side and is never returned to the client.
-- Full resolver set for squads, JIRA config, members, leaves, holidays, sprints, the
-  dashboard, standup entries, and blockers.
-- **Blocker auto-sync**: filling a ticket's blocker note creates/updates a linked
-  `Blocker`; clearing it auto-resolves that blocker.
-- A custom `Date` scalar (calendar dates) and a seed script (admin user + demo squad).
+- Apollo Server 4 over **Express + graphql-ws/ws** (HTTP at `/graphql`, WebSocket
+  subscriptions at the same path), TypeScript ESM.
+- Prisma + PostgreSQL (migration history): `User`, `Squad`, `TeamMember`, `Leave`,
+  `Holiday`, `Sprint`, `StandupEntry`, `Blocker`, `ActivityLog`, `StandupSession`,
+  `StandupLog`, `ExportLog`.
+- JWT auth (bcrypt) + **guest login**; admin/guest gating; **login rate-limit**.
+- JIRA Cloud REST client: board/active-sprint issues (paginated), live status, story
+  points (per-role field config), carry-over (`closedSprints`), field listing; **60s cache**.
+- Confluence v2 export + **auto-export scheduler**; GraphQL **subscription** for live
+  standup updates; **blocker auto-sync**; standup **session lock** with heartbeat.
+- Credentials live in the server **env** (JIRA + Confluence), never returned to clients.
 
 ### Frontend (`client/`)
-- React 18 + Vite + TypeScript + Apollo Client + TailwindCSS.
-- Auth, Theme (dark/light), and Squad contexts persisted to `localStorage`.
-- Pages: **Login**, **Current Sprint** dashboard, **Previous Sprints**, **Settings**.
-- Dashboard: sprint header + date picker, team panel (with today's leave status &
-  substitute), blockers panel, and the standup table — one row per ticket with columns
-  for **ticket info (links to JIRA), FE/BE/QA assignee inputs, update text area, progress
-  slider, and blocker note**, saving on blur.
-- A JIRA-not-configured **popup** prompts for credentials when a squad has none.
-- Settings manages JIRA connection, members + leaves, sprints, and public holidays.
+- React 18 + Vite + Apollo Client + Tailwind; Auth/Theme/Squad/Toast contexts; error
+  boundary; themed scrollbars; shimmer loading.
+- Pages: **Guest** (default entry) + **Admin Login**, **Current Sprint** dashboard,
+  **Board**, **Previous Sprints**, **Settings**, **Health**, 404.
+- **Current Sprint**: sprint header + sync, clickable **sprint timeline**, sprint summary
+  (status/progress/blockers/man-power + SP), lead rotation, team panel (leave + per-member
+  SP), blockers (+resolve note), update log (search + infinite scroll), standup duration
+  log, and the standup table — group by epic/parent, status filter, carry-over flag, SP,
+  per-assignee progress, keyboard nav, expand-to-popup, **session lock** (start/end).
+- **Board**: live active-sprint tickets, status filter, group, SP, priority/type.
+- **Previous Sprints**: read-only, grouped, per-ticket progress chart + update/blocker
+  history, sprint summary, **CSV + Confluence export** with export history.
+- **Settings**: squads (admin: name/board id/**SP fields** with field picker), members +
+  leave (cuti/sakit/izin + substitute), sprints, holidays, JIRA board, danger zone.
 
 ### Tooling / docs
-- npm workspaces monorepo, Docker Compose for PostgreSQL, env templates, and `npm run
-  setup` one-liner.
-- Docs: implementation plan, technical documentation, usage guide, deployment guide, and
-  this summary.
-
-## Verification performed
-
-- ✅ `tsc --noEmit` passes for **both** server and client.
-- ✅ Prisma schema pushed to a live PostgreSQL; seed created the admin + demo squad.
-- ✅ Smoke-tested over GraphQL against the running server:
-  - `login` returns a JWT; authenticated `squads` query works.
-  - `createSprint` → `saveStandupEntry` (with a blocker note) created a synced `Blocker`.
-  - Clearing the blocker note auto-resolved that blocker (`resolvedDate` set).
-  - `dashboard` returns rows for the sprint/date.
-- Test data was cleaned up after verification.
-
-> Note: the local smoke test used the Homebrew PostgreSQL 15 instance (the Docker daemon
-> wasn't running at the time). The shipped default is Docker Postgres 16 via
-> `docker-compose.yml`; both work with the same `DATABASE_URL`.
+- npm workspaces monorepo, Docker Compose for PostgreSQL, env templates, `npm run setup`.
+- Docs: implementation plan, technical docs, usage, deployment, improvements, this summary.
 
 ## How to run
 
 ```bash
 docker compose up -d db
 cp server/.env.example server/.env && cp client/.env.example client/.env
-npm install && npm run db:push && npm run db:seed
-npm run dev      # server :4000, client :5173  → login admin@example.com / admin123
+npm install && npm run db:migrate:deploy && npm run db:seed
+npm run dev      # server :4000/graphql, client :5173  → guest entry, or admin login
 ```
 
-## Post-build additions
-
-- **Test connection before save** — `testJiraConfig` accepts the form values directly, so
-  credentials can be verified without first saving (fixes a `JIRA_NOT_CONFIGURED` on first
-  setup).
-- **Reset JIRA env** — `resetJiraConfig` mutation + **Reset** button to clear a squad's
-  stored connection.
-- **Squad management in Settings** — add / switch / delete squads (delete cascades all
-  squad data), in addition to the header switcher.
-- **Board menu** — new `/board` page + `activeSprintTickets` query showing the board's
-  active-sprint tickets live from JIRA (board-scoped active-sprint resolution).
+JIRA + Confluence credentials are server env vars (see DEPLOYMENT → "Finding env values").
 
 ## Requirements coverage
 
-All `INIT.md` items are implemented: JIRA board fetch with UI-configurable ENV + popup,
-PostgreSQL, Apollo GraphQL, login auth, multi-squad, current/previous-sprint menus,
-dark/light, settings (env, members, holidays), member leave with range + substitute,
-blocker list, per-ticket update text areas, sprint number/start/end, JIRA ticket info
-with links, and the row-per-date dashboard whose blocker field syncs the blocker section.
+All `INIT.md` items are implemented (JIRA board fetch with env config + popup, PostgreSQL,
+Apollo GraphQL, login, multi-squad, current/previous-sprint menus, dark/light, settings,
+member leave with range + substitute, blocker list, per-ticket update areas, sprint
+number/start/end, JIRA ticket info with links, row-per-date dashboard with blocker sync),
+plus a large set of post-build enhancements — see [IMPROVEMENTS.md](IMPROVEMENTS.md) for the
+✅/planned list (story points, Confluence export + auto-export, subscriptions, session lock,
+CSV export, rate-limit, migrations, toasts, keyboard nav, etc.).
 
 ## Known limitations / next steps
 
-See "Out of scope / future work" in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and
-the security checklist in [DEPLOYMENT.md](DEPLOYMENT.md) — notably: encrypt the stored
-JIRA API token at rest, add per-squad user membership/roles, and switch to Prisma
-migrations for production.
+See [IMPROVEMENTS.md](IMPROVEMENTS.md) (planned items) and the security checklist in
+[DEPLOYMENT.md](DEPLOYMENT.md) — notably: per-squad user membership/roles, automated tests,
+CORS restriction, and presence.

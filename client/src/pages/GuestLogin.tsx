@@ -122,6 +122,7 @@ export default function GuestLogin() {
             Admin login →
           </Link>
         </div>
+        <p className="text-center text-[11px] text-gray-400">Created by Aulia Akbar Harahap · June 2026</p>
       </div>
     </div>
   );

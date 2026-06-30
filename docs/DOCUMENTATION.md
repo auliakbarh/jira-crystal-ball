@@ -33,14 +33,17 @@ jira-crystal-ball/
 | Model | Key fields | Notes |
 | --- | --- | --- |
 | `User` | email (unique), name, passwordHash, isAdmin | login credentials |
-| `Squad` | name (unique), defaultBoardId? | tenant boundary; defaultBoardId pre-fills the JIRA form |
+| `Squad` | name (unique), defaultBoardId?, spFieldDefault/FE/BE/QA? | tenant boundary; board id + per-role Story-Point field config (id or name) |
 | `TeamMember` | name, position `FE\|BE\|QA\|PM`, jiraAccountId? | belongs to squad |
 | `Leave` | type `CUTI\|SAKIT\|IZIN`, startDate, endDate, substituteId?, note? | member ↔ substitute (both TeamMember) |
-| `ActivityLog` | actor, ticketKey?, message, createdAt | standup update log per squad |
 | `Holiday` | date, name | unique per (squad, date) |
-| `Sprint` | number, name?, startDate, endDate | unique per (squad, number) |
-| `StandupEntry` | date, ticketKey, ticket snapshot, feAssignee/beAssignee/qaAssignee, updateText, progress, blockerNote | unique per (sprint, date, ticketKey) |
-| `Blocker` | description, jiraTicket?, foundDate, resolvedDate?, note?, sourceEntryId? | sourceEntryId links to the StandupEntry that created it |
+| `Sprint` | number, name?, startDate, endDate, confluencePageId/Url/ExportedAt? | unique per (squad, number); Confluence export marker |
+| `StandupEntry` | date, ticketKey, ticket snapshot (status/summary/type/storyPoints/epic/parent/carry-over), feAssignee/beAssignee/qaAssignee, feProgress/beProgress/qaProgress, updateText, progress, blockerNote | unique per (sprint, date, ticketKey) |
+| `Blocker` | description, jiraTicket?, foundDate, resolvedDate?, note?, resolveNote?, sourceEntryId? | sourceEntryId links to the StandupEntry that created it |
+| `ActivityLog` | actor, ticketKey?, message, prevText?, newText?, createdAt | standup update log per squad (note before→after) |
+| `StandupSession` | sprintId (unique), leadName, leadKey, lastSeen | live standup lock (heartbeat) |
+| `StandupLog` | squadId, leadName, startedAt, endedAt, durationSec | completed standup duration log |
+| `ExportLog` | sprintId, squadId, pageId, url, action, actor?, createdAt | Confluence export history |
 
 ### Blocker sync rules (in `saveStandupEntry`)
 
@@ -73,7 +76,7 @@ Subscriptions run over WebSocket at `ws://localhost:4000/graphql` (token sent vi
 | `me` | — | current `User` or null |
 | `jiraEnv` | — | global JIRA env status: `{ configured, baseUrl, email, defaultBoardId }` (no secrets) |
 | `squads` | — | `[Squad]` |
-| `squad` | `id` | `Squad` (with members, holidays, sprints, jiraConfig) |
+| `squad` | `id` | `Squad` (with members, holidays, sprints) |
 | `sprints` | `squadId` | `[Sprint]` desc by number |
 | `currentSprint` | `squadId` | active sprint (today in range) or latest |
 | `boardTickets` | `squadId` | all live board `[JiraTicket]` from JIRA |
@@ -82,16 +85,22 @@ Subscriptions run over WebSocket at `ws://localhost:4000/graphql` (token sent vi
 | `standupEntries` | `sprintId` | `[StandupEntry]` |
 | `dashboard` | `sprintId`, `date?` | `[DashboardRow]` — the board's **active-sprint** tickets (statuses match the board) merged with saved entries |
 | `blockers` | `squadId`, `includeResolved?` | `[Blocker]` |
-| `activityLog` | `squadId`, `limit?` | recent `[ActivityLog]` (who updated which ticket, with timestamp) |
-| `activeStandup` | `sprintId`, `leadKey?` | live standup lock `{ leadName, active, isMine }` or null |
+| `activityLog` | `squadId`, `limit?`, `offset?`, `search?` | paginated/searchable update log |
+| `activeStandup` | `sprintId`, `leadKey?` | live standup lock `{ leadName, active, isMine, startedAt }` or null |
+| `standupLogs` | `squadId`, `limit?`, `offset?` | completed standup duration log (paginated) |
+| `exportHistory` | `sprintId` | Confluence export history `[ExportLog]` |
+| `jiraFields` | `squadId` | all board JIRA fields `{ id, name }` (for picking the SP field) |
 
 ### Mutations
 
-`login`, `guestLogin`, `createSquad`, `updateSquad`, `deleteSquad`, `testJiraConfig`,
-`addMember`, `updateMember`, `deleteMember`, `addLeave`, `deleteLeave`, `addHoliday`,
-`deleteHoliday`, `createSprint`, `updateSprint`, `deleteSprint`, `saveStandupEntry`,
-`upsertBlocker`, `deleteBlocker`, `resetDatabase`, `startStandup`, `standupHeartbeat`,
-`endStandup`.
+`login`, `guestLogin`, `createSquad`, `updateSquad` (name/board id/SP fields),
+`deleteSquad`, `testJiraConfig`, `addMember`, `updateMember`, `deleteMember`, `addLeave`,
+`deleteLeave`, `addHoliday`, `deleteHoliday`, `createSprint`, `updateSprint`,
+`deleteSprint`, `syncActiveSprint`, `saveStandupEntry`, `upsertBlocker`, `deleteBlocker`,
+`resetDatabase`, `startStandup`, `standupHeartbeat`, `endStandup`,
+`exportSprintToConfluence`.
+
+**Subscription:** `standupChanged(sprintId)` → `{ sprintId, kind }`.
 
 **Standup session lock** (`StandupSession`, one per sprint): `startStandup(sprintId,
 leadName, leadKey)` claims the lock; the client sends a `standupHeartbeat` every ~20s and
@@ -166,14 +175,38 @@ resolvable.
   sprint (e.g. Kanban boards). The **dashboard** uses this too, so the standup table
   reflects the board's active sprint with all real statuses (To Do / In Progress / …).
 - `testConnection(cfg)` → `GET /rest/api/3/myself`.
-- Each issue maps to `{ key, status, assignee, assigneeAccountId, summary, url }`,
-  where `url = {baseUrl}/browse/{key}`.
+- Each issue maps to `{ key, status, assignee, summary, url, priority, issueType,
+  epic*/parent*, storyPoints, storyPointsFE/BE/QA, carryOver(+count/sprints) }`.
 
 Create the API token at **id.atlassian.com → Security → API tokens** and put it in
 `JIRA_API_TOKEN`. The **Board ID** is per-squad (`Squad.defaultBoardId`, optional): the
 number in the board URL (`…/boards/<boardId>`). A **project key** (e.g. `ATH`) is also
 accepted — `resolveBoardId` looks it up to the project's first board via
-`GET /rest/agile/1.0/board?projectKeyOrId=...`, so you don't have to find the numeric id.
+`GET /rest/agile/1.0/board?projectKeyOrId=...`.
+
+JIRA responses are cached in-process for 60s (`force` bypasses; Board "Refresh" and
+"Sync from JIRA" force).
+
+### Story Points
+Per squad you configure four Story-Point fields (default + FE + BE + QA) in
+**Settings → Squads → Edit** — each value is a **custom field id** (`customfield_10033`)
+or a **field name** (resolved to id via `GET /rest/api/3/field`; use the id when several
+fields share a name). `jiraFields(squadId)` lists every board field for the picker.
+`JIRA_STORY_POINTS_FIELD` is the global default when a squad has none. Per-member SP =
+the role field's value attributed to that role's standup assignee (fallback default).
+**carry-over** comes from `fields.closedSprints` (count + sprint names).
+
+### Confluence export
+`server/src/confluence.ts` (v2 REST, same Atlassian credentials). `exportSprintToConfluence`
+builds a storage-format page: heading, summary metrics table (units + caption), proportional
+**progress bar** with a status legend, **man-power** roster (per-member SP + leave), and a
+**tickets table** grouped by parent — native Jira issue macros, status lozenges, SP labels,
+a No. column. First export **creates** a page (`<Squad> - Sprint (<name>)`, timestamp
+appended only on title clash); re-export **updates** the same page (version bump). Each run
+is recorded in `ExportLog`; the marker (`Sprint.confluence*`) shows "✓ on Confluence". A
+**scheduler** (`server/src/scheduler.ts`) auto-exports a sprint hourly once its end date
+passes. Env: `CONFLUENCE_BASE_URL` (blank → JIRA), `CONFLUENCE_SPACE_KEY`,
+`CONFLUENCE_PARENT_ID`.
 
 ## Frontend notes
 

@@ -106,6 +106,10 @@ export default function Layout() {
           <div className="card">No squad selected. Create one above to begin.</div>
         )}
       </main>
+
+      <footer className="mx-auto max-w-[1400px] px-4 py-6 text-center text-xs text-gray-400">
+        🔮 JIRA Crystal Ball · Created by Aulia Akbar Harahap · June 2026
+      </footer>
     </div>
   );
 }

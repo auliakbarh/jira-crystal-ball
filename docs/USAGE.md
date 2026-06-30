@@ -4,19 +4,19 @@ This guide walks through first-time setup and the day-to-day standup flow.
 
 ## 1. Sign in
 
-Open the client (default `http://localhost:5173`) and log in.
-The seeded admin is **admin@example.com / admin123** (change it in production).
-
-### Guest access (run a standup without an account)
-
-On the login page click **Continue as guest**. Then:
+Open the client (default `http://localhost:5173`). The **default entry is guest access**
+— no account needed to run a standup:
 1. Enter your **name** (the standup lead).
 2. Pick a **squad** — its **board** is shown (and whether JIRA is connected).
 3. Click **Enter dashboard**.
 
-Guests can run the standup (dashboard, board, previous sprints read-only) but **cannot**
-open Settings, manage squads, or reset the database. A **Guest** badge shows in the
-header.
+Guests can run the standup (dashboard, board, previous sprints) and take the **standup
+session lock**, but **cannot** open Settings, manage squads, or reset the database. A
+**Guest** badge shows in the header.
+
+For management, use **Admin login** (link on the guest page). The seeded admin is
+**admin@example.com / admin123** (change it in production). Only admins reach Settings and
+can always edit / take over a standup.
 
 ## 2. Pick or create a squad
 
