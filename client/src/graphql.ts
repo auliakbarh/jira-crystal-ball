@@ -30,6 +30,15 @@ export const GUEST_LOGIN = gql`
   }
 `;
 
+export const MEMBER_SUGGESTIONS = gql`
+  query MemberSuggestions {
+    memberSuggestions {
+      name
+      fullName
+    }
+  }
+`;
+
 export const HEALTH = gql`
   query Health {
     health {
@@ -80,6 +89,7 @@ export const SQUAD = gql`
       members {
         id
         name
+        fullName
         position
         jiraAccountId
         leaves {
@@ -171,6 +181,16 @@ export const JIRA_FIELDS = gql`
     jiraFields(squadId: $squadId) {
       id
       name
+    }
+  }
+`;
+
+export const JIRA_USERS = gql`
+  query JiraUsers($squadId: ID!) {
+    jiraUsers(squadId: $squadId) {
+      accountId
+      displayName
+      email
     }
   }
 `;
@@ -476,6 +496,18 @@ export const ADD_MEMBER = gql`
   mutation AddMember($squadId: ID!, $input: TeamMemberInput!) {
     addMember(squadId: $squadId, input: $input) {
       id
+    }
+  }
+`;
+
+export const UPDATE_MEMBER = gql`
+  mutation UpdateMember($id: ID!, $input: TeamMemberInput!) {
+    updateMember(id: $id, input: $input) {
+      id
+      name
+      fullName
+      position
+      jiraAccountId
     }
   }
 `;

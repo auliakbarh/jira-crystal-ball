@@ -16,6 +16,7 @@
     "db:up": "docker compose up -d db",
     "db:push": "npm -w server run db:push",
     "db:seed": "npm -w server run seed",
+    "db:seed:config": "npm -w server run seed:config",
     "setup": "npm install && npm run db:up && npm run db:push && npm run db:seed"
   },
   "devDependencies": {

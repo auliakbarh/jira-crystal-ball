@@ -67,7 +67,8 @@ docker compose up -d db
 cp server/.env.example server/.env     # set a strong JWT_SECRET
 npm install
 npm run db:push                        # or: npm -w server run db:migrate  (prod migrations)
-npm run db:seed                        # first deploy only
+npm run db:seed                        # first deploy only (admin user + default squads)
+npm run db:seed:config                 # optional: bulk squads + members from JSON (see below)
 npm -w server run build
 npm -w server run start                # node dist/index.js  (run under pm2/systemd)
 
@@ -79,6 +80,46 @@ npm -w client run build                # outputs client/dist
 
 Run the backend under a process manager (pm2, systemd, or a container) so it restarts on
 crash/reboot. Put nginx/Caddy in front for TLS and to serve the static frontend.
+
+## Bulk seeding squads + members from JSON
+
+`npm run db:seed:config` (root) / `npm -w server run seed:config` reads a JSON config and
+upserts squads + team members — **idempotent**, safe to re-run. Default path is
+`server/dashboard-config-seed.json`; pass a custom one:
+
+```bash
+npm -w server run seed:config -- path/to/config.json
+```
+
+Copy `server/dashboard-config-seed.example.json` as a starting point. Shape:
+
+```jsonc
+{
+  "squads": [
+    {
+      "name": "Athens",            // unique; upsert key
+      "boardId": "ATH",            // → Squad.defaultBoardId
+      "spDefault": "customfield_10033",
+      "spFe": "", "spBe": "", "spQa": "customfield_10154",  // SP field id/name per role
+      "confluenceSpaceKey": "MYHERO",
+      "confluenceParentId": "1120927787"
+    }
+  ],
+  "teams": [
+    {
+      "name": "Akbar",             // short display label (TeamMember.name)
+      "fullName": "Aulia Akbar Harahap",  // optional full name
+      "squads": ["Cairo"],         // member is added to each named squad
+      "position": "ALL",           // FE | BE | QA | PM | FULLSTACK | ALL
+      "jiraAccountId": ""          // optional Atlassian account id
+    }
+  ]
+}
+```
+
+Empty strings are stored as `null`. Squads are upserted by `name`; a member is upserted by
+(squad, `name`) so re-runs update in place instead of duplicating. Squads referenced by a
+team but missing from `squads` are auto-created.
 
 ### Example nginx
 

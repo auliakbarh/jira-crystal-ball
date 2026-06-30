@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { Link, useNavigate } from "react-router-dom";
-import { GUEST_LOGIN, SQUADS } from "../graphql";
+import { GUEST_LOGIN, SQUADS, MEMBER_SUGGESTIONS } from "../graphql";
 import { useAuth } from "../context/AuthContext";
 import { useSquad } from "../context/SquadContext";
 
@@ -20,6 +20,10 @@ export default function GuestLogin() {
   const { data, loading: loadingSquads } = useQuery(SQUADS, { skip: step !== 2 });
   const squads = data?.squads ?? [];
   const selected = squads.find((s: any) => s.id === squadId);
+
+  // Public name hints (all team members) for the name field.
+  const { data: suggestData } = useQuery(MEMBER_SUGGESTIONS);
+  const suggestions = suggestData?.memberSuggestions ?? [];
 
   const continueAsGuest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,12 +67,20 @@ export default function GuestLogin() {
               <label className="label">Your name (standup lead)</label>
               <input
                 className="input"
+                list="jcb-member-names"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Budi"
                 required
                 autoFocus
               />
+              <datalist id="jcb-member-names">
+                {suggestions.map((s: any) => (
+                  <option key={s.name} value={s.name}>
+                    {s.fullName && s.fullName !== s.name ? s.fullName : ""}
+                  </option>
+                ))}
+              </datalist>
             </div>
             <button className="btn-primary w-full" disabled={loading || !name.trim()}>
               {loading ? "Please wait…" : "Continue"}

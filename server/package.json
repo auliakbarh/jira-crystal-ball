@@ -12,6 +12,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
     "seed": "tsx src/seed.ts",
+    "seed:config": "tsx src/seed-config.ts",
     "postinstall": "prisma generate",
     "test": "vitest run"
   },

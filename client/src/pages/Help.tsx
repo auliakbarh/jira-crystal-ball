@@ -3,7 +3,7 @@ const SECTIONS: { title: string; items: string[] }[] = [
     title: "Getting started",
     items: [
       "Pick your squad from the dropdown in the header. Each squad has its own board, members, sprints and holidays.",
-      "Guests run standups without an account; admins (login) also manage Settings.",
+      "Guests run standups without an account; admins (login) also manage Settings. On the guest screen the name field suggests existing team-member names as you type.",
       "Need the current sprint pulled in? Use ↻ Sync from JIRA on the Current Sprint page.",
     ],
   },
@@ -47,7 +47,9 @@ const SECTIONS: { title: string; items: string[] }[] = [
     title: "Settings (admin)",
     items: [
       "Squads — add/switch/delete; edit name, board id, Story Point fields (default + FE/BE/QA; pick from the board field list), and per-squad Confluence Space Key + Parent ID (blank = global env default).",
-      "Members + leave (Annual/Sick/Permission + substitute), Sprints, Public Holidays, JIRA Board test.",
+      "Members — add with a short name, optional full name, and position; edit or delete existing members inline. Plus leave (Annual/Sick/Permission + substitute), Sprints, Public Holidays, JIRA Board test.",
+      "Bulk setup: admins can seed squads + members from a JSON file via `npm run db:seed:config` (idempotent; see DEPLOYMENT docs).",
+      "Member JIRA account id (optional) — the opaque Atlassian id (e.g. 5b10ac8d82e05b22cc7d4ef5), not the email; links the member to their JIRA assignee. The field is a picker: choose a JIRA user (name + email) from the dropdown to fill the id, or paste one manually (profile URL …/jira/people/<id>, or /rest/api/3/user/search?query=<email>).",
       "Danger Zone — reset the database (admin only).",
     ],
   },

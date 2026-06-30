@@ -8,9 +8,11 @@ import {
   CREATE_SQUAD,
   UPDATE_SQUAD,
   JIRA_FIELDS,
+  JIRA_USERS,
   DELETE_SQUAD,
   RESET_DATABASE,
   ADD_MEMBER,
+  UPDATE_MEMBER,
   DELETE_MEMBER,
   ADD_LEAVE,
   DELETE_LEAVE,
@@ -368,17 +370,28 @@ function SquadRow({
 // --------------------------- Members + leaves ---------------------------
 function MembersSection({ squadId, members, refetch }: any) {
   const [name, setName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [position, setPosition] = useState("FE");
   const [jiraId, setJiraId] = useState("");
   const [add] = useMutation(ADD_MEMBER);
   const [del] = useMutation(DELETE_MEMBER);
+  const { data: usersData, loading: usersLoading } = useQuery(JIRA_USERS, {
+    variables: { squadId },
+    skip: !squadId,
+  });
+  const jiraUsers = usersData?.jiraUsers ?? [];
+  const usersListId = `jcb-users-${squadId}`;
 
   const addMember = async () => {
     if (!name.trim()) return;
     await add({
-      variables: { squadId, input: { name: name.trim(), position, jiraAccountId: jiraId || null } },
+      variables: {
+        squadId,
+        input: { name: name.trim(), fullName: fullName.trim() || null, position, jiraAccountId: jiraId || null },
+      },
     });
     setName("");
+    setFullName("");
     setJiraId("");
     refetch();
   };
@@ -387,9 +400,13 @@ function MembersSection({ squadId, members, refetch }: any) {
     <section className="card">
       <h2 className="mb-3 text-base font-bold">Team Members</h2>
       <div className="mb-4 flex flex-wrap items-end gap-2">
-        <div className="flex-1 min-w-[150px]">
+        <div className="flex-1 min-w-[120px]">
           <label className="label">Name</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="flex-1 min-w-[150px]">
+          <label className="label">Full name (optional)</label>
+          <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </div>
         <div>
           <label className="label">Position</label>
@@ -401,7 +418,21 @@ function MembersSection({ squadId, members, refetch }: any) {
         </div>
         <div className="flex-1 min-w-[150px]">
           <label className="label">JIRA account id (optional)</label>
-          <input className="input" value={jiraId} onChange={(e) => setJiraId(e.target.value)} />
+          <input
+            className="input"
+            list={usersListId}
+            placeholder={usersLoading ? "loading JIRA users…" : "pick a name or paste an account id"}
+            value={jiraId}
+            onChange={(e) => setJiraId(e.target.value)}
+          />
+          <datalist id={usersListId}>
+            {jiraUsers.map((u: any) => (
+              <option key={u.accountId} value={u.accountId}>
+                {u.displayName}
+                {u.email ? ` — ${u.email}` : ""}
+              </option>
+            ))}
+          </datalist>
         </div>
         <button className="btn-primary" onClick={addMember}>
           Add
@@ -410,23 +441,111 @@ function MembersSection({ squadId, members, refetch }: any) {
 
       <ul className="space-y-3">
         {members.map((m: any) => (
-          <li key={m.id} className="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
-            <div className="flex items-center gap-2">
-              <span className={`chip ${POSITION_COLORS[m.position]}`}>{m.position}</span>
-              <span className="font-medium">{m.name}</span>
-              {m.jiraAccountId && <span className="text-xs text-gray-400">({m.jiraAccountId})</span>}
-              <button
-                className="ml-auto text-xs text-red-600 hover:underline"
-                onClick={() => del({ variables: { id: m.id } }).then(() => refetch())}
-              >
-                Delete
-              </button>
-            </div>
-            <LeavesEditor member={m} members={members} refetch={refetch} />
-          </li>
+          <MemberRow
+            key={m.id}
+            member={m}
+            members={members}
+            refetch={refetch}
+            del={del}
+            jiraUsers={jiraUsers}
+            usersListId={usersListId}
+            usersLoading={usersLoading}
+          />
         ))}
       </ul>
     </section>
+  );
+}
+
+// One member: read-only summary + inline edit (name / position / JIRA account id).
+function MemberRow({ member: m, members, refetch, del, jiraUsers, usersListId, usersLoading }: any) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(m.name);
+  const [fullName, setFullName] = useState(m.fullName ?? "");
+  const [position, setPosition] = useState(m.position);
+  const [jiraId, setJiraId] = useState(m.jiraAccountId ?? "");
+  const [update, { loading }] = useMutation(UPDATE_MEMBER);
+
+  const save = async () => {
+    if (!name.trim()) return;
+    await update({
+      variables: {
+        id: m.id,
+        input: { name: name.trim(), fullName: fullName.trim() || null, position, jiraAccountId: jiraId || null },
+      },
+    });
+    setEditing(false);
+    refetch();
+  };
+
+  const cancel = () => {
+    setName(m.name);
+    setFullName(m.fullName ?? "");
+    setPosition(m.position);
+    setJiraId(m.jiraAccountId ?? "");
+    setEditing(false);
+  };
+
+  return (
+    <li className="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
+      {editing ? (
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-[120px]">
+            <label className="label">Name</label>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <label className="label">Full name (optional)</label>
+            <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Position</label>
+            <select className="input" value={position} onChange={(e) => setPosition(e.target.value)}>
+              {POSITIONS.map((p) => (
+                <option key={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <label className="label">JIRA account id (optional)</label>
+            <input
+              className="input"
+              list={usersListId}
+              placeholder={usersLoading ? "loading JIRA users…" : "pick a name or paste an account id"}
+              value={jiraId}
+              onChange={(e) => setJiraId(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button className="btn-ghost text-xs" onClick={cancel}>
+              Cancel
+            </button>
+            <button className="btn-primary text-xs" onClick={save} disabled={loading}>
+              {loading ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className={`chip ${POSITION_COLORS[m.position]}`}>{m.position}</span>
+          <span className="font-medium">{m.name}</span>
+          {m.fullName && <span className="text-xs text-gray-500">{m.fullName}</span>}
+          {m.jiraAccountId && <span className="text-xs text-gray-400">({m.jiraAccountId})</span>}
+          <div className="ml-auto flex gap-2">
+            <button className="text-xs text-brand hover:underline" onClick={() => setEditing(true)}>
+              Edit
+            </button>
+            <button
+              className="text-xs text-red-600 hover:underline"
+              onClick={() => del({ variables: { id: m.id } }).then(() => refetch())}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+      <LeavesEditor member={m} members={members} refetch={refetch} />
+    </li>
   );
 }
 

@@ -59,6 +59,7 @@ export const typeDefs = /* GraphQL */ `
   type TeamMember {
     id: ID!
     name: String!
+    fullName: String
     position: Position!
     jiraAccountId: String
     leaves: [Leave!]!
@@ -125,6 +126,18 @@ export const typeDefs = /* GraphQL */ `
   type JiraField {
     id: String!
     name: String!
+  }
+
+  type JiraUser {
+    accountId: String!
+    displayName: String!
+    email: String
+  }
+
+  # Public (no auth) name hints for the guest-login screen.
+  type MemberSuggestion {
+    name: String!
+    fullName: String
   }
 
   type StandupEntry {
@@ -203,6 +216,7 @@ export const typeDefs = /* GraphQL */ `
   # --------------------------- Inputs ---------------------------
   input TeamMemberInput {
     name: String!
+    fullName: String
     position: Position!
     jiraAccountId: String
   }
@@ -291,6 +305,9 @@ export const typeDefs = /* GraphQL */ `
     exportHistory(sprintId: ID!): [ExportLog!]!
     # All JIRA fields (id + name) for the squad's board — helps admins pick the SP field.
     jiraFields(squadId: ID!): [JiraField!]!
+    jiraUsers(squadId: ID!): [JiraUser!]!
+    # Public: distinct team-member names for the guest-login name suggestion.
+    memberSuggestions: [MemberSuggestion!]!
   }
 
   type Mutation {

@@ -352,6 +352,36 @@ export interface JiraField {
   name: string;
 }
 
+export interface JiraUser {
+  accountId: string;
+  displayName: string;
+  email?: string | null;
+}
+
+/**
+ * List human JIRA users (accountId + name) for the admin member picker.
+ * Filters out apps/bots; needs the "Browse users and groups" global permission.
+ */
+export async function listUsers(cfg: JiraConfigLike): Promise<JiraUser[]> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const res = await fetch(`${base}/rest/api/3/users/search?maxResults=1000`, {
+    headers: jiraHeaders(cfg),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA user list failed (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const arr: any[] = await res.json();
+  return arr
+    .filter((u) => u.accountType === "atlassian" && u.active !== false && u.accountId)
+    .map((u) => ({
+      accountId: String(u.accountId),
+      displayName: String(u.displayName ?? u.accountId),
+      email: u.emailAddress ?? null,
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
 /** List all JIRA fields (id + name) — used by admin UI to pick the SP field. */
 export async function listFields(cfg: JiraConfigLike): Promise<JiraField[]> {
   const base = normalizeBaseUrl(cfg.baseUrl);

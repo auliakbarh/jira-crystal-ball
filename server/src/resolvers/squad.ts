@@ -10,6 +10,7 @@ import {
   fetchActiveSprintInfo,
   testConnection,
   listFields,
+  listUsers,
 } from "../jira.js";
 import { jiraCfgForBoard, toISODate, parseISODate } from "./shared.js";
 
@@ -100,6 +101,32 @@ export const squadResolvers = {
       const cfg = jiraCfgForBoard(squad);
       if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
       return listFields(cfg);
+    },
+
+    jiraUsers: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {
+      requireAuth(ctx);
+      const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
+      const cfg = jiraCfgForBoard(squad);
+      if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
+      return listUsers(cfg);
+    },
+
+    // Public (no auth): distinct member names across all squads, for the
+    // guest-login name suggestion. Deduped by name, full name kept for context.
+    memberSuggestions: async (_p: unknown, _a: unknown, ctx: Context) => {
+      const members = await ctx.prisma.teamMember.findMany({
+        select: { name: true, fullName: true },
+        orderBy: { name: "asc" },
+      });
+      const seen = new Set<string>();
+      const out: { name: string; fullName: string | null }[] = [];
+      for (const m of members) {
+        const key = m.name.trim();
+        if (!key || seen.has(key.toLowerCase())) continue;
+        seen.add(key.toLowerCase());
+        out.push({ name: key, fullName: m.fullName });
+      }
+      return out;
     },
   },
 

@@ -120,6 +120,7 @@ model TeamMember {
   squad          Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
   squadId        String
   name           String
+  fullName       String?  // optional full/legal name (display); `name` is the short label
   position       Position
   jiraAccountId  String?  // optional, to match JIRA assignee
   createdAt      DateTime @default(now())

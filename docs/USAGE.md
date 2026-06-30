@@ -6,7 +6,8 @@ This guide walks through first-time setup and the day-to-day standup flow.
 
 Open the client (default `http://localhost:5173`). The **default entry is guest access**
 — no account needed to run a standup:
-1. Enter your **name** (the standup lead).
+1. Enter your **name** (the standup lead) — the field **suggests existing team-member
+   names** (across all squads) as you type; pick one or type a new name.
 2. Pick a **squad** — its **board** is shown (and whether JIRA is connected).
 3. Click **Enter dashboard**.
 
@@ -58,9 +59,16 @@ a popup telling you which env vars to set.
 
 ## 4. Set up the team (Settings)
 
-- **Team Members** — add each person with a position (FE/BE/QA/PM/FULLSTACK/ALL).
-  `FULLSTACK` can be assigned as FE or BE; `ALL` can be assigned as FE, BE or QA.
-  Optionally record their JIRA account id.
+- **Team Members** — add each person with a short **name**, an optional **full name**,
+  and a position (FE/BE/QA/PM/FULLSTACK/ALL). Existing members can be **edited** inline
+  (Edit button) or removed. `FULLSTACK` can be assigned as FE or BE; `ALL` can be assigned
+  as FE, BE or QA. Optionally record their **JIRA account id** — the opaque Atlassian id (e.g.
+  `5b10ac8d82e05b22cc7d4ef5`), *not* the email/username. It links the member to their
+  JIRA assignee. The account-id field is a **picker**: it offers a dropdown of the site's
+  JIRA users (name + email) pulled live — pick a person to fill the id automatically, or
+  paste one manually. (The dropdown needs the *Browse users and groups* global permission;
+  if it's empty you can still find an id from the JIRA profile URL `…/jira/people/<accountId>`,
+  via `GET {base}/rest/api/3/user/search?query=<email>`, or any issue's `assignee.accountId`.)
 - **Leave / cuti** — under each member, add a leave with start/end dates, an optional
   **substitute**, and a note. Members on leave *today* are flagged on the dashboard with
   their date range and cover.

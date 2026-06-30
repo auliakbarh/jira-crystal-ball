@@ -17,7 +17,8 @@ jira-crystal-ball/
 │       ├── context.ts         # request context + requireAuth
 │       ├── schema.ts          # GraphQL typeDefs
 │       ├── resolvers.ts       # all resolvers + Date scalar + blocker sync
-│       └── seed.ts            # seeds admin user + default squads (Athens/Berlin/Cairo)
+│       ├── seed.ts            # seeds admin user + default squads (Athens/Berlin/Cairo)
+│       └── seed-config.ts     # bulk-seeds squads + members from a JSON file (idempotent)
 └── client/                    # React + Vite frontend
     └── src/
         ├── apollo.ts          # Apollo Client + auth link
@@ -34,7 +35,7 @@ jira-crystal-ball/
 | --- | --- | --- |
 | `User` | email (unique), name, passwordHash, isAdmin | login credentials |
 | `Squad` | name (unique), defaultBoardId?, spFieldDefault/FE/BE/QA? | tenant boundary; board id + per-role Story-Point field config (id or name) |
-| `TeamMember` | name, position `FE\|BE\|QA\|PM\|FULLSTACK\|ALL`, jiraAccountId? | belongs to squad; `FULLSTACK` = assignable to FE+BE, `ALL` = assignable to FE+BE+QA |
+| `TeamMember` | name, fullName?, position `FE\|BE\|QA\|PM\|FULLSTACK\|ALL`, jiraAccountId? | belongs to squad; `name` = short label, `fullName` = optional full name; `FULLSTACK` = assignable to FE+BE, `ALL` = assignable to FE+BE+QA |
 | `Leave` | type `CUTI\|SAKIT\|IZIN`, startDate, endDate, substituteId?, note? | member ↔ substitute (both TeamMember) |
 | `Holiday` | date, name | unique per (squad, date) |
 | `Sprint` | number, name?, startDate, endDate, confluencePageId/Url/ExportedAt? | unique per (squad, number); Confluence export marker |
@@ -62,7 +63,7 @@ independent of any entry.
 Endpoint: `http://localhost:4000/graphql` (also served at `/` for back-compat).
 Subscriptions run over WebSocket at `ws://localhost:4000/graphql` (token sent via
 `connectionParams.authorization`). The server is Express + `@apollo/server/express4` +
-`graphql-ws`/`ws`. All operations except `login`/`guestLogin` require
+`graphql-ws`/`ws`. All operations except `login`/`guestLogin`/`memberSuggestions` require
 `Authorization: Bearer <token>`.
 
 **Subscriptions:** `standupChanged(sprintId)` → `{ sprintId, kind }` fires on
@@ -90,6 +91,8 @@ Subscriptions run over WebSocket at `ws://localhost:4000/graphql` (token sent vi
 | `standupLogs` | `squadId`, `limit?`, `offset?` | completed standup duration log (paginated) |
 | `exportHistory` | `sprintId` | Confluence export history `[ExportLog]` |
 | `jiraFields` | `squadId` | all board JIRA fields `{ id, name }` (for picking the SP field) |
+| `jiraUsers` | `squadId` | human JIRA users `{ accountId, displayName, email }` (for the member account-id picker; needs *Browse users* permission) |
+| `memberSuggestions` | — | **public** (no auth) distinct member names `{ name, fullName }` for the guest-login name suggestion |
 
 ### Mutations
 

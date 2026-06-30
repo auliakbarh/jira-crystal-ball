@@ -1,0 +1,25 @@
+{
+  "squads": [
+    {
+      "name": "Athens",
+      "boardId": "ATHENS",
+      "spDefault": "",
+      "spFe": "",
+      "spBe": "",
+      "spQa": "",
+      "confluenceSpaceKey": "",
+      "confluenceParentId": ""
+    }
+  ],
+  "teams": [
+    {
+      "name": "Akbar",
+      "fullName": "Aulia Akbar Harahap",
+      "squads": [
+        "Athens"
+      ],
+      "position": "FE",
+      "jiraAccountId": "jira-account-id"
+    }
+  ]
+}
