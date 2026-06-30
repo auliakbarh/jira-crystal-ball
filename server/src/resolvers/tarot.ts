@@ -9,6 +9,7 @@ import {
   fetchNextSprintInfo,
   resolveSquadSpIds,
   getIssueFieldValues,
+  getIssueMeta,
   updateIssueFields,
 } from "../jira.js";
 import { presetValues, deckStrings, isOnline, voteStats, capRolePoint, PRESETS } from "./tarotLogic.js";
@@ -24,6 +25,27 @@ async function logTarot(ctx: Context, squadId: string, message: string, ticketKe
     });
   } catch {
     /* logging must not break the action */
+  }
+}
+
+// Backfill missing ticket title/parent on decided results (e.g. older rows, or
+// rooms created before the snapshot logic). One JIRA lookup per missing row,
+// then persisted — so it runs at most once per ticket.
+async function backfillResultMeta(ctx: Context, room: { id: string; squadId: string }) {
+  const missing = await ctx.prisma.tarotResult.findMany({
+    where: { roomId: room.id, ticketSummary: null },
+  });
+  if (missing.length === 0) return;
+  const squad = await ctx.prisma.squad.findUnique({ where: { id: room.squadId } });
+  const cfg = jiraCfgForBoard(squad);
+  if (!cfg || !cfg.boardId) return;
+  for (const r of missing) {
+    const meta = await getIssueMeta(cfg, r.ticketKey).catch(() => null);
+    if (!meta) continue;
+    await ctx.prisma.tarotResult.update({
+      where: { id: r.id },
+      data: { ticketSummary: meta.summary, parentKey: meta.parentKey, parentName: meta.parentName },
+    });
   }
 }
 
@@ -202,6 +224,8 @@ export const tarotResolvers = {
 
     tarotRoom: async (_p: unknown, { id, key }: { id: string; key?: string }, ctx: Context) => {
       requireAuth(ctx);
+      const room = await ctx.prisma.tarotRoom.findUnique({ where: { id }, select: { id: true, squadId: true } });
+      if (room) await backfillResultMeta(ctx, room).catch(() => undefined);
       return buildRoom(ctx, id, key);
     },
 
@@ -427,7 +451,9 @@ export const tarotResolvers = {
       let snap: any = { ticketKey };
       if (cfg?.boardId) {
         const tickets = await fetchNextSprintIssues(cfg).catch(() => []);
-        const t = tickets.find((x) => x.key === ticketKey);
+        // Prefer the cached next-sprint row; fall back to a direct issue fetch so
+        // sub-tasks (not in the sprint list) still get a title + parent.
+        const t = tickets.find((x) => x.key === ticketKey) ?? (await getIssueMeta(cfg, ticketKey).catch(() => null));
         if (t)
           snap = {
             ticketKey,

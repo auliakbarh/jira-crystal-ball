@@ -473,6 +473,34 @@ export async function getIssueFieldValues(
   return out;
 }
 
+/**
+ * Fetch a single issue's display metadata (summary/type/priority/parent), used
+ * to label a Tarot round when the ticket isn't in the cached next-sprint list
+ * (e.g. a sub-task). Returns null on failure so callers can fall back gracefully.
+ */
+export async function getIssueMeta(
+  cfg: JiraConfigLike,
+  issueKey: string,
+): Promise<Pick<JiraTicket, "summary" | "issueType" | "priority" | "url" | "parentKey" | "parentName"> | null> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const params = new URLSearchParams({ fields: "summary,issuetype,priority,parent" });
+  const res = await fetch(`${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}?${params.toString()}`, {
+    headers: jiraHeaders(cfg),
+  }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const data: any = await res.json().catch(() => null);
+  if (!data) return null;
+  const f = data.fields ?? {};
+  return {
+    summary: f.summary ?? null,
+    issueType: f.issuetype?.name ?? null,
+    priority: f.priority?.name ?? null,
+    url: `${base}/browse/${issueKey}`,
+    parentKey: f.parent?.key ?? null,
+    parentName: f.parent?.fields?.summary ?? null,
+  };
+}
+
 /** Write field values to an issue. PUT /rest/api/3/issue/{key} { fields }. */
 export async function updateIssueFields(
   cfg: JiraConfigLike,

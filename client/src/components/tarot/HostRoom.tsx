@@ -465,14 +465,14 @@ export function ResultsTable({ results }: { results: any[] }) {
       <table className="w-full min-w-[560px] border-collapse text-left text-sm">
         <thead>
           <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700">
-            <th className="p-2">Ticket</th><th className="p-2">Summary</th><th className="p-2">Effort</th><th className="p-2">FE</th><th className="p-2">BE</th><th className="p-2">QA</th>
+            <th className="p-2">Ticket</th><th className="p-2">Summary</th><th className="p-2">Effort</th><th className="p-2">FE</th><th className="p-2">BE</th><th className="p-2">QA</th><th className="p-2">Jira</th>
           </tr>
         </thead>
         <tbody>
           {groups.map((g) => (
             <Fragment key={g.key}>
               <tr className="bg-gray-50 dark:bg-gray-800/60">
-                <td colSpan={6} className="px-2 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">📄 {g.label}</td>
+                <td colSpan={7} className="px-2 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">📄 {g.label}</td>
               </tr>
               {g.rows.map((r: any) => (
                 <tr key={r.ticketKey} className="border-b border-gray-100 dark:border-gray-800">
@@ -482,6 +482,15 @@ export function ResultsTable({ results }: { results: any[] }) {
                   <td className="p-2 font-mono">{r.pointFE ?? "–"}</td>
                   <td className="p-2 font-mono">{r.pointBE ?? "–"}</td>
                   <td className="p-2 font-mono">{r.pointQA ?? "–"}</td>
+                  <td className="p-2">
+                    {r.syncedAt ? (
+                      <span className="chip bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300" title={`Synced ${new Date(r.syncedAt).toLocaleString()}`}>
+                        ✓ synced
+                      </span>
+                    ) : (
+                      <span className="chip bg-gray-100 text-gray-500 dark:bg-gray-800">not synced</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </Fragment>
