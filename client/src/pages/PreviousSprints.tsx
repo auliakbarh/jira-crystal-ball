@@ -170,10 +170,31 @@ export default function PreviousSprints() {
       if (e.beAssignee) t.be = e.beAssignee;
       if (e.qaAssignee) t.qa = e.qaAssignee;
     }
+
+    // Include board (active-sprint) tickets that have no standup input yet.
+    for (const b of boardData?.activeSprintTickets ?? []) {
+      if (map.has(b.key)) continue;
+      map.set(b.key, {
+        key: b.key,
+        summary: b.summary,
+        status: b.status,
+        issueType: b.issueType,
+        storyPoints: b.storyPoints,
+        spFE: b.storyPointsFE,
+        spBE: b.storyPointsBE,
+        spQA: b.storyPointsQA,
+        epicKey: b.epicKey,
+        epicName: b.epicName,
+        parentKey: b.parentKey,
+        parentName: b.parentName,
+        entries: [],
+      });
+    }
+
     return Array.from(map.values()).sort(
       (a, b) => issueTypeRank(a.issueType) - issueTypeRank(b.issueType) || a.key.localeCompare(b.key),
     );
-  }, [entries, liveStatus, liveSP]);
+  }, [entries, liveStatus, liveSP, boardData]);
 
   const groups = useMemo(() => {
     if (groupBy === "none") return [{ key: "__all", label: "", tickets }];
