@@ -257,8 +257,8 @@ export const typeDefs = /* GraphQL */ `
     squad(id: ID!): Squad
     sprints(squadId: ID!): [Sprint!]!
     currentSprint(squadId: ID!): Sprint
-    boardTickets(squadId: ID!): [JiraTicket!]!
-    activeSprintTickets(squadId: ID!): [JiraTicket!]!
+    boardTickets(squadId: ID!, refresh: Boolean): [JiraTicket!]!
+    activeSprintTickets(squadId: ID!, refresh: Boolean): [JiraTicket!]!
     jiraActiveSprint(squadId: ID!): JiraSprint
     standupEntries(sprintId: ID!): [StandupEntry!]!
     dashboard(sprintId: ID!, date: Date): [DashboardRow!]!

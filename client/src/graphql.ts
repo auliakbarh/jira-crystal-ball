@@ -141,8 +141,8 @@ export const DELETE_SQUAD = gql`
 `;
 
 export const ACTIVE_SPRINT_TICKETS = gql`
-  query ActiveSprintTickets($squadId: ID!) {
-    activeSprintTickets(squadId: $squadId) {
+  query ActiveSprintTickets($squadId: ID!, $refresh: Boolean) {
+    activeSprintTickets(squadId: $squadId, refresh: $refresh) {
       key
       status
       assignee

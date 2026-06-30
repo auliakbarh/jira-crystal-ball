@@ -8,6 +8,7 @@ import {
   testConnection,
 } from "./jira.js";
 import { env, hasJiraCreds } from "./env.js";
+import { assertNotLocked, recordFailure, recordSuccess } from "./rateLimit.js";
 
 // Build a JIRA client config from the global env credentials plus a squad's
 // board id (or the env fallback). Returns null when credentials are missing.
@@ -148,23 +149,23 @@ export const resolvers = {
       return ctx.prisma.sprint.findFirst({ where: { squadId }, orderBy: { number: "desc" } });
     },
 
-    boardTickets: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {
+    boardTickets: async (_p: unknown, { squadId, refresh }: { squadId: string; refresh?: boolean }, ctx: Context) => {
       requireAuth(ctx);
       const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
       const cfg = jiraCfgForBoard(squad?.defaultBoardId);
       if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
       // Board id is optional: with neither a board id nor a JQL there's nothing to query.
       if (!cfg.boardId && !cfg.jql) return [];
-      return fetchBoardIssues(cfg);
+      return fetchBoardIssues(cfg, { force: !!refresh });
     },
 
-    activeSprintTickets: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {
+    activeSprintTickets: async (_p: unknown, { squadId, refresh }: { squadId: string; refresh?: boolean }, ctx: Context) => {
       requireAuth(ctx);
       const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
       const cfg = jiraCfgForBoard(squad?.defaultBoardId);
       if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
       if (!cfg.boardId) return []; // active-sprint lookup needs a board id
-      return fetchActiveSprintIssues(cfg);
+      return fetchActiveSprintIssues(cfg, { force: !!refresh });
     },
 
     jiraActiveSprint: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {
@@ -302,11 +303,16 @@ export const resolvers = {
 
   Mutation: {
     login: async (_p: unknown, { email, password }: { email: string; password: string }, ctx: Context) => {
-      const user = await ctx.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-      if (!user) throw new Error("Invalid email or password");
-      const ok = await verifyPassword(password, user.passwordHash);
-      if (!ok) throw new Error("Invalid email or password");
-      return { token: signToken({ userId: user.id, email: user.email, name: user.name }), user };
+      const key = email.toLowerCase().trim();
+      assertNotLocked(key); // brute-force throttle
+      const user = await ctx.prisma.user.findUnique({ where: { email: key } });
+      const ok = user ? await verifyPassword(password, user.passwordHash) : false;
+      if (!ok) {
+        recordFailure(key);
+        throw new Error("Invalid email or password");
+      }
+      recordSuccess(key);
+      return { token: signToken({ userId: user!.id, email: user!.email, name: user!.name }), user };
     },
 
     guestLogin: (_p: unknown, { name }: { name: string }, _ctx: Context) => {
@@ -421,7 +427,7 @@ export const resolvers = {
       if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
       if (!cfg.boardId) throw new Error("This squad has no board id — set one in Settings.");
 
-      const info = await fetchActiveSprintInfo(cfg);
+      const info = await fetchActiveSprintInfo(cfg, { force: true });
       if (!info) return null; // no active sprint on the board
 
       const number = info.number ?? info.id;

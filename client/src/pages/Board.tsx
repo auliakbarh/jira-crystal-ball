@@ -7,7 +7,7 @@ import { statusColor, priorityColor, issueTypeRank, hiddenByDefaultStatus as hid
 export default function Board() {
   const { squadId } = useSquad();
   const { data, loading, error, refetch } = useQuery(ACTIVE_SPRINT_TICKETS, {
-    variables: { squadId },
+    variables: { squadId, refresh: false },
     skip: !squadId,
     fetchPolicy: "cache-and-network",
   });
@@ -66,7 +66,7 @@ export default function Board() {
           <h1 className="text-lg font-bold">Board — Active Sprint Tickets</h1>
           <p className="text-sm text-gray-500">All tickets in the board's currently active sprint, live from JIRA.</p>
         </div>
-        <button className="btn-ghost" onClick={() => refetch()} disabled={loading}>
+        <button className="btn-ghost" onClick={() => refetch({ squadId, refresh: true })} disabled={loading}>
           {loading ? "Loading…" : "↻ Refresh"}
         </button>
       </div>

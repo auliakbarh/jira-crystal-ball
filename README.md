@@ -51,3 +51,4 @@ JIRA connection, add members and sprints, then go to **Current Sprint** to run s
 - [Usage Guide](docs/USAGE.md) — how to run a standup day to day
 - [Deployment Guide](docs/DEPLOYMENT.md) — production deploy options
 - [Session Summary](docs/SUMMARY.md) — what was built in this session
+- [Improvement Roadmap](docs/IMPROVEMENTS.md) — done + planned enhancements

@@ -45,6 +45,31 @@ function jiraHeaders(cfg: JiraConfigLike) {
   };
 }
 
+// --- Simple in-memory response cache (short TTL) -------------------------
+// Cuts repeated JIRA calls on the dashboard/board and reduces rate-limit risk.
+// Pass { force: true } to bypass (e.g. the Board "Refresh" button).
+const JIRA_CACHE_TTL_MS = 60_000;
+const jiraCache = new Map<string, { at: number; data: unknown }>();
+
+function cacheKey(kind: string, cfg: JiraConfigLike): string {
+  return `${kind}:${normalizeBaseUrl(cfg.baseUrl)}:${cfg.boardId}:${cfg.jql ?? ""}`;
+}
+
+async function cached<T>(kind: string, cfg: JiraConfigLike, force: boolean, run: () => Promise<T>): Promise<T> {
+  const key = cacheKey(kind, cfg);
+  if (!force) {
+    const hit = jiraCache.get(key);
+    if (hit && Date.now() - hit.at < JIRA_CACHE_TTL_MS) return hit.data as T;
+  }
+  const data = await run();
+  jiraCache.set(key, { at: Date.now(), data });
+  return data;
+}
+
+export interface JiraFetchOpts {
+  force?: boolean;
+}
+
 /**
  * Resolve the numeric agile board id. The Board ID field accepts either the
  * numeric id (used directly) or a project key like "ATH" (looked up to the
@@ -105,7 +130,11 @@ function mapIssue(base: string, issue: any): JiraTicket {
  * Fetch issues for a board. When a JQL override is present the standard
  * search endpoint is used; otherwise the agile board issues endpoint.
  */
-export async function fetchBoardIssues(cfg: JiraConfigLike): Promise<JiraTicket[]> {
+export function fetchBoardIssues(cfg: JiraConfigLike, opts: JiraFetchOpts = {}): Promise<JiraTicket[]> {
+  return cached("board", cfg, !!opts.force, () => _fetchBoardIssues(cfg));
+}
+
+async function _fetchBoardIssues(cfg: JiraConfigLike): Promise<JiraTicket[]> {
   const base = normalizeBaseUrl(cfg.baseUrl);
   const headers = jiraHeaders(cfg);
 
@@ -140,7 +169,11 @@ export async function fetchBoardIssues(cfg: JiraConfigLike): Promise<JiraTicket[
  * board-scoped, so it won't leak other projects' sprints the way a bare
  * `sprint in openSprints()` JQL would.
  */
-export async function fetchActiveSprintIssues(cfg: JiraConfigLike): Promise<JiraTicket[]> {
+export function fetchActiveSprintIssues(cfg: JiraConfigLike, opts: JiraFetchOpts = {}): Promise<JiraTicket[]> {
+  return cached("activeIssues", cfg, !!opts.force, () => _fetchActiveSprintIssues(cfg));
+}
+
+async function _fetchActiveSprintIssues(cfg: JiraConfigLike): Promise<JiraTicket[]> {
   const base = normalizeBaseUrl(cfg.baseUrl);
   const headers = jiraHeaders(cfg);
   const boardId = await resolveBoardId(cfg, base);
@@ -203,7 +236,11 @@ function isoToDate(s?: string | null): string | null {
 }
 
 /** First active sprint on the board, or null (e.g. Kanban / none active). */
-export async function fetchActiveSprintInfo(cfg: JiraConfigLike): Promise<JiraSprintInfo | null> {
+export function fetchActiveSprintInfo(cfg: JiraConfigLike, opts: JiraFetchOpts = {}): Promise<JiraSprintInfo | null> {
+  return cached("activeInfo", cfg, !!opts.force, () => _fetchActiveSprintInfo(cfg));
+}
+
+async function _fetchActiveSprintInfo(cfg: JiraConfigLike): Promise<JiraSprintInfo | null> {
   const base = normalizeBaseUrl(cfg.baseUrl);
   const headers = jiraHeaders(cfg);
   const boardId = await resolveBoardId(cfg, base);
