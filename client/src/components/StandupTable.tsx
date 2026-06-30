@@ -32,9 +32,9 @@ export default function StandupTable({
   const members = squadData?.squad?.members ?? [];
   const namesFor = (positions: string[]) =>
     members.filter((m: any) => positions.includes(m.position)).map((m: any) => m.name);
-  const feNames = namesFor(["FE"]);
-  const beNames = namesFor(["BE"]);
-  const qaNames = namesFor(["QA"]);
+  const feNames = namesFor(["FE", "FULLSTACK", "ALL"]);
+  const beNames = namesFor(["BE", "FULLSTACK", "ALL"]);
+  const qaNames = namesFor(["QA", "ALL"]);
   const allNames = members.map((m: any) => m.name);
 
   // Status filter — Done/Archived hidden by default.

@@ -6,6 +6,8 @@ export const typeDefs = /* GraphQL */ `
     BE
     QA
     PM
+    FULLSTACK
+    ALL
   }
 
   enum LeaveType {

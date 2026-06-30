@@ -34,7 +34,7 @@ jira-crystal-ball/
 | --- | --- | --- |
 | `User` | email (unique), name, passwordHash, isAdmin | login credentials |
 | `Squad` | name (unique), defaultBoardId?, spFieldDefault/FE/BE/QA? | tenant boundary; board id + per-role Story-Point field config (id or name) |
-| `TeamMember` | name, position `FE\|BE\|QA\|PM`, jiraAccountId? | belongs to squad |
+| `TeamMember` | name, position `FE\|BE\|QA\|PM\|FULLSTACK\|ALL`, jiraAccountId? | belongs to squad; `FULLSTACK` = assignable to FE+BE, `ALL` = assignable to FE+BE+QA |
 | `Leave` | type `CUTI\|SAKIT\|IZIN`, startDate, endDate, substituteId?, note? | member ↔ substitute (both TeamMember) |
 | `Holiday` | date, name | unique per (squad, date) |
 | `Sprint` | number, name?, startDate, endDate, confluencePageId/Url/ExportedAt? | unique per (squad, number); Confluence export marker |
@@ -245,7 +245,8 @@ passes. Env: `CONFLUENCE_BASE_URL` (blank → JIRA), `CONFLUENCE_SPACE_KEY`,
 - The standup table can **group rows by Epic or Parent/Story** and shows each ticket's
   **priority** chip (`JiraTicket.priority/epicKey/epicName/parentKey/parentType/issueType`,
   fetched from JIRA). Assignee inputs (FE/BE/QA) offer **datalist suggestions** from the
-  squad's members of that role.
+  squad's members of that role. `FULLSTACK` members appear in FE+BE suggestions, `ALL`
+  members in FE+BE+QA.
 - The Current Sprint screen also shows a **Standup Lead rotation** (`computeLeadSchedule`:
   one member per working day; **Cuti** excludes a member, **Sakit/Izin** is covered by the
   leave's substitute or next available member while the skipped member leads the next

@@ -58,8 +58,9 @@ a popup telling you which env vars to set.
 
 ## 4. Set up the team (Settings)
 
-- **Team Members** — add each person with a position (FE/BE/QA/PM). Optionally record
-  their JIRA account id.
+- **Team Members** — add each person with a position (FE/BE/QA/PM/FULLSTACK/ALL).
+  `FULLSTACK` can be assigned as FE or BE; `ALL` can be assigned as FE, BE or QA.
+  Optionally record their JIRA account id.
 - **Leave / cuti** — under each member, add a leave with start/end dates, an optional
   **substitute**, and a note. Members on leave *today* are flagged on the dashboard with
   their date range and cover.
@@ -91,7 +92,8 @@ Tickets that also appear in an earlier sprint of the squad show a **↪ carry-ov
 **Progress** can be set with the slider **or** typed directly in the number box (0–100).
 
 Rows can be **grouped by Epic or Parent/Story**, each ticket shows its **priority**, and
-the FE/BE/QA boxes **suggest** squad members of that role (still free text).
+the FE/BE/QA boxes **suggest** squad members of that role (still free text) — `FULLSTACK`
+members show in FE+BE boxes, `ALL` members in FE+BE+QA.
 
 The left column also shows the **Standup Lead** rotation (a different member leads each
 working day). On **Cuti** a member is excluded for those days (turn passes on). On

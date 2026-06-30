@@ -134,6 +134,8 @@ export const POSITION_COLORS: Record<string, string> = {
   BE: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
   QA: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
   PM: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+  FULLSTACK: "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300",
+  ALL: "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300",
 };
 
 // Ticket statuses hidden by default in status filters (done / archived).

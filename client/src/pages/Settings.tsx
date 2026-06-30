@@ -23,7 +23,7 @@ import {
 import { POSITION_COLORS, LEAVE_TYPES, LEAVE_LABELS } from "../lib/helpers";
 import JiraConfigForm from "../components/JiraConfigForm";
 
-const POSITIONS = ["FE", "BE", "QA", "PM"] as const;
+const POSITIONS = ["FE", "BE", "QA", "PM", "FULLSTACK", "ALL"] as const;
 
 export default function Settings() {
   const { squadId, setSquadId } = useSquad();
