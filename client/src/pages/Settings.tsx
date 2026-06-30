@@ -7,6 +7,7 @@ import {
   SQUADS,
   CREATE_SQUAD,
   UPDATE_SQUAD,
+  JIRA_FIELDS,
   DELETE_SQUAD,
   RESET_DATABASE,
   ADD_MEMBER,
@@ -196,11 +197,32 @@ function SquadRow({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(squad.name);
   const [boardId, setBoardId] = useState(squad.defaultBoardId ?? "");
+  const [spDefault, setSpDefault] = useState(squad.spFieldDefault ?? "");
+  const [spFE, setSpFE] = useState(squad.spFieldFE ?? "");
+  const [spBE, setSpBE] = useState(squad.spFieldBE ?? "");
+  const [spQA, setSpQA] = useState(squad.spFieldQA ?? "");
   const [update, { loading }] = useMutation(UPDATE_SQUAD);
+
+  // Lazy-load the board's JIRA fields (id + name) when editing, to help pick SP fields.
+  const { data: fieldsData, loading: fieldsLoading } = useQuery(JIRA_FIELDS, {
+    variables: { squadId: squad.id },
+    skip: !editing,
+  });
+  const fields = fieldsData?.jiraFields ?? [];
 
   const save = async () => {
     if (!name.trim()) return;
-    await update({ variables: { id: squad.id, name: name.trim(), defaultBoardId: boardId } });
+    await update({
+      variables: {
+        id: squad.id,
+        name: name.trim(),
+        defaultBoardId: boardId,
+        spFieldDefault: spDefault,
+        spFieldFE: spFE,
+        spFieldBE: spBE,
+        spFieldQA: spQA,
+      },
+    });
     setEditing(false);
     onSaved();
   };
@@ -218,22 +240,63 @@ function SquadRow({
   );
 
   if (editing) {
+    const listId = `jcb-fields-${squad.id}`;
+    const spInput = (label: string, val: string, set: (v: string) => void) => (
+      <div>
+        <label className="label">{label}</label>
+        <input
+          className="input max-w-[220px]"
+          list={listId}
+          placeholder="field id or name"
+          value={val}
+          onChange={(e) => set(e.target.value)}
+        />
+      </div>
+    );
     return (
-      <li className="flex flex-wrap items-end gap-2 rounded-lg border border-brand/40 px-3 py-2 text-sm">
-        <div>
-          <label className="label">Name</label>
-          <input className="input max-w-[200px]" value={name} onChange={(e) => setName(e.target.value)} />
+      <li className="space-y-2 rounded-lg border border-brand/40 px-3 py-2 text-sm">
+        <datalist id={listId}>
+          {fields.map((f: any) => (
+            <option key={f.id} value={f.id}>
+              {f.name} ({f.id})
+            </option>
+          ))}
+        </datalist>
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="label">Name</label>
+            <input className="input max-w-[200px]" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Board ID (optional)</label>
+            <input className="input max-w-[160px]" placeholder="e.g. ATH or 123" value={boardId} onChange={(e) => setBoardId(e.target.value)} />
+          </div>
         </div>
-        <div>
-          <label className="label">Board ID (optional)</label>
-          <input
-            className="input max-w-[160px]"
-            placeholder="e.g. ATH or 123"
-            value={boardId}
-            onChange={(e) => setBoardId(e.target.value)}
-          />
+        <div className="text-xs text-gray-500">
+          Story Points field — id (e.g. <code>customfield_10033</code>) or exact field name (e.g. "Story Points QA").
+          {fieldsLoading ? " Loading board fields…" : ` ${fields.length} fields available (see suggestions).`}
         </div>
-        <div className="ml-auto flex gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          {spInput("SP default", spDefault, setSpDefault)}
+          {spInput("SP FE", spFE, setSpFE)}
+          {spInput("SP BE", spBE, setSpBE)}
+          {spInput("SP QA", spQA, setSpQA)}
+        </div>
+        {/* Quick reference: list of fields with ids (filterable by browser datalist above) */}
+        {fields.length > 0 && (
+          <details className="text-xs text-gray-500">
+            <summary className="cursor-pointer">Board fields (name → id)</summary>
+            <div className="mt-1 max-h-40 overflow-y-auto">
+              {fields.map((f: any) => (
+                <div key={f.id} className="flex justify-between gap-2 border-b border-gray-100 py-0.5 dark:border-gray-800">
+                  <span>{f.name}</span>
+                  <code className="text-gray-400">{f.id}</code>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+        <div className="flex justify-end gap-2">
           <button className="btn-ghost text-xs" onClick={() => setEditing(false)}>
             Cancel
           </button>

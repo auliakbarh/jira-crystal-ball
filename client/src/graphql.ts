@@ -59,6 +59,10 @@ export const SQUADS = gql`
       id
       name
       defaultBoardId
+      spFieldDefault
+      spFieldFE
+      spFieldBE
+      spFieldQA
       jiraConfigured
     }
   }
@@ -125,11 +129,40 @@ export const CREATE_SQUAD = gql`
 `;
 
 export const UPDATE_SQUAD = gql`
-  mutation UpdateSquad($id: ID!, $name: String, $defaultBoardId: String) {
-    updateSquad(id: $id, name: $name, defaultBoardId: $defaultBoardId) {
+  mutation UpdateSquad(
+    $id: ID!
+    $name: String
+    $defaultBoardId: String
+    $spFieldDefault: String
+    $spFieldFE: String
+    $spFieldBE: String
+    $spFieldQA: String
+  ) {
+    updateSquad(
+      id: $id
+      name: $name
+      defaultBoardId: $defaultBoardId
+      spFieldDefault: $spFieldDefault
+      spFieldFE: $spFieldFE
+      spFieldBE: $spFieldBE
+      spFieldQA: $spFieldQA
+    ) {
       id
       name
       defaultBoardId
+      spFieldDefault
+      spFieldFE
+      spFieldBE
+      spFieldQA
+    }
+  }
+`;
+
+export const JIRA_FIELDS = gql`
+  query JiraFields($squadId: ID!) {
+    jiraFields(squadId: $squadId) {
+      id
+      name
     }
   }
 `;
@@ -155,6 +188,10 @@ export const ACTIVE_SPRINT_TICKETS = gql`
       parentKey
       parentName
       parentType
+      storyPoints
+      storyPointsFE
+      storyPointsBE
+      storyPointsQA
       carryOver
       carryOverCount
       carryOverSprints
@@ -177,6 +214,8 @@ export const CURRENT_SPRINT = gql`
       name
       startDate
       endDate
+      confluenceUrl
+      confluenceExportedAt
     }
   }
 `;
@@ -222,6 +261,10 @@ export const DASHBOARD = gql`
         parentKey
         parentName
         parentType
+        storyPoints
+        storyPointsFE
+        storyPointsBE
+        storyPointsQA
         carryOver
         carryOverCount
         carryOverSprints
@@ -256,6 +299,7 @@ export const STANDUP_ENTRIES = gql`
       ticketSummary
       ticketAssignee
       issueType
+      storyPoints
       epicKey
       epicName
       parentKey
@@ -280,6 +324,27 @@ export const ACTIVE_STANDUP = gql`
       active
       isMine
       startedAt
+    }
+  }
+`;
+
+export const EXPORT_CONFLUENCE = gql`
+  mutation ExportConfluence($sprintId: ID!) {
+    exportSprintToConfluence(sprintId: $sprintId) {
+      url
+      title
+    }
+  }
+`;
+
+export const EXPORT_HISTORY = gql`
+  query ExportHistory($sprintId: ID!) {
+    exportHistory(sprintId: $sprintId) {
+      id
+      url
+      action
+      actor
+      createdAt
     }
   }
 `;

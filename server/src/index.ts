@@ -12,6 +12,7 @@ import { resolvers } from "./resolvers.js";
 import { buildContext, contextFromAuthHeader } from "./context.js";
 import { env } from "./env.js";
 import { prisma } from "./db.js";
+import { startScheduler } from "./scheduler.js";
 
 const schema = makeExecutableSchema({ typeDefs, resolvers });
 
@@ -67,4 +68,5 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => void shu
 httpServer.listen(env.port, () => {
   console.log(`🔮 JIRA Crystal Ball GraphQL ready at http://localhost:${env.port}/graphql`);
   console.log(`   Subscriptions (WebSocket) at ws://localhost:${env.port}/graphql`);
+  startScheduler();
 });

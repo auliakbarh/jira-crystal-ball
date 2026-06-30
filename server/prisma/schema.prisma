@@ -28,6 +28,11 @@ model Squad {
   name           String   @unique
   // Non-secret default board id / project key, used to pre-fill the JIRA form.
   defaultBoardId String?
+  // Story Points fields (custom field id OR field name). Per role + default.
+  spFieldDefault String?
+  spFieldFE      String?
+  spFieldBE      String?
+  spFieldQA      String?
   createdAt      DateTime @default(now())
 
   members  TeamMember[]
@@ -47,6 +52,20 @@ model StandupSession {
   leadKey   String
   lastSeen  DateTime @default(now())
   createdAt DateTime @default(now())
+}
+
+// History of Confluence exports per sprint (each create/update keeps a link).
+model ExportLog {
+  id        String   @id @default(cuid())
+  sprintId  String
+  squadId   String
+  pageId    String
+  url       String
+  action    String // "create" | "update"
+  actor     String?
+  createdAt DateTime @default(now())
+
+  @@index([sprintId, createdAt])
 }
 
 // Completed standup sessions — duration log per squad/board.
@@ -143,6 +162,11 @@ model Sprint {
   endDate   DateTime @db.Date
   createdAt DateTime @default(now())
 
+  // Confluence export marker (set once a report page exists; reused to update it).
+  confluencePageId     String?
+  confluenceUrl        String?
+  confluenceExportedAt DateTime?
+
   entries  StandupEntry[]
   blockers Blocker[]
 
@@ -163,6 +187,7 @@ model StandupEntry {
   ticketSummary String?
   ticketAssignee String?
   issueType   String?
+  storyPoints Float?
   // Snapshot of grouping info so past sprints can group by epic/parent.
   epicKey     String?
   epicName    String?

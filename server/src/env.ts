@@ -18,6 +18,14 @@ export const env = {
     apiToken: process.env.JIRA_API_TOKEN ?? "",
     defaultBoardId: process.env.JIRA_DEFAULT_BOARD_ID ?? "",
     jql: process.env.JIRA_JQL ?? "",
+    // Story Points custom field id (varies per JIRA site; Cloud default below).
+    storyPointsField: process.env.JIRA_STORY_POINTS_FIELD ?? "customfield_10016",
+  },
+  // Confluence export (same Atlassian site/credentials as JIRA by default).
+  confluence: {
+    baseUrl: process.env.CONFLUENCE_BASE_URL ?? process.env.JIRA_BASE_URL ?? "",
+    spaceKey: process.env.CONFLUENCE_SPACE_KEY ?? "MYHERO",
+    parentId: process.env.CONFLUENCE_PARENT_ID ?? "1119092737",
   },
 };
 

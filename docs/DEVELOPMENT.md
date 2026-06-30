@@ -64,6 +64,7 @@ Defaults work out of the box for local dev. Edit `server/.env` only if needed:
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | `admin@example.com` / `admin123` | seeded login |
 | `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | empty | global JIRA creds; set to pull tickets |
 | `JIRA_DEFAULT_BOARD_ID` / `JIRA_JQL` | empty | optional fallback board id / JQL |
+| `CONFLUENCE_BASE_URL` / `CONFLUENCE_SPACE_KEY` / `CONFLUENCE_PARENT_ID` | blank / `MYHERO` / `1119092737` | export target (see DEPLOYMENT → "Finding the JIRA / Confluence env values") |
 
 `client/.env` → `VITE_GRAPHQL_URL=http://localhost:4000/` (the GraphQL endpoint).
 

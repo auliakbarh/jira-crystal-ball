@@ -25,8 +25,10 @@ box and click **+**. Everything below (JIRA config, members, sprints, holidays) 
 per-squad.
 
 You can also manage teams in **Settings → Squads / Teams**: add a squad and **Switch** to
-it. **Admins** can additionally **Edit** each squad's **name** and **board id**, or
-**Delete** it (cascades — members, leaves, holidays, sprints, standup entries and blockers
+it. **Admins** can additionally **Edit** each squad's **name**, **board id**, and its
+**Story Points fields** (default + FE/BE/QA — accepts a field id like
+`customfield_10033` or an exact field name; the editor lists every board field with its id
+to pick from, and shows a "name → id" reference), or **Delete** it (cascades — members, leaves, holidays, sprints, standup entries and blockers
 are all removed; asks for confirmation).
 
 ## 3. Configure JIRA
@@ -147,6 +149,16 @@ sits on top:
 
 Carry-over counts **everything except Done** (In QA, In Progress, To Do) as rolling into
 the next sprint.
+
+Use **Export CSV** to download the entries, or **Export to Confluence** to publish a
+formatted report page (space `MYHERO`, under the configured parent) — it opens the page in
+a new tab. Confluence reuses the server's JIRA Atlassian credentials.
+
+Once a sprint has been exported it shows a **✓ on Confluence** badge; the button becomes
+**Update Confluence page** and re-exporting **overwrites the same page** (no duplicates).
+Every export is listed in the **Confluence export history** section (create/update, who,
+when, link). The server also **auto-exports** a sprint to Confluence shortly after its end
+date passes (if Confluence is configured).
 
 Tickets can be **grouped by Epic or Parent/Story**, and each ticket key **links to JIRA**.
 Each ticket shows a card with:

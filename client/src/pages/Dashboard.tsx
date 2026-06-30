@@ -319,7 +319,7 @@ export default function Dashboard() {
             sprint={sprint}
             currentDate={date}
           />
-          <TeamPanel squadId={squadId} />
+          <TeamPanel squadId={squadId} sprintId={sprint?.id} />
           <BlockersPanel squadId={squadId} sprintId={sprint?.id} />
           <ActivityPanel squadId={squadId} />
           <StandupDurationLog squadId={squadId} />

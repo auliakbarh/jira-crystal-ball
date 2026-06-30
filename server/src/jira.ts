@@ -1,5 +1,6 @@
 // Minimal JIRA Cloud REST client. Uses Basic auth (email:apiToken).
 // Fetches issues from an Agile board, optionally filtered by JQL.
+import { env } from "./env.js";
 
 export interface JiraTicket {
   key: string;
@@ -15,9 +16,20 @@ export interface JiraTicket {
   parentKey: string | null;
   parentName: string | null;
   parentType: string | null;
+  storyPoints: number | null;
+  storyPointsFE: number | null;
+  storyPointsBE: number | null;
+  storyPointsQA: number | null;
   carryOver: boolean; // issue was in at least one earlier (closed) sprint
   carryOverCount: number; // how many completed sprints it has rolled through
   carryOverSprints: string[]; // names of those completed sprints
+}
+
+interface SpFields {
+  default?: string | null;
+  fe?: string | null;
+  be?: string | null;
+  qa?: string | null;
 }
 
 interface JiraConfigLike {
@@ -26,6 +38,7 @@ interface JiraConfigLike {
   apiToken: string;
   boardId: string;
   jql?: string | null;
+  spFields?: SpFields;
 }
 
 function authHeader(cfg: JiraConfigLike): string {
@@ -45,6 +58,43 @@ function jiraHeaders(cfg: JiraConfigLike) {
   };
 }
 
+// --- Story-point field resolution (accepts a custom field id OR a name) --
+const fieldMapCache = new Map<string, Map<string, string>>(); // base → (name.toLowerCase() → id)
+
+async function fieldNameToId(cfg: JiraConfigLike): Promise<Map<string, string>> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const cached = fieldMapCache.get(base);
+  if (cached) return cached;
+  const m = new Map<string, string>();
+  try {
+    const res = await fetch(`${base}/rest/api/3/field`, { headers: jiraHeaders(cfg) });
+    if (res.ok) {
+      const arr: any[] = await res.json();
+      // First occurrence wins so duplicate names resolve deterministically.
+      for (const f of arr) {
+        const key = String(f?.name ?? "").toLowerCase();
+        if (f?.name && f?.id && !m.has(key)) m.set(key, String(f.id));
+      }
+    }
+  } catch {
+    /* leave empty → names won't resolve, ids still work */
+  }
+  fieldMapCache.set(base, m);
+  return m;
+}
+
+// Resolve a config value (custom field id like "customfield_10033" OR a field
+// name like "Story Points QA") to its custom field id, or null.
+async function resolveSpId(cfg: JiraConfigLike, value?: string | null): Promise<string | null> {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  if (/^customfield_\d+$/i.test(v)) return v;
+  const map = await fieldNameToId(cfg);
+  return map.get(v.toLowerCase()) ?? null;
+}
+
+const numOrNull = (x: unknown): number | null => (typeof x === "number" ? x : null);
+
 // --- Simple in-memory response cache (short TTL) -------------------------
 // Cuts repeated JIRA calls on the dashboard/board and reduces rate-limit risk.
 // Pass { force: true } to bypass (e.g. the Board "Refresh" button).
@@ -52,7 +102,8 @@ const JIRA_CACHE_TTL_MS = 60_000;
 const jiraCache = new Map<string, { at: number; data: unknown }>();
 
 function cacheKey(kind: string, cfg: JiraConfigLike): string {
-  return `${kind}:${normalizeBaseUrl(cfg.baseUrl)}:${cfg.boardId}:${cfg.jql ?? ""}`;
+  const sp = cfg.spFields ? `${cfg.spFields.default}|${cfg.spFields.fe}|${cfg.spFields.be}|${cfg.spFields.qa}` : "";
+  return `${kind}:${normalizeBaseUrl(cfg.baseUrl)}:${cfg.boardId}:${cfg.jql ?? ""}:${sp}`;
 }
 
 async function cached<T>(kind: string, cfg: JiraConfigLike, force: boolean, run: () => Promise<T>): Promise<T> {
@@ -96,8 +147,16 @@ async function resolveBoardId(cfg: JiraConfigLike, base: string): Promise<string
   return String(boards[0].id);
 }
 
-function mapIssue(base: string, issue: any): JiraTicket {
+interface SpIds {
+  default: string | null;
+  fe: string | null;
+  be: string | null;
+  qa: string | null;
+}
+
+function mapIssue(base: string, issue: any, spIds?: SpIds): JiraTicket {
   const f = issue.fields ?? {};
+  const spRead = (id: string | null) => (id ? numOrNull(f[id]) : null);
   const parent = f.parent;
   const parentType = parent?.fields?.issuetype?.name ?? null;
   // Epic: the agile API exposes `fields.epic` on company-managed boards; on
@@ -118,6 +177,10 @@ function mapIssue(base: string, issue: any): JiraTicket {
     parentKey: parent?.key ?? null,
     parentName: parent?.fields?.summary ?? null,
     parentType,
+    storyPoints: spRead(spIds?.default ?? null),
+    storyPointsFE: spRead(spIds?.fe ?? null),
+    storyPointsBE: spRead(spIds?.be ?? null),
+    storyPointsQA: spRead(spIds?.qa ?? null),
     carryOver: Array.isArray(f.closedSprints) && f.closedSprints.length > 0,
     carryOverCount: Array.isArray(f.closedSprints) ? f.closedSprints.length : 0,
     carryOverSprints: Array.isArray(f.closedSprints)
@@ -134,11 +197,27 @@ export function fetchBoardIssues(cfg: JiraConfigLike, opts: JiraFetchOpts = {}):
   return cached("board", cfg, !!opts.force, () => _fetchBoardIssues(cfg));
 }
 
+async function resolveSpIds(cfg: JiraConfigLike): Promise<SpIds> {
+  const s = cfg.spFields ?? {};
+  const [def, fe, be, qa] = await Promise.all([
+    resolveSpId(cfg, s.default),
+    resolveSpId(cfg, s.fe),
+    resolveSpId(cfg, s.be),
+    resolveSpId(cfg, s.qa),
+  ]);
+  return { default: def, fe, be, qa };
+}
+
+function spFieldsParam(ids: SpIds): string {
+  return [ids.default, ids.fe, ids.be, ids.qa].filter(Boolean).join(",");
+}
+
 async function _fetchBoardIssues(cfg: JiraConfigLike): Promise<JiraTicket[]> {
   const base = normalizeBaseUrl(cfg.baseUrl);
   const headers = jiraHeaders(cfg);
+  const spIds = await resolveSpIds(cfg);
 
-  const fields = "summary,status,assignee,issuetype,parent,epic,priority,closedSprints";
+  const fields = `summary,status,assignee,issuetype,parent,epic,priority,closedSprints${spFieldsParam(spIds) ? "," + spFieldsParam(spIds) : ""}`;
   let url: string;
   if (cfg.jql && cfg.jql.trim()) {
     const params = new URLSearchParams({
@@ -160,7 +239,7 @@ async function _fetchBoardIssues(cfg: JiraConfigLike): Promise<JiraTicket[]> {
   }
   const data: any = await res.json();
   const issues: any[] = data.issues ?? [];
-  return issues.map((i) => mapIssue(base, i));
+  return issues.map((i) => mapIssue(base, i, spIds));
 }
 
 /**
@@ -177,6 +256,7 @@ async function _fetchActiveSprintIssues(cfg: JiraConfigLike): Promise<JiraTicket
   const base = normalizeBaseUrl(cfg.baseUrl);
   const headers = jiraHeaders(cfg);
   const boardId = await resolveBoardId(cfg, base);
+  const spIds = await resolveSpIds(cfg);
 
   // 1. Active sprints on this board.
   const sprintRes = await fetch(
@@ -192,7 +272,7 @@ async function _fetchActiveSprintIssues(cfg: JiraConfigLike): Promise<JiraTicket
   if (sprintIds.length === 0) return [];
 
   // 2. Issues for each active sprint, paginated so large sprints aren't truncated.
-  const fields = "summary,status,assignee,issuetype,parent,epic,priority,closedSprints";
+  const fields = `summary,status,assignee,issuetype,parent,epic,priority,closedSprints${spFieldsParam(spIds) ? "," + spFieldsParam(spIds) : ""}`;
   const all: JiraTicket[] = [];
   const seen = new Set<string>();
   for (const sid of sprintIds) {
@@ -213,7 +293,7 @@ async function _fetchActiveSprintIssues(cfg: JiraConfigLike): Promise<JiraTicket
       for (const issue of issues) {
         if (seen.has(issue.key)) continue;
         seen.add(issue.key);
-        all.push(mapIssue(base, issue));
+        all.push(mapIssue(base, issue, spIds));
       }
       startAt += issues.length;
       const total = typeof data.total === "number" ? data.total : startAt;
@@ -265,6 +345,25 @@ async function _fetchActiveSprintInfo(cfg: JiraConfigLike): Promise<JiraSprintIn
     startDate: isoToDate(sprint.startDate),
     endDate: isoToDate(sprint.endDate),
   };
+}
+
+export interface JiraField {
+  id: string;
+  name: string;
+}
+
+/** List all JIRA fields (id + name) — used by admin UI to pick the SP field. */
+export async function listFields(cfg: JiraConfigLike): Promise<JiraField[]> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const res = await fetch(`${base}/rest/api/3/field`, { headers: jiraHeaders(cfg) });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA field list failed (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const arr: any[] = await res.json();
+  return arr
+    .map((f) => ({ id: String(f.id), name: String(f.name ?? f.id) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Verify connection by hitting /myself. Returns display name on success. */

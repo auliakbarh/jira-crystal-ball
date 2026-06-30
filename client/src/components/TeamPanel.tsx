@@ -1,18 +1,49 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
-import { SQUAD, ADD_LEAVE, DELETE_LEAVE } from "../graphql";
+import { SQUAD, ADD_LEAVE, DELETE_LEAVE, ACTIVE_SPRINT_TICKETS, STANDUP_ENTRIES } from "../graphql";
 import { POSITION_COLORS, LEAVE_TYPES, LEAVE_LABELS, isOnLeave, todayISO } from "../lib/helpers";
 import { SkeletonLines } from "./Skeleton";
 
-export default function TeamPanel({ squadId }: { squadId: string }) {
+export default function TeamPanel({ squadId, sprintId }: { squadId: string; sprintId?: string }) {
   const { data, loading, refetch } = useQuery(SQUAD, { variables: { id: squadId } });
   const today = todayISO();
   const members = data?.squad?.members ?? [];
   const [editing, setEditing] = useState<string | null>(null);
 
+  // Story points per member: role SP (FE/BE/QA) from the board ticket, attributed
+  // to the latest standup assignee of that role on each ticket (fallback default).
+  const { data: boardData } = useQuery(ACTIVE_SPRINT_TICKETS, {
+    variables: { squadId, refresh: false },
+    skip: !squadId,
+  });
+  const { data: entryData } = useQuery(STANDUP_ENTRIES, { variables: { sprintId }, skip: !sprintId });
+  const spByMember = useMemo(() => {
+    const num = (x: any) => (typeof x === "number" ? x : 0);
+    const latestRoles = new Map<string, any>();
+    for (const e of [...(entryData?.standupEntries ?? [])].sort((a: any, b: any) => a.date.localeCompare(b.date)))
+      latestRoles.set(e.ticketKey, e);
+    const m = new Map<string, number>();
+    const add = (name: string | undefined, pts: number) => {
+      if (name && pts) m.set(name, (m.get(name) ?? 0) + pts);
+    };
+    for (const t of boardData?.activeSprintTickets ?? []) {
+      const r = latestRoles.get(t.key);
+      if (!r) continue;
+      const def = num(t.storyPoints);
+      add(r.feAssignee, t.storyPointsFE != null ? num(t.storyPointsFE) : def);
+      add(r.beAssignee, t.storyPointsBE != null ? num(t.storyPointsBE) : def);
+      add(r.qaAssignee, t.storyPointsQA != null ? num(t.storyPointsQA) : def);
+    }
+    return m;
+  }, [boardData, entryData]);
+  const totalSP = [...spByMember.values()].reduce((s, v) => s + v, 0);
+
   return (
     <div className="card">
-      <h2 className="mb-3 text-base font-bold">Team Members</h2>
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="text-base font-bold">Team Members</h2>
+        {totalSP > 0 && <span className="text-xs text-gray-500">{totalSP} SP total</span>}
+      </div>
       {loading && members.length === 0 && <SkeletonLines rows={4} />}
       {!loading && members.length === 0 && (
         <p className="text-sm text-gray-500">No members yet. Add them in Settings.</p>
@@ -28,6 +59,11 @@ export default function TeamPanel({ squadId }: { squadId: string }) {
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`chip ${POSITION_COLORS[m.position]}`}>{m.position}</span>
                 <span className="font-medium">{m.name}</span>
+                {spByMember.get(m.name) ? (
+                  <span className="chip bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    {spByMember.get(m.name)} SP
+                  </span>
+                ) : null}
                 {activeLeave ? (
                   <span className="ml-auto text-right text-xs">
                     <span className="chip bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">

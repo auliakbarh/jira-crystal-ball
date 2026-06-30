@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { useSquad } from "../context/SquadContext";
-import { CURRENT_SPRINT, STANDUP_ENTRIES, SQUAD, JIRA_ENV, BLOCKERS } from "../graphql";
+import { useToast } from "../context/ToastContext";
+import { CURRENT_SPRINT, STANDUP_ENTRIES, SQUAD, JIRA_ENV, BLOCKERS, EXPORT_CONFLUENCE, EXPORT_HISTORY, ACTIVE_SPRINT_TICKETS } from "../graphql";
 import { statusColor, statusBucket, dayBreakdown, issueTypeRank, LEAVE_LABELS, type StatusBucket } from "../lib/helpers";
 import Tooltip from "../components/Tooltip";
 import { toCsv, downloadCsv } from "../lib/csv";
@@ -13,6 +14,7 @@ interface Entry {
   ticketStatus?: string;
   ticketSummary?: string;
   issueType?: string;
+  storyPoints?: number;
   epicKey?: string;
   epicName?: string;
   parentKey?: string;
@@ -32,6 +34,10 @@ interface Ticket {
   summary?: string;
   status?: string;
   issueType?: string;
+  storyPoints?: number;
+  spFE?: number | null;
+  spBE?: number | null;
+  spQA?: number | null;
   epicKey?: string;
   epicName?: string;
   parentKey?: string;
@@ -63,9 +69,57 @@ export default function PreviousSprints() {
   const { data: squadData } = useQuery(SQUAD, { variables: { id: squadId }, skip: !squadId });
   const holidays: { date: string }[] = squadData?.squad?.holidays ?? [];
 
+  // Live board status (active sprint) to sync ticket statuses, which may be stale
+  // in the saved standup entries.
+  const { data: boardData } = useQuery(ACTIVE_SPRINT_TICKETS, {
+    variables: { squadId, refresh: false },
+    skip: !squadId,
+    fetchPolicy: "cache-and-network",
+  });
+  const liveStatus = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of boardData?.activeSprintTickets ?? []) if (t.status) m.set(t.key, t.status);
+    return m;
+  }, [boardData]);
+  const liveSP = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const t of boardData?.activeSprintTickets ?? []) m.set(t.key, t);
+    return m;
+  }, [boardData]);
+
   const { data: envData } = useQuery(JIRA_ENV);
   const jiraBase = (envData?.jiraEnv?.baseUrl ?? "").replace(/\/+$/, "");
   const ticketUrl = (key: string) => (jiraBase ? `${jiraBase}/browse/${key}` : null);
+
+  const toast = useToast();
+  const alreadyExported = !!selected?.confluenceExportedAt;
+  const { data: histData } = useQuery(EXPORT_HISTORY, {
+    variables: { sprintId: effSprintId },
+    skip: !effSprintId,
+    fetchPolicy: "cache-and-network",
+  });
+  const history = histData?.exportHistory ?? [];
+
+  const [exportConfluence, { loading: exporting }] = useMutation(EXPORT_CONFLUENCE, {
+    refetchQueries: [
+      { query: CURRENT_SPRINT, variables: { squadId } },
+      { query: EXPORT_HISTORY, variables: { sprintId: effSprintId } },
+    ],
+  });
+  const doExportConfluence = async () => {
+    try {
+      const res = await exportConfluence({ variables: { sprintId: effSprintId } });
+      const url = res.data?.exportSprintToConfluence?.url;
+      toast.success(alreadyExported ? "Confluence page updated" : "Exported to Confluence");
+      if (url) window.open(url, "_blank");
+    } catch (e: any) {
+      toast.error(
+        e.message?.includes("CONFLUENCE_NOT_CONFIGURED")
+          ? "Confluence not configured on the server."
+          : `Export failed: ${e.message}`,
+      );
+    }
+  };
 
   // Blockers recorded for this sprint, grouped by ticket key.
   const { data: blkData } = useQuery(BLOCKERS, {
@@ -96,6 +150,16 @@ export default function PreviousSprints() {
       t.summary = e.ticketSummary ?? t.summary;
       t.status = e.ticketStatus ?? t.status;
       t.issueType = e.issueType ?? t.issueType;
+      if (e.storyPoints != null) t.storyPoints = e.storyPoints;
+      // Prefer live board status when the ticket is on the active sprint board.
+      if (liveStatus.has(t.key)) t.status = liveStatus.get(t.key);
+      const b = liveSP.get(t.key);
+      if (b) {
+        if (b.storyPoints != null) t.storyPoints = b.storyPoints;
+        t.spFE = b.storyPointsFE;
+        t.spBE = b.storyPointsBE;
+        t.spQA = b.storyPointsQA;
+      }
       t.epicKey = e.epicKey ?? t.epicKey;
       t.epicName = e.epicName ?? t.epicName;
       t.parentKey = e.parentKey ?? t.parentKey;
@@ -109,7 +173,7 @@ export default function PreviousSprints() {
     return Array.from(map.values()).sort(
       (a, b) => issueTypeRank(a.issueType) - issueTypeRank(b.issueType) || a.key.localeCompare(b.key),
     );
-  }, [entries]);
+  }, [entries, liveStatus, liveSP]);
 
   const groups = useMemo(() => {
     if (groupBy === "none") return [{ key: "__all", label: "", tickets }];
@@ -176,6 +240,24 @@ export default function PreviousSprints() {
         >
           ⬇ Export CSV
         </button>
+        <button className="btn-ghost" disabled={!effSprintId || exporting} onClick={doExportConfluence}>
+          {exporting
+            ? "Exporting…"
+            : alreadyExported
+              ? "📄 Update Confluence page"
+              : "📄 Export to Confluence"}
+        </button>
+        {alreadyExported && (
+          <a
+            href={selected.confluenceUrl ?? "#"}
+            target="_blank"
+            rel="noreferrer"
+            className="chip bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
+            title={`Exported ${new Date(selected.confluenceExportedAt).toLocaleString()}`}
+          >
+            ✓ on Confluence
+          </a>
+        )}
       </div>
 
       {sprints.length === 0 && <div className="card text-sm text-gray-500">No sprints yet.</div>}
@@ -187,6 +269,34 @@ export default function PreviousSprints() {
           holidays={holidays}
           members={squadData?.squad?.members ?? []}
         />
+      )}
+
+      {effSprintId && history.length > 0 && (
+        <div className="card">
+          <h2 className="mb-2 text-base font-bold">📄 Confluence export history</h2>
+          <ul className="space-y-1 text-sm">
+            {history.map((h: any) => (
+              <li key={h.id} className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-mono text-xs text-gray-400">
+                  {new Date(h.createdAt).toLocaleString()}
+                </span>
+                <span
+                  className={`chip ${
+                    h.action === "create"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                  }`}
+                >
+                  {h.action}
+                </span>
+                {h.actor && <span className="text-gray-500">{h.actor}</span>}
+                <a href={h.url} target="_blank" rel="noreferrer" className="ml-auto text-brand hover:underline">
+                  open page →
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {effSprintId && tickets.length === 0 && (
@@ -286,6 +396,23 @@ function SprintSummary({
 
   const days = dayBreakdown(sprint.startDate, sprint.endDate, new Set(holidays.map((h) => h.date)));
 
+  // Story points: total, done, and per-member (attributed to each assignee).
+  const spOf = (t: Ticket) => (typeof t.storyPoints === "number" ? t.storyPoints : 0);
+  const totalSP = tickets.reduce((s, t) => s + spOf(t), 0);
+  const doneSP = tickets.filter((t) => statusBucket(t.status) === "Done").reduce((s, t) => s + spOf(t), 0);
+  const numv = (x: any) => (typeof x === "number" ? x : 0);
+  const spByMember = new Map<string, number>();
+  const addSP = (name: string | undefined, pts: number) => {
+    if (!name || !pts) return;
+    spByMember.set(name, (spByMember.get(name) ?? 0) + pts);
+  };
+  for (const t of tickets) {
+    const def = spOf(t);
+    addSP(t.fe, t.spFE != null ? numv(t.spFE) : def);
+    addSP(t.be, t.spBE != null ? numv(t.spBE) : def);
+    addSP(t.qa, t.spQA != null ? numv(t.spQA) : def);
+  }
+
   return (
     <div className="card">
       <h2 className="mb-3 text-base font-bold">📊 Sprint Summary</h2>
@@ -295,6 +422,9 @@ function SprintSummary({
           <div className="label">Performance</div>
           <div className="text-2xl font-bold text-brand">{avgProgress}%</div>
           <div className="text-xs text-gray-500">avg progress · {total} tickets</div>
+          <div className="text-xs text-gray-500">
+            story points: <b>{doneSP}</b> / {totalSP} SP done
+          </div>
           <div className="mt-1 text-xs">
             <span className="font-semibold text-green-600 dark:text-green-400">{done} done</span> ·{" "}
             <span className="font-semibold text-amber-600 dark:text-amber-400">{carryOver} carry-over</span>
@@ -378,6 +508,21 @@ function SprintSummary({
             ))}
           </ul>
         )}
+
+        {spByMember.size > 0 && (
+          <>
+            <div className="label mt-3">Story points per member</div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {[...spByMember.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, pts]) => (
+                  <span key={name} className="chip bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                    {name}: <b className="ml-1">{pts} SP</b>
+                  </span>
+                ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -417,6 +562,9 @@ function TicketCard({
           </span>
         )}
         {ticket.status && <span className={`chip ${statusColor(ticket.status)}`}>{ticket.status}</span>}
+        {ticket.storyPoints != null && (
+          <span className="chip bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200">{ticket.storyPoints} SP</span>
+        )}
         {!!ticket.carryOverCount && (
           <Tooltip content={ticket.carryOverFrom ? `Carry-over from: ${ticket.carryOverFrom}` : "Carry-over"}>
             <span className="chip cursor-help bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">

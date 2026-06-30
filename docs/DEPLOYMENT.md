@@ -19,12 +19,41 @@ Three pieces to deploy:
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | initial admin for `npm run db:seed` |
 | `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | **global** JIRA credentials (all squads) |
 | `JIRA_DEFAULT_BOARD_ID` / `JIRA_JQL` | optional fallback board id / JQL override |
+| `CONFLUENCE_BASE_URL` | Confluence site URL; blank → uses `JIRA_BASE_URL` |
+| `CONFLUENCE_SPACE_KEY` | space the export page is created in (e.g. `MYHERO`) |
+| `CONFLUENCE_PARENT_ID` | parent page/folder id the export nests under |
 
 ### Frontend (`client/.env`)
 
 | Var | Purpose |
 | --- | --- |
 | `VITE_GRAPHQL_URL` | Public URL of the GraphQL server (baked in at build time) |
+
+## Finding the JIRA / Confluence env values
+
+All of these come from your Atlassian Cloud site (`https://<org>.atlassian.net`).
+
+| Var | How to get it |
+| --- | --- |
+| `JIRA_BASE_URL` / `CONFLUENCE_BASE_URL` | Your site URL, e.g. `https://guardianhero.atlassian.net` (no trailing slash). Confluence shares the same host; leave `CONFLUENCE_BASE_URL` blank to reuse it. |
+| `JIRA_EMAIL` | The Atlassian account email the token belongs to. |
+| `JIRA_API_TOKEN` | Create at **id.atlassian.com → Security → API tokens → Create API token**. One token works for both JIRA and Confluence REST. |
+| `JIRA_DEFAULT_BOARD_ID` | Open the board in JIRA; the URL ends `…/boards/<id>` — use that number. A project key (e.g. `ATH`) also works (first board of the project). |
+| `CONFLUENCE_SPACE_KEY` | In Confluence, open the space → **Space settings**, or read it from the URL: `…/wiki/spaces/<KEY>/…` (e.g. `MYHERO`). |
+| `CONFLUENCE_PARENT_ID` | Open the target page/folder in Confluence; the id is the number in the URL: `…/wiki/spaces/MYHERO/folder/<id>/…` or `…/pages/<id>/…`. To confirm via API: `GET {base}/wiki/api/v2/spaces?keys=MYHERO` for the space id. |
+| `JIRA_STORY_POINTS_FIELD` | **Global default** Story Points field id, used when a squad has none. Per-squad fields (default + FE/BE/QA) are set in the admin UI (**Settings → Squads → Edit**), which lists every board field with its id to pick from. A value may be a custom field id (`customfield_10033`) or an exact field name ("Story Points QA") — prefer the **id** when several fields share a name. List fields: `GET /rest/api/3/field`. |
+
+Verify quickly from a shell (Basic auth = `email:token`):
+
+```bash
+# whoami (JIRA) — confirms base URL + credentials
+curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_BASE_URL/rest/api/3/myself" | jq .displayName
+# space id for a key (Confluence)
+curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_BASE_URL/wiki/api/v2/spaces?keys=MYHERO" | jq '.results[0].id'
+# story-points field candidates
+curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_BASE_URL/rest/api/3/field" \
+  | jq -r '.[] | select(.name|test("point";"i")) | "\(.id) | \(.name)"'
+```
 
 ## Option A — Docker Postgres + Node processes (simple VM)
 

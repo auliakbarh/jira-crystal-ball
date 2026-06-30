@@ -146,6 +146,7 @@ export default function Board() {
               <th className="p-2">Type</th>
               <th className="p-2">Status</th>
               <th className="p-2">Priority</th>
+              <th className="p-2">SP</th>
               <th className="p-2">Summary</th>
               <th className="p-2">Assignee</th>
             </tr>
@@ -153,7 +154,7 @@ export default function Board() {
           <tbody>
             {filtered.length === 0 && !loading && !error && (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-500">
+                <td colSpan={7} className="p-4 text-center text-gray-500">
                   No tickets match the current filter.
                 </td>
               </tr>
@@ -162,7 +163,7 @@ export default function Board() {
               <Fragment key={grp.key}>
                 {groupBy !== "none" && (
                   <tr className="bg-gray-50 dark:bg-gray-800/60">
-                    <td colSpan={6} className="px-2 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                    <td colSpan={7} className="px-2 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
                       {groupBy === "epic" ? "🗂 " : "📄 "}
                       {grp.label} <span className="font-normal text-gray-400">({grp.rows.length})</span>
                     </td>
@@ -188,6 +189,7 @@ export default function Board() {
                     <td className="p-2">
                       {t.priority && <span className={`chip ${priorityColor(t.priority)}`}>{t.priority}</span>}
                     </td>
+                    <td className="p-2 font-mono text-xs">{t.storyPoints ?? "—"}</td>
                     <td className="p-2">{t.summary}</td>
                     <td className="p-2">{t.assignee ?? <span className="text-gray-400">Unassigned</span>}</td>
                   </tr>

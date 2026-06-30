@@ -37,6 +37,12 @@ by value/effort within each group. ✅ = done.
 
 ## Data / features (more)
 - ✅ **Export CSV** — Previous Sprints entries + standup duration log export to CSV.
+- ✅ **Export to Confluence** — Previous Sprints writes a formatted report page to
+      Confluence (space `MYHERO`, under parent `CONFLUENCE_PARENT_ID`) via the v2 REST API,
+      reusing the JIRA Atlassian credentials. Native Jira issue macros, status lozenges,
+      pie chart, man-power roster, grouped by parent. Re-export **updates the same page**
+      (version bump); each export is recorded in an **export history** with its link; a
+      scheduler **auto-exports** a sprint once it ends.
 
 ## UX
 - [ ] **Mobile layout** for the wide standup table.

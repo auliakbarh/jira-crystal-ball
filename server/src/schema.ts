@@ -32,6 +32,10 @@ export const typeDefs = /* GraphQL */ `
     name: String!
     # Per-squad JIRA board id / project key (optional). Credentials are global (env).
     defaultBoardId: String
+    spFieldDefault: String
+    spFieldFE: String
+    spFieldBE: String
+    spFieldQA: String
     members: [TeamMember!]!
     sprints: [Sprint!]!
     holidays: [Holiday!]!
@@ -77,6 +81,8 @@ export const typeDefs = /* GraphQL */ `
     name: String
     startDate: Date!
     endDate: Date!
+    confluenceUrl: String
+    confluenceExportedAt: String
   }
 
   # Active sprint info pulled live from JIRA (board's active sprint).
@@ -102,9 +108,18 @@ export const typeDefs = /* GraphQL */ `
     parentKey: String
     parentName: String
     parentType: String
+    storyPoints: Float
+    storyPointsFE: Float
+    storyPointsBE: Float
+    storyPointsQA: Float
     carryOver: Boolean
     carryOverCount: Int
     carryOverSprints: [String!]
+  }
+
+  type JiraField {
+    id: String!
+    name: String!
   }
 
   type StandupEntry {
@@ -116,6 +131,7 @@ export const typeDefs = /* GraphQL */ `
     ticketSummary: String
     ticketAssignee: String
     issueType: String
+    storyPoints: Float
     epicKey: String
     epicName: String
     parentKey: String
@@ -215,6 +231,7 @@ export const typeDefs = /* GraphQL */ `
     ticketSummary: String
     ticketAssignee: String
     issueType: String
+    storyPoints: Float
     epicKey: String
     epicName: String
     parentKey: String
@@ -266,6 +283,9 @@ export const typeDefs = /* GraphQL */ `
     activityLog(squadId: ID!, limit: Int, offset: Int, search: String): [ActivityLog!]!
     activeStandup(sprintId: ID!, leadKey: String): StandupSession
     standupLogs(squadId: ID!, limit: Int, offset: Int): [StandupLog!]!
+    exportHistory(sprintId: ID!): [ExportLog!]!
+    # All JIRA fields (id + name) for the squad's board — helps admins pick the SP field.
+    jiraFields(squadId: ID!): [JiraField!]!
   }
 
   type Mutation {
@@ -274,7 +294,15 @@ export const typeDefs = /* GraphQL */ `
     guestLogin(name: String!): AuthPayload!
 
     createSquad(name: String!, defaultBoardId: String): Squad!
-    updateSquad(id: ID!, name: String, defaultBoardId: String): Squad!
+    updateSquad(
+      id: ID!
+      name: String
+      defaultBoardId: String
+      spFieldDefault: String
+      spFieldFE: String
+      spFieldBE: String
+      spFieldQA: String
+    ): Squad!
     deleteSquad(id: ID!): Boolean!
 
     # Tests the global JIRA credentials from the server env (calls /myself).
@@ -310,6 +338,22 @@ export const typeDefs = /* GraphQL */ `
     # sprints, standup entries, blockers, JIRA configs). Users are kept.
     # Pass reseedDefaults: true to recreate the Athens/Berlin/Cairo squads.
     resetDatabase(reseedDefaults: Boolean): Boolean!
+
+    # Export a past sprint's standup report to a new Confluence page.
+    exportSprintToConfluence(sprintId: ID!): ConfluenceExport!
+  }
+
+  type ConfluenceExport {
+    url: String!
+    title: String!
+  }
+
+  type ExportLog {
+    id: ID!
+    url: String!
+    action: String!
+    actor: String
+    createdAt: String!
   }
 
   # Fired when a sprint's standup lock or any of its cells/blockers change.

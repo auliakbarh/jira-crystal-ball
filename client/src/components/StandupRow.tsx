@@ -15,6 +15,7 @@ interface RowData {
     url?: string;
     priority?: string;
     issueType?: string;
+    storyPoints?: number;
     epicKey?: string;
     epicName?: string;
     parentKey?: string;
@@ -51,6 +52,7 @@ export default function StandupRow({
   const assignee = row.ticket?.assignee ?? row.entry?.ticketAssignee;
   const priority = row.ticket?.priority;
   const issueType = row.ticket?.issueType;
+  const storyPoints = row.ticket?.storyPoints;
 
   const e = row.entry;
   const [fe, setFe] = useState(e?.feAssignee ?? "");
@@ -109,6 +111,7 @@ export default function StandupRow({
           ticketSummary: summary,
           ticketAssignee: assignee,
           issueType: row.ticket?.issueType ?? null,
+          storyPoints: row.ticket?.storyPoints ?? null,
           epicKey: row.ticket?.epicKey ?? null,
           epicName: row.ticket?.epicName ?? null,
           parentKey: row.ticket?.parentKey ?? null,
@@ -179,6 +182,9 @@ export default function StandupRow({
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {priority && <span className={`chip ${priorityColor(priority)}`}>{priority}</span>}
           {status && <span className={`chip ${statusColor(status)}`}>{status}</span>}
+          {storyPoints != null && (
+            <span className="chip bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200">{storyPoints} SP</span>
+          )}
         </div>
         {summary && <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">{summary}</div>}
         {assignee && <div className="mt-0.5 text-xs text-gray-400">JIRA: {assignee}</div>}

@@ -77,6 +77,28 @@ export default function CurrentSprintSummary({
 
   const days = dayBreakdown(sprint.startDate, sprint.endDate, holidaySet);
 
+  // Story points per member: latest standup FE/BE/QA assignees per ticket ×
+  // the board ticket's role SP (fallback default SP).
+  const latestRoles = new Map<string, { fe?: string; be?: string; qa?: string }>();
+  for (const e of [...entries].sort((a: any, b: any) => a.date.localeCompare(b.date))) {
+    latestRoles.set(e.ticketKey, { fe: e.feAssignee, be: e.beAssignee, qa: e.qaAssignee });
+  }
+  const num = (x: any) => (typeof x === "number" ? x : 0);
+  const spByMember = new Map<string, number>();
+  const addSP = (name: string | undefined, pts: number) => {
+    if (!name || !pts) return;
+    spByMember.set(name, (spByMember.get(name) ?? 0) + pts);
+  };
+  for (const t of tickets) {
+    const r = latestRoles.get(t.key);
+    if (!r) continue;
+    const def = num(t.storyPoints);
+    addSP(r.fe, t.storyPointsFE != null ? num(t.storyPointsFE) : def);
+    addSP(r.be, t.storyPointsBE != null ? num(t.storyPointsBE) : def);
+    addSP(r.qa, t.storyPointsQA != null ? num(t.storyPointsQA) : def);
+  }
+  const totalSP = tickets.reduce((s: number, t: any) => s + num(t.storyPoints), 0);
+
   return (
     <div className="card">
       <h2 className="mb-3 text-base font-bold">📊 Sprint Summary</h2>
@@ -146,6 +168,21 @@ export default function CurrentSprintSummary({
               </li>
             ))}
           </ul>
+        )}
+
+        <div className="label mt-3">Story points per member ({totalSP} total)</div>
+        {spByMember.size === 0 ? (
+          <p className="text-xs text-gray-400">No story points assigned yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2 text-xs">
+            {[...spByMember.entries()]
+              .sort((a, b) => b[1] - a[1])
+              .map(([name, pts]) => (
+                <span key={name} className="chip bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  {name}: <b className="ml-1">{pts} SP</b>
+                </span>
+              ))}
+          </div>
         )}
       </div>
     </div>
