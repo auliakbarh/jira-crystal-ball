@@ -133,6 +133,14 @@ export const typeDefs = /* GraphQL */ `
     blockerNote: String
   }
 
+  type StandupSession {
+    sprintId: ID!
+    leadName: String!
+    active: Boolean!
+    # True when the requesting client (by leadKey) is the current lead.
+    isMine: Boolean!
+  }
+
   type ActivityLog {
     id: ID!
     actor: String!
@@ -245,6 +253,7 @@ export const typeDefs = /* GraphQL */ `
     dashboard(sprintId: ID!, date: Date): [DashboardRow!]!
     blockers(squadId: ID!, includeResolved: Boolean): [Blocker!]!
     activityLog(squadId: ID!, limit: Int): [ActivityLog!]!
+    activeStandup(sprintId: ID!, leadKey: String): StandupSession
   }
 
   type Mutation {
@@ -275,7 +284,12 @@ export const typeDefs = /* GraphQL */ `
     # Pull the board's active sprint from JIRA and upsert it as a local Sprint.
     syncActiveSprint(squadId: ID!): Sprint
 
-    saveStandupEntry(input: StandupEntryInput!): StandupEntry!
+    # Standup session lock. leadKey identifies the claiming client/tab.
+    startStandup(sprintId: ID!, leadName: String!, leadKey: String!): StandupSession!
+    standupHeartbeat(sprintId: ID!, leadKey: String!): Boolean!
+    endStandup(sprintId: ID!, leadKey: String!): Boolean!
+
+    saveStandupEntry(input: StandupEntryInput!, leadKey: String): StandupEntry!
 
     upsertBlocker(squadId: ID!, id: ID, input: BlockerInput!): Blocker!
     deleteBlocker(id: ID!): Boolean!

@@ -11,10 +11,14 @@ export default function StandupTable({
   squadId,
   sprintId,
   date,
+  canEdit = true,
+  leadKey,
 }: {
   squadId: string;
   sprintId: string;
   date: string;
+  canEdit?: boolean;
+  leadKey?: string;
 }) {
   const { data, loading, error } = useQuery(DASHBOARD, {
     variables: { sprintId, date },
@@ -208,6 +212,8 @@ export default function StandupTable({
                     squadId={squadId}
                     date={date}
                     carryOver={!!r.ticket?.carryOver}
+                    canEdit={canEdit}
+                    leadKey={leadKey}
                   />
                 );
               })}

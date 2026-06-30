@@ -272,9 +272,43 @@ export const STANDUP_ENTRIES = gql`
   }
 `;
 
+export const ACTIVE_STANDUP = gql`
+  query ActiveStandup($sprintId: ID!, $leadKey: String) {
+    activeStandup(sprintId: $sprintId, leadKey: $leadKey) {
+      sprintId
+      leadName
+      active
+      isMine
+    }
+  }
+`;
+
+export const START_STANDUP = gql`
+  mutation StartStandup($sprintId: ID!, $leadName: String!, $leadKey: String!) {
+    startStandup(sprintId: $sprintId, leadName: $leadName, leadKey: $leadKey) {
+      sprintId
+      leadName
+      active
+      isMine
+    }
+  }
+`;
+
+export const STANDUP_HEARTBEAT = gql`
+  mutation StandupHeartbeat($sprintId: ID!, $leadKey: String!) {
+    standupHeartbeat(sprintId: $sprintId, leadKey: $leadKey)
+  }
+`;
+
+export const END_STANDUP = gql`
+  mutation EndStandup($sprintId: ID!, $leadKey: String!) {
+    endStandup(sprintId: $sprintId, leadKey: $leadKey)
+  }
+`;
+
 export const SAVE_ENTRY = gql`
-  mutation SaveEntry($input: StandupEntryInput!) {
-    saveStandupEntry(input: $input) {
+  mutation SaveEntry($input: StandupEntryInput!, $leadKey: String) {
+    saveStandupEntry(input: $input, leadKey: $leadKey) {
       id
       ticketKey
       feAssignee

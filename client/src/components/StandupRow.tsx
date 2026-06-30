@@ -31,12 +31,16 @@ export default function StandupRow({
   squadId,
   date,
   carryOver,
+  canEdit = true,
+  leadKey,
 }: {
   row: RowData;
   sprintId: string;
   squadId: string;
   date: string;
   carryOver?: boolean;
+  canEdit?: boolean;
+  leadKey?: string;
 }) {
   const ticketKey = row.ticket?.key ?? row.entry?.ticketKey ?? "";
   const status = row.ticket?.status ?? row.entry?.ticketStatus;
@@ -121,6 +125,7 @@ export default function StandupRow({
           progress: overallProgress,
           blockerNote: blocker || null,
         },
+        leadKey: leadKey ?? null,
       },
     });
     setSaved(true);
@@ -180,11 +185,11 @@ export default function StandupRow({
       {/* Assignee inputs */}
       <td className="p-2 align-top">
         <div className="space-y-1">
-          <input list="jcb-fe" className="input py-1 text-xs" placeholder="FE" value={fe}
+          <input list="jcb-fe" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="FE" value={fe}
             onChange={(e) => { setFe(e.target.value); markDirty(); }} onBlur={onBlur} />
-          <input list="jcb-be" className="input py-1 text-xs" placeholder="BE" value={be}
+          <input list="jcb-be" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="BE" value={be}
             onChange={(e) => { setBe(e.target.value); markDirty(); }} onBlur={onBlur} />
-          <input list="jcb-qa" className="input py-1 text-xs" placeholder="QA" value={qa}
+          <input list="jcb-qa" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="QA" value={qa}
             onChange={(e) => { setQa(e.target.value); markDirty(); }} onBlur={onBlur} />
         </div>
       </td>
@@ -193,7 +198,8 @@ export default function StandupRow({
       <td className="p-2">
         <div className="relative">
           <textarea
-            className="input min-h-[64px] pr-6 text-sm"
+            disabled={!canEdit}
+            className="input min-h-[64px] pr-6 text-sm disabled:opacity-60"
             placeholder="Standup update…"
             value={update}
             onChange={(e) => { setUpdate(e.target.value); markDirty(); }}
@@ -220,14 +226,14 @@ export default function StandupRow({
         ) : (
           <div className="flex items-center gap-2">
             <input
-              type="range" min={0} max={100} step={5} value={progress}
+              type="range" min={0} max={100} step={5} value={progress} disabled={!canEdit}
               onChange={(e) => { setProgress(Number(e.target.value)); markDirty(); }}
               onMouseUp={onBlur} onTouchEnd={onBlur}
               className="range-brand"
             />
             <div className="flex items-center gap-0.5">
               <input
-                type="number" min={0} max={100} value={progress}
+                type="number" min={0} max={100} value={progress} disabled={!canEdit}
                 onChange={(e) => {
                   const n = Math.max(0, Math.min(100, Number(e.target.value)));
                   setProgress(Number.isNaN(n) ? 0 : n);
@@ -259,7 +265,7 @@ export default function StandupRow({
                   <div className="h-1 rounded bg-brand/70" style={{ width: `${r.val}%` }} />
                 </div>
                 <input
-                  type="number" min={0} max={100} value={r.val}
+                  type="number" min={0} max={100} value={r.val} disabled={!canEdit}
                   onChange={(ev) => {
                     const n = Math.max(0, Math.min(100, Number(ev.target.value)));
                     r.set(Number.isNaN(n) ? 0 : n);
@@ -277,7 +283,8 @@ export default function StandupRow({
       <td className="p-2 align-top">
         <div className="relative">
           <textarea
-            className="input min-h-[64px] pr-6 text-sm"
+            disabled={!canEdit}
+            className="input min-h-[64px] pr-6 text-sm disabled:opacity-60"
             placeholder="Blocker note (syncs to Blockers)…"
             value={blocker}
             onChange={(e) => { setBlocker(e.target.value); markDirty(); }}
@@ -295,7 +302,7 @@ export default function StandupRow({
       </td>
 
       <td className="p-2 text-center align-top">
-        <button className="btn-ghost text-xs" onClick={doSave} disabled={loading}>
+        <button className="btn-ghost text-xs" onClick={doSave} disabled={loading || !canEdit}>
           {loading ? "…" : saved ? "✓" : "Save"}
         </button>
         {expand && (

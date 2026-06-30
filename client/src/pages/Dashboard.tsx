@@ -2,8 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { Link } from "react-router-dom";
 import { useSquad } from "../context/SquadContext";
-import { CURRENT_SPRINT, SQUAD, SYNC_ACTIVE_SPRINT } from "../graphql";
+import { useAuth } from "../context/AuthContext";
+import {
+  CURRENT_SPRINT,
+  SQUAD,
+  SYNC_ACTIVE_SPRINT,
+  ACTIVE_STANDUP,
+  START_STANDUP,
+  STANDUP_HEARTBEAT,
+  END_STANDUP,
+} from "../graphql";
 import { todayISO } from "../lib/helpers";
+import { LEAD_KEY } from "../lib/leadKey";
 import TeamPanel from "../components/TeamPanel";
 import BlockersPanel from "../components/BlockersPanel";
 import StandupTable from "../components/StandupTable";
@@ -30,8 +40,81 @@ export default function Dashboard() {
   });
   const [syncActiveSprint, { loading: syncing }] = useMutation(SYNC_ACTIVE_SPRINT);
 
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
+
   const jiraConfigured = squadData?.squad?.jiraConfigured;
   const sprint = sprintData?.currentSprint;
+
+  // --- Standup session lock ---
+  const { data: standupData, refetch: refetchStandup } = useQuery(ACTIVE_STANDUP, {
+    variables: { sprintId: sprint?.id, leadKey: LEAD_KEY },
+    skip: !sprint,
+    pollInterval: 15000,
+    fetchPolicy: "cache-and-network",
+  });
+  const standup = standupData?.activeStandup;
+  const isLeading = !!standup?.isMine;
+  const ledByOther = !!standup?.active && !standup.isMine;
+  const canEdit = isAdmin || !standup?.active || isLeading;
+
+  const [startStandup] = useMutation(START_STANDUP);
+  const [heartbeat] = useMutation(STANDUP_HEARTBEAT);
+  const [endStandup] = useMutation(END_STANDUP);
+
+  const begin = async () => {
+    const leadName = user?.name || "Lead";
+    try {
+      await startStandup({ variables: { sprintId: sprint.id, leadName, leadKey: LEAD_KEY } });
+      refetchStandup();
+    } catch (e: any) {
+      alert(e.message);
+      refetchStandup();
+    }
+  };
+  const finish = async () => {
+    await endStandup({ variables: { sprintId: sprint.id, leadKey: LEAD_KEY } });
+    refetchStandup();
+  };
+
+  // Heartbeat + release-on-close while leading.
+  useEffect(() => {
+    if (!sprint || !isLeading) return;
+    const id = setInterval(() => {
+      heartbeat({ variables: { sprintId: sprint.id, leadKey: LEAD_KEY } });
+    }, 7000);
+
+    // Release on tab close/hide. sendBeacon can't set the auth header (endStandup
+    // requires it), so use fetch with keepalive — it survives the unload and can
+    // carry Authorization. The server-side staleness check is the safety net if
+    // this never fires (crash / lost network).
+    const release = () => {
+      const token = localStorage.getItem("jcb_token");
+      try {
+        fetch(import.meta.env.VITE_GRAPHQL_URL || "http://localhost:4000/", {
+          method: "POST",
+          keepalive: true,
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            query: "mutation($s:ID!,$k:String!){endStandup(sprintId:$s,leadKey:$k)}",
+            variables: { s: sprint.id, k: LEAD_KEY },
+          }),
+        });
+      } catch {
+        /* ignore */
+      }
+    };
+    // pagehide fires on real unload/navigation (not on plain tab-switch), so it
+    // won't release the lock just because the lead peeked at another tab.
+    window.addEventListener("pagehide", release);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("pagehide", release);
+    };
+  }, [sprint?.id, isLeading, heartbeat]);
 
   const doSync = async (silent = false) => {
     setSyncMsg(null);
@@ -133,6 +216,50 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Standup session control */}
+      {sprint && (
+        <div
+          className={`card flex flex-wrap items-center gap-3 ${
+            ledByOther ? "border-amber-300 dark:border-amber-900/60" : ""
+          }`}
+        >
+          {!standup?.active && (
+            <>
+              <span className="text-sm text-gray-500">No standup in progress.</span>
+              <button className="btn-primary ml-auto" onClick={begin}>
+                ▶ Start standup
+              </button>
+            </>
+          )}
+          {isLeading && (
+            <>
+              <span className="text-sm">
+                🎤 You are leading this standup{" "}
+                <span className="chip bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                  editing enabled
+                </span>
+              </span>
+              <button className="btn-ghost ml-auto" onClick={finish}>
+                ■ End standup
+              </button>
+            </>
+          )}
+          {ledByOther && (
+            <>
+              <span className="text-sm">
+                🔒 Standup led by <b>{standup.leadName}</b> —{" "}
+                {isAdmin ? "you're admin (editing allowed)" : "read-only for you"}
+              </span>
+              {isAdmin && (
+                <button className="btn-ghost ml-auto" onClick={begin} title="Take over as admin">
+                  Take over
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {sprint && (
         <div className="card">
           <h2 className="mb-2 text-sm font-bold">Sprint Timeline</h2>
@@ -170,7 +297,7 @@ export default function Dashboard() {
         </div>
         <div className="lg:col-span-2">
           {sprint ? (
-            <StandupTable squadId={squadId} sprintId={sprint.id} date={date} />
+            <StandupTable squadId={squadId} sprintId={sprint.id} date={date} canEdit={canEdit} leadKey={LEAD_KEY} />
           ) : (
             <div className="card text-sm text-gray-500">Create a sprint to start recording standup updates.</div>
           )}

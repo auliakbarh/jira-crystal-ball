@@ -37,6 +37,18 @@ model Squad {
   logs     ActivityLog[]
 }
 
+// A live "standup in progress" lock. One active session per sprint: only the
+// holder (matching leadKey) may edit; staleness (lastSeen) lets others take over
+// after the lead closes their tab. Admins always bypass.
+model StandupSession {
+  id        String   @id @default(cuid())
+  sprintId  String   @unique
+  leadName  String
+  leadKey   String
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
 // Activity log of standup/board updates, shown on the Current Sprint screen.
 model ActivityLog {
   id        String   @id @default(cuid())

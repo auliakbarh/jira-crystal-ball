@@ -110,6 +110,16 @@ automatically (description + ticket + date). Clear the note later and that block
 marked **resolved**. You can also add standalone blockers directly in the panel, and
 mark any blocker resolved/reopened or delete it.
 
+### Standup session lock
+
+Multiple people (guests included) can open the same dashboard at once. Click **▶ Start
+standup** to take the lead — while you lead, **only you can edit** the tickets; everyone
+else sees a read-only banner "🔒 Standup led by <you>". Click **■ End standup** to release.
+
+If the lead closes the tab or logs out, the lock auto-releases after ~45s (heartbeat
+stops) so someone else can **Start standup** and take over. **Admins** can always edit and
+can **Take over** an active session.
+
 ## 6. Browse the board (active sprint)
 
 The **Board** menu shows every ticket in the board's **currently active sprint**, pulled

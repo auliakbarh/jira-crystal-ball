@@ -77,13 +77,23 @@ All operations except `login` require `Authorization: Bearer <token>`.
 | `dashboard` | `sprintId`, `date?` | `[DashboardRow]` — the board's **active-sprint** tickets (statuses match the board) merged with saved entries |
 | `blockers` | `squadId`, `includeResolved?` | `[Blocker]` |
 | `activityLog` | `squadId`, `limit?` | recent `[ActivityLog]` (who updated which ticket, with timestamp) |
+| `activeStandup` | `sprintId`, `leadKey?` | live standup lock `{ leadName, active, isMine }` or null |
 
 ### Mutations
 
 `login`, `guestLogin`, `createSquad`, `updateSquad`, `deleteSquad`, `testJiraConfig`,
 `addMember`, `updateMember`, `deleteMember`, `addLeave`, `deleteLeave`, `addHoliday`,
 `deleteHoliday`, `createSprint`, `updateSprint`, `deleteSprint`, `saveStandupEntry`,
-`upsertBlocker`, `deleteBlocker`, `resetDatabase`.
+`upsertBlocker`, `deleteBlocker`, `resetDatabase`, `startStandup`, `standupHeartbeat`,
+`endStandup`.
+
+**Standup session lock** (`StandupSession`, one per sprint): `startStandup(sprintId,
+leadName, leadKey)` claims the lock; the client sends a `standupHeartbeat` every ~20s and
+`endStandup` on close (also `navigator.sendBeacon` on `beforeunload`). A session is "live"
+while its `lastSeen` is within 45s — once stale, anyone may take over. `saveStandupEntry`
+takes an optional `leadKey`; if a live session leads the sprint, only its holder (matching
+leadKey) or an **admin** may edit. The lead key is a per-tab `sessionStorage` UUID
+(`lib/leadKey.ts`), so closing the tab drops it.
 
 Notes:
 - **JIRA credentials are global**, read from the server environment

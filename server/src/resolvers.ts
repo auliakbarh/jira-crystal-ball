@@ -15,6 +15,19 @@ function clampPct(v: unknown): number {
   return typeof v === "number" ? Math.max(0, Math.min(100, Math.round(v))) : 0;
 }
 
+// A standup session is considered live if its heartbeat is recent. After this
+// the lead is assumed gone (tab closed / logged out) and others may take over.
+const STANDUP_STALE_MS = 20_000;
+function sessionLive(s: { lastSeen: Date } | null): boolean {
+  return !!s && Date.now() - new Date(s.lastSeen).getTime() < STANDUP_STALE_MS;
+}
+
+async function isAdminUser(ctx: Context): Promise<boolean> {
+  if (!ctx.userId || ctx.userId === "guest") return false;
+  const u = await ctx.prisma.user.findUnique({ where: { id: ctx.userId } });
+  return !!u?.isAdmin;
+}
+
 function jiraCfgForBoard(boardId?: string | null) {
   if (!hasJiraCreds()) return null;
   return {
@@ -217,6 +230,18 @@ export const resolvers = {
         take: Math.min(limit ?? 30, 100),
       });
     },
+
+    activeStandup: async (_p: unknown, { sprintId, leadKey }: { sprintId: string; leadKey?: string }, ctx: Context) => {
+      requireAuth(ctx);
+      const s = await ctx.prisma.standupSession.findUnique({ where: { sprintId } });
+      if (!sessionLive(s)) return null;
+      return {
+        sprintId,
+        leadName: s!.leadName,
+        active: true,
+        isMine: !!leadKey && leadKey === s!.leadKey,
+      };
+    },
   },
 
   Mutation: {
@@ -356,11 +381,52 @@ export const resolvers = {
       });
     },
 
+    startStandup: async (_p: unknown, { sprintId, leadName, leadKey }: any, ctx: Context) => {
+      requireAuth(ctx);
+      const admin = await isAdminUser(ctx);
+      const existing = await ctx.prisma.standupSession.findUnique({ where: { sprintId } });
+      // Someone else is actively leading and we're not them → only admin can take over.
+      if (sessionLive(existing) && existing!.leadKey !== leadKey && !admin) {
+        throw new Error(`Standup already led by ${existing!.leadName}`);
+      }
+      const s = await ctx.prisma.standupSession.upsert({
+        where: { sprintId },
+        create: { sprintId, leadName, leadKey, lastSeen: new Date() },
+        update: { leadName, leadKey, lastSeen: new Date() },
+      });
+      return { sprintId, leadName: s.leadName, active: true, isMine: true };
+    },
+
+    standupHeartbeat: async (_p: unknown, { sprintId, leadKey }: any, ctx: Context) => {
+      requireAuth(ctx);
+      const r = await ctx.prisma.standupSession.updateMany({
+        where: { sprintId, leadKey },
+        data: { lastSeen: new Date() },
+      });
+      return r.count > 0;
+    },
+
+    endStandup: async (_p: unknown, { sprintId, leadKey }: any, ctx: Context) => {
+      requireAuth(ctx);
+      const admin = await isAdminUser(ctx);
+      await ctx.prisma.standupSession.deleteMany({
+        where: admin ? { sprintId } : { sprintId, leadKey },
+      });
+      return true;
+    },
+
     // Upsert a standup cell-set and keep the Blocker section in sync.
-    saveStandupEntry: async (_p: unknown, { input }: any, ctx: Context) => {
+    saveStandupEntry: async (_p: unknown, { input, leadKey }: any, ctx: Context) => {
       requireAuth(ctx);
       const sprint = await ctx.prisma.sprint.findUnique({ where: { id: input.sprintId } });
       if (!sprint) throw new Error("Sprint not found");
+
+      // Standup lock: if a live session leads this sprint, only its holder (by
+      // leadKey) or an admin may edit.
+      const session = await ctx.prisma.standupSession.findUnique({ where: { sprintId: input.sprintId } });
+      if (sessionLive(session) && session!.leadKey !== leadKey && !(await isAdminUser(ctx))) {
+        throw new Error(`Standup is being led by ${session!.leadName} — you can't edit now.`);
+      }
 
       const data = {
         sprintId: input.sprintId,
