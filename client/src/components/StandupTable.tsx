@@ -88,6 +88,30 @@ export default function StandupTable({
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [groupBy, filtered]);
 
+  // Keyboard navigation between cells of the same column across rows:
+  // Enter (or Cmd/Ctrl+Enter in textareas) → next row; Alt+↑/↓ → prev/next row.
+  const onKeyNav = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = e.target as HTMLElement;
+    const col = el.dataset.col;
+    const row = Number(el.dataset.row);
+    if (!col || Number.isNaN(row)) return;
+    const isTextarea = el.tagName === "TEXTAREA";
+    let dir = 0;
+    if (e.key === "Enter" && !e.shiftKey && (!isTextarea || e.metaKey || e.ctrlKey)) dir = 1;
+    else if (e.altKey && e.key === "ArrowDown") dir = 1;
+    else if (e.altKey && e.key === "ArrowUp") dir = -1;
+    else return;
+    const next = document.querySelector<HTMLElement>(`[data-col="${col}"][data-row="${row + dir}"]`);
+    if (next) {
+      e.preventDefault();
+      next.focus();
+      (next as HTMLInputElement).select?.();
+    }
+  };
+
+  // Sequential row index across all groups (for keyboard navigation).
+  let rowSeq = -1;
+
   // Datalists for assignee autocomplete (free text still allowed).
   const datalist = (id: string, names: string[]) => (
     <datalist id={id}>
@@ -98,7 +122,7 @@ export default function StandupTable({
   );
 
   return (
-    <div className="card overflow-x-auto overscroll-x-contain">
+    <div className="card overflow-x-auto overscroll-x-contain" onKeyDown={onKeyNav}>
       {datalist("jcb-fe", feNames.length ? feNames : allNames)}
       {datalist("jcb-be", beNames.length ? beNames : allNames)}
       {datalist("jcb-qa", qaNames.length ? qaNames : allNames)}
@@ -157,7 +181,7 @@ export default function StandupTable({
             ↪ carry-over only
           </button>
           <span className="text-xs text-gray-400">
-            ({filtered.length}/{rows.length}) · Done/Archived hidden by default
+            ({filtered.length}/{rows.length}) · Done/Archived hidden by default · Enter / Alt+↑↓ to move between rows
           </span>
         </div>
       )}
@@ -204,6 +228,7 @@ export default function StandupTable({
               )}
               {grp.rows.map((r: any) => {
                 const k = r.ticket?.key ?? r.entry?.ticketKey;
+                rowSeq += 1;
                 return (
                   <StandupRow
                     key={k}
@@ -214,6 +239,7 @@ export default function StandupTable({
                     carryOver={!!r.ticket?.carryOver}
                     canEdit={canEdit}
                     leadKey={leadKey}
+                    rowIndex={rowSeq}
                   />
                 );
               })}

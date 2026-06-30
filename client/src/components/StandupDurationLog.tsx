@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@apollo/client";
 import { STANDUP_LOGS } from "../graphql";
 import { formatDuration } from "../lib/helpers";
+import { toCsv, downloadCsv } from "../lib/csv";
 
 const PAGE = 20;
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -34,7 +35,25 @@ export default function StandupDurationLog({ squadId }: { squadId: string }) {
 
   return (
     <div className="card">
-      <h2 className="mb-3 text-base font-bold">⏱ Standup Duration Log</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-bold">⏱ Standup Duration Log</h2>
+        {logs.length > 0 && (
+          <button
+            className="text-xs text-brand hover:underline"
+            onClick={() => {
+              const rows = logs.map((l: any) => [
+                l.startedAt, l.endedAt, l.leadName, l.durationSec, formatDuration(l.durationSec),
+              ]);
+              downloadCsv(
+                "standup-durations.csv",
+                toCsv(["startedAt", "endedAt", "lead", "durationSec", "duration"], rows),
+              );
+            }}
+          >
+            ⬇ CSV
+          </button>
+        )}
+      </div>
       {logs.length === 0 ? (
         <p className="text-sm text-gray-500">No completed standups yet.</p>
       ) : (

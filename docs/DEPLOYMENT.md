@@ -101,9 +101,19 @@ Run migrations at release time: `npx prisma migrate deploy` (use
 
 ## Database migrations
 
-- **Development / first run**: `npm run db:push` syncs the schema directly.
-- **Production**: switch to migrations — `npm -w server run db:migrate` to author them,
-  `prisma migrate deploy` to apply on deploy. This gives you a reviewable history.
+The project uses **Prisma migrations** (a reviewable history under
+`server/prisma/migrations/`, starting from the `0_init` baseline).
+
+- **Author a change** (dev): edit `schema.prisma`, then
+  `npm -w server run db:migrate -- --name <change>` — creates a migration and applies it.
+- **Apply on deploy** (prod): `npm -w server run db:migrate:deploy` (`prisma migrate deploy`).
+- **Check state**: `npm -w server run db:migrate:status`.
+- `db:push` remains for quick local prototyping, but prefer migrations so prod stays in
+  sync with a reviewable history.
+
+> Adopting on an existing DB: the `0_init` migration was baselined with
+> `prisma migrate resolve --applied 0_init` so it isn't re-run against a DB that already
+> has the schema.
 
 ## CORS
 

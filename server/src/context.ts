@@ -7,8 +7,7 @@ export interface Context {
   userName: string | null;
 }
 
-export async function buildContext({ req }: { req: { headers: Record<string, any> } }): Promise<Context> {
-  const header = req.headers["authorization"] || req.headers["Authorization"];
+export function contextFromAuthHeader(header?: string | null): Context {
   let userId: string | null = null;
   let userName: string | null = null;
   if (typeof header === "string" && header.startsWith("Bearer ")) {
@@ -19,6 +18,10 @@ export async function buildContext({ req }: { req: { headers: Record<string, any
     }
   }
   return { prisma, userId, userName };
+}
+
+export async function buildContext({ req }: { req: { headers: Record<string, any> } }): Promise<Context> {
+  return contextFromAuthHeader(req.headers["authorization"] || req.headers["Authorization"]);
 }
 
 export function requireAuth(ctx: Context): string {

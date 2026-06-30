@@ -9,6 +9,7 @@ import {
 } from "./jira.js";
 import { env, hasJiraCreds } from "./env.js";
 import { assertNotLocked, recordFailure, recordSuccess } from "./rateLimit.js";
+import { pubsub, standupTopic, publishStandupChange } from "./pubsub.js";
 
 // Build a JIRA client config from the global env credentials plus a squad's
 // board id (or the env fallback). Returns null when credentials are missing.
@@ -462,6 +463,7 @@ export const resolvers = {
         create: { sprintId, leadName, leadKey, lastSeen: now },
         update: { leadName, leadKey, lastSeen: now },
       });
+      publishStandupChange(sprintId, "start");
       return { sprintId, leadName: s.leadName, active: true, isMine: true, startedAt: new Date(s.createdAt).toISOString() };
     },
 
@@ -482,6 +484,7 @@ export const resolvers = {
       // Only the holder or an admin may end it.
       if (s.leadKey !== leadKey && !admin) return false;
       await finalizeStandup(ctx, s, new Date());
+      publishStandupChange(sprintId, "end");
       return true;
     },
 
@@ -594,6 +597,7 @@ export const resolvers = {
         },
       });
 
+      publishStandupChange(input.sprintId, "entry");
       return entry;
     },
 
@@ -627,6 +631,13 @@ export const resolvers = {
         }
       }
       return true;
+    },
+  },
+
+  Subscription: {
+    standupChanged: {
+      subscribe: (_p: unknown, { sprintId }: { sprintId: string }) =>
+        pubsub.asyncIterableIterator(standupTopic(sprintId)),
     },
   },
 

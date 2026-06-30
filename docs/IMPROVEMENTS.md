@@ -19,8 +19,8 @@ by value/effort within each group. ✅ = done.
 - [ ] **Cleanup/retention** for `ActivityLog` / `StandupLog`.
 
 ## Realtime / collaboration
-- [ ] **GraphQL subscriptions (WebSocket)** — replace 15s polling for the standup lock and
-      live cell updates; true real-time co-editing.
+- ✅ **GraphQL subscriptions (WebSocket)** — `standupChanged(sprintId)` pushes lock/cell
+      changes; the dashboard re-pulls live instead of 15s polling.
 - [ ] **Presence** — show who else is viewing the sprint.
 
 ## Data / features
@@ -31,10 +31,14 @@ by value/effort within each group. ✅ = done.
 
 ## Robustness / quality
 - [ ] **Automated tests** — no unit/integration tests yet.
-- [ ] **Prisma migrations** — currently `db push`; production needs a migration history.
-- [ ] **Toasts + error boundary** — replace remaining `alert()` calls.
+- ✅ **Prisma migrations** — migration history under `prisma/migrations/` (baselined
+      `0_init`); `db:migrate:deploy` on release.
+- ✅ **Toasts + error boundary** — `ToastProvider` + `ErrorBoundary`; `alert()` removed.
+
+## Data / features (more)
+- ✅ **Export CSV** — Previous Sprints entries + standup duration log export to CSV.
 
 ## UX
 - [ ] **Mobile layout** for the wide standup table.
-- [ ] **Keyboard navigation** between cells during standup.
+- ✅ **Keyboard navigation** — Enter / Alt+↑↓ to move between standup cells.
 - [ ] **Proper i18n** (UI currently English with a few mixed strings).

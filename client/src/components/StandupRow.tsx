@@ -33,6 +33,7 @@ export default function StandupRow({
   carryOver,
   canEdit = true,
   leadKey,
+  rowIndex = 0,
 }: {
   row: RowData;
   sprintId: string;
@@ -41,6 +42,7 @@ export default function StandupRow({
   carryOver?: boolean;
   canEdit?: boolean;
   leadKey?: string;
+  rowIndex?: number;
 }) {
   const ticketKey = row.ticket?.key ?? row.entry?.ticketKey ?? "";
   const status = row.ticket?.status ?? row.entry?.ticketStatus;
@@ -185,11 +187,11 @@ export default function StandupRow({
       {/* Assignee inputs */}
       <td className="p-2 align-top">
         <div className="space-y-1">
-          <input list="jcb-fe" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="FE" value={fe}
+          <input data-col="fe" data-row={rowIndex} list="jcb-fe" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="FE" value={fe}
             onChange={(e) => { setFe(e.target.value); markDirty(); }} onBlur={onBlur} />
-          <input list="jcb-be" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="BE" value={be}
+          <input data-col="be" data-row={rowIndex} list="jcb-be" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="BE" value={be}
             onChange={(e) => { setBe(e.target.value); markDirty(); }} onBlur={onBlur} />
-          <input list="jcb-qa" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="QA" value={qa}
+          <input data-col="qa" data-row={rowIndex} list="jcb-qa" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="QA" value={qa}
             onChange={(e) => { setQa(e.target.value); markDirty(); }} onBlur={onBlur} />
         </div>
       </td>
@@ -198,6 +200,7 @@ export default function StandupRow({
       <td className="p-2">
         <div className="relative">
           <textarea
+            data-col="update" data-row={rowIndex}
             disabled={!canEdit}
             className="input min-h-[64px] pr-6 text-sm disabled:opacity-60"
             placeholder="Standup update…"
@@ -283,6 +286,7 @@ export default function StandupRow({
       <td className="p-2 align-top">
         <div className="relative">
           <textarea
+            data-col="blocker" data-row={rowIndex}
             disabled={!canEdit}
             className="input min-h-[64px] pr-6 text-sm disabled:opacity-60"
             placeholder="Blocker note (syncs to Blockers)…"

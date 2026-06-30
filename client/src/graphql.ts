@@ -296,6 +296,15 @@ export const STANDUP_LOGS = gql`
   }
 `;
 
+export const STANDUP_CHANGED = gql`
+  subscription StandupChanged($sprintId: ID!) {
+    standupChanged(sprintId: $sprintId) {
+      sprintId
+      kind
+    }
+  }
+`;
+
 export const START_STANDUP = gql`
   mutation StartStandup($sprintId: ID!, $leadName: String!, $leadKey: String!) {
     startStandup(sprintId: $sprintId, leadName: $leadName, leadKey: $leadKey) {

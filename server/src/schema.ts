@@ -311,4 +311,14 @@ export const typeDefs = /* GraphQL */ `
     # Pass reseedDefaults: true to recreate the Athens/Berlin/Cairo squads.
     resetDatabase(reseedDefaults: Boolean): Boolean!
   }
+
+  # Fired when a sprint's standup lock or any of its cells/blockers change.
+  type StandupChange {
+    sprintId: ID!
+    kind: String!
+  }
+
+  type Subscription {
+    standupChanged(sprintId: ID!): StandupChange!
+  }
 `;

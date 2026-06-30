@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "@apollo/client";
+import { useMutation, useQuery, useSubscription, useApolloClient } from "@apollo/client";
 import { Link } from "react-router-dom";
 import { useSquad } from "../context/SquadContext";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import {
   CURRENT_SPRINT,
   SQUAD,
@@ -11,6 +12,8 @@ import {
   START_STANDUP,
   STANDUP_HEARTBEAT,
   END_STANDUP,
+  STANDUP_CHANGED,
+  DASHBOARD,
 } from "../graphql";
 import { todayISO } from "../lib/helpers";
 import { LEAD_KEY } from "../lib/leadKey";
@@ -45,16 +48,30 @@ export default function Dashboard() {
 
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
+  const toast = useToast();
 
   const jiraConfigured = squadData?.squad?.jiraConfigured;
   const sprint = sprintData?.currentSprint;
 
   // --- Standup session lock ---
+  const apollo = useApolloClient();
   const { data: standupData, refetch: refetchStandup } = useQuery(ACTIVE_STANDUP, {
     variables: { sprintId: sprint?.id, leadKey: LEAD_KEY },
     skip: !sprint,
-    pollInterval: 15000,
     fetchPolicy: "cache-and-network",
+  });
+
+  // Live updates: when anyone changes this sprint's lock/cells, re-pull.
+  useSubscription(STANDUP_CHANGED, {
+    variables: { sprintId: sprint?.id },
+    skip: !sprint,
+    onData: ({ data }) => {
+      const kind = data.data?.standupChanged?.kind;
+      refetchStandup();
+      if (kind === "entry" && sprint) {
+        apollo.refetchQueries({ include: [DASHBOARD] });
+      }
+    },
   });
   const standup = standupData?.activeStandup;
   const isLeading = !!standup?.isMine;
@@ -74,7 +91,7 @@ export default function Dashboard() {
       await startStandup({ variables: { sprintId: sprint.id, leadName, leadKey: LEAD_KEY } });
       refetchStandup();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
       refetchStandup();
     }
   };

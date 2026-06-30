@@ -56,8 +56,14 @@ independent of any entry.
 
 ## GraphQL API
 
-Endpoint: the Apollo standalone server root (`http://localhost:4000/` in dev).
-All operations except `login` require `Authorization: Bearer <token>`.
+Endpoint: `http://localhost:4000/graphql` (also served at `/` for back-compat).
+Subscriptions run over WebSocket at `ws://localhost:4000/graphql` (token sent via
+`connectionParams.authorization`). The server is Express + `@apollo/server/express4` +
+`graphql-ws`/`ws`. All operations except `login`/`guestLogin` require
+`Authorization: Bearer <token>`.
+
+**Subscriptions:** `standupChanged(sprintId)` → `{ sprintId, kind }` fires on
+`start`/`end`/`entry`; the dashboard refetches live (no polling).
 
 ### Queries
 
