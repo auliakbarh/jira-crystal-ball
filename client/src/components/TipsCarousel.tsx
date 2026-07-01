@@ -50,7 +50,7 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
   return (
     <section className="card">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold">{title ?? "Tips"}</h2>
+        <h2 className="text-sm font-semibold text-gray-600 dark:text-gray-300">{title ?? "Tips"}</h2>
         <div className="flex items-center gap-2">
           {!hidden && (
             <span className="text-xs text-gray-400">
@@ -76,10 +76,10 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
             transition={{ duration: 0.25 }}
             style={{ overflow: "hidden" }}
           >
-            {/* Card stack */}
+            {/* Card stack (compact) */}
             <div
-              className="relative mt-3"
-              style={{ height: 168, perspective: 1200 }}
+              className="relative mt-2"
+              style={{ height: 104, perspective: 1000 }}
               onMouseEnter={() => setPaused(true)}
               onMouseLeave={() => setPaused(false)}
             >
@@ -90,16 +90,16 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
                 return (
                   <motion.div
                     key={idx}
-                    className="absolute inset-x-0 top-0 rounded-xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                    className="absolute inset-x-0 top-0 rounded-lg border border-gray-200 bg-white p-2.5 shadow-md dark:border-gray-700 dark:bg-gray-800"
                     style={{ transformOrigin: "center bottom" }}
                     initial={false}
                     animate={
                       leaving
-                        ? { y: -80, x: dir * 40, rotate: dir * -6, scale: 0.92, opacity: 0, zIndex: 30 }
+                        ? { y: -56, x: dir * 28, rotate: dir * -5, scale: 0.94, opacity: 0, zIndex: 30 }
                         : {
-                            y: o * 14,
-                            scale: 1 - o * 0.05,
-                            opacity: o === 0 ? 1 : 0.55 - (o - 1) * 0.15,
+                            y: o * 8,
+                            scale: 1 - o * 0.04,
+                            opacity: o === 0 ? 1 : 0.5 - (o - 1) * 0.15,
                             zIndex: 20 - o,
                             rotate: 0,
                             x: 0,
@@ -107,11 +107,11 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
                     }
                     transition={{ type: "spring", stiffness: 320, damping: 32 }}
                   >
-                    <div className="flex items-start gap-3">
-                      {card.icon && <div className="shrink-0 text-3xl">{card.icon}</div>}
+                    <div className="flex items-start gap-2">
+                      {card.icon && <div className="shrink-0 text-lg">{card.icon}</div>}
                       <div>
-                        <h3 className="font-semibold">{card.title}</h3>
-                        <div className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">{card.body}</div>
+                        <h3 className="text-xs font-semibold">{card.title}</h3>
+                        <div className="mt-0.5 text-[11px] leading-snug text-gray-600 dark:text-gray-300">{card.body}</div>
                       </div>
                     </div>
                   </motion.div>
@@ -119,24 +119,24 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
               })}
             </div>
 
-            <div className="mt-3 flex items-center justify-between">
-              <button className="btn-ghost text-sm" onClick={() => go(-1)} aria-label="Previous tip">
-                ← Prev
+            <div className="mt-2 flex items-center justify-between">
+              <button className="text-xs text-gray-500 hover:text-brand" onClick={() => go(-1)} aria-label="Previous tip">
+                ←
               </button>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
                 {cards.map((_, idx) => (
                   <button
                     key={idx}
                     onClick={() => jump(idx)}
                     aria-label={`Tip ${idx + 1}`}
-                    className={`h-2 w-2 rounded-full transition ${
+                    className={`h-1.5 w-1.5 rounded-full transition ${
                       idx === i ? "bg-brand" : "bg-gray-300 hover:bg-gray-400 dark:bg-gray-600"
                     }`}
                   />
                 ))}
               </div>
-              <button className="btn-ghost text-sm" onClick={() => go(1)} aria-label="Next tip">
-                Next →
+              <button className="text-xs text-gray-500 hover:text-brand" onClick={() => go(1)} aria-label="Next tip">
+                →
               </button>
             </div>
           </motion.div>
