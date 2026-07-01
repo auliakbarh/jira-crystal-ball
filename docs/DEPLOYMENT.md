@@ -302,9 +302,11 @@ node scripts/build-env.mjs production   # reads server/.env.raw.production
 node scripts/build-env.mjs staging      # → writes server/.env.<env> with the token encrypted
 ```
 
-It copies every line from the `.raw` file, replaces `JIRA_API_TOKEN` with a freshly
-generated `JIRA_API_TOKEN_ENC` + `JIRA_ENC_KEY`, and appends `LOG_RETENTION_DAYS` if missing.
-Nothing is printed. Both `.env.raw.*` and `.env.*` stay gitignored.
+It renders `server/.env.example` (the canonical structure — same comments + order) using the
+values from the `.raw` file, blanks the plaintext `JIRA_API_TOKEN`, and fills a freshly
+generated `JIRA_API_TOKEN_ENC` + `JIRA_ENC_KEY`. So every env file mirrors `.env.example`;
+only the values differ per environment. Nothing is printed. Both `.env.raw.*` and `.env.*`
+stay gitignored.
 
 ## Security checklist (do before production)
 
