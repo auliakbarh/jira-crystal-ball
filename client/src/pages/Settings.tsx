@@ -73,6 +73,7 @@ export default function Settings() {
       <HolidaysSection squadId={squadId} holidays={squad?.holidays ?? []} refetch={refetch} />
 
       {isSuperAdmin && <AdminsSection />}
+      {isAdmin && <SeedSection />}
       {isAdmin && <DangerZone setSquadId={setSquadId} />}
     </div>
   );
