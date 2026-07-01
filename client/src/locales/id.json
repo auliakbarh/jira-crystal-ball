@@ -337,7 +337,15 @@
     "addSprint": "Tambah Sprint",
     "sprintLabel": "Sprint {{number}}",
     "publicHolidaysTitle": "Hari Libur Nasional",
-    "holidayDate": "Tanggal"
+    "holidayDate": "Tanggal",
+    "seedTitle": "Seed massal (squad + anggota)",
+    "seedDesc": "Tempel atau unggah konfigurasi JSON untuk membuat/memperbarui squad dan anggota tim (idempoten — aman diulang). File yang diunggah dibaca di browser dan tidak disimpan.",
+    "seedRun": "Jalankan seed",
+    "seedRunning": "Menyemai…",
+    "seedExample": "Isi contoh",
+    "seedUpload": "⬆ Unggah JSON",
+    "seedDownloadTemplate": "⬇ Unduh template",
+    "seedResult": "Selesai: {{squads}} squad, {{created}} anggota dibuat, {{updated}} diperbarui."
   },
   "panels": {
     "teamTitle": "Anggota Tim",
@@ -539,7 +547,7 @@
     "settingsTitle": "Pengaturan (admin)",
     "settingsItem1": "Squad — tambah/ganti/hapus; edit nama, id board, field Story Point (default + FE/BE/QA; pilih dari daftar field board), Kunci Ruang Confluence + ID Induk per squad (kosong = default env global), dan skala poin default Tarot (Fibonacci/Scrum/Kustom — host masih bisa menimpa per ruangan).",
     "settingsItem2": "Anggota — tambah dengan nama pendek, nama lengkap opsional, dan posisi; edit atau hapus anggota yang ada secara inline. Plus cuti (Tahunan/Sakit/Izin + pengganti), Sprint, Hari Libur Nasional, uji Board JIRA.",
-    "settingsItem3": "Penyiapan massal: admin dapat menyemai squad + anggota dari file JSON melalui npm run db:seed:config (idempoten; lihat dokumen DEPLOYMENT).",
+    "settingsItem3": "Penyiapan massal: seed squad + anggota dari JSON — di Pengaturan → Seed massal (tempel atau unggah, unduh template), atau via `npm run db:seed:config` (idempoten).",
     "settingsItem4": "Id akun JIRA anggota (opsional) — id Atlassian buram (mis. 5b10ac8d82e05b22cc7d4ef5), bukan email; menghubungkan anggota ke penerima tugas JIRA mereka. Field ini adalah picker: pilih pengguna JIRA (nama + email) dari dropdown untuk mengisi id, atau tempel manual.",
     "settingsItem5": "Akun Admin — hanya terlihat oleh super admin lingkungan (akun SEED_ADMIN_EMAIL yang disemai). Tambah admin baru (email + nama + kata sandi), edit nama/email mereka, reset kata sandi, atau hapus mereka. Admin biasa dapat menggunakan setiap pengaturan lain tetapi tidak dapat mengelola akun admin. Baris super admin hanya-baca dan tidak dapat diedit atau dihapus (mencegah terkunci).",
     "settingsItem6": "Zona Bahaya — reset basis data (hanya admin).",

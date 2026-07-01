@@ -167,6 +167,10 @@ Notes:
   (cascading every related record); users are preserved. With `reseedDefaults: true` it
   recreates the Athens/Berlin/Cairo squads. Exposed in the UI as **Settings → Danger
   Zone** (admin only, type-to-confirm).
+- **Bulk seed** (`seedConfig(json)` in `resolvers/admin.ts`, **admin only**): parses a JSON
+  config (`{ squads, teams }`) and upserts squads + team members via `seedFromConfig`
+  (`seedConfigCore.ts`, shared with the `db:seed:config` CLI). Idempotent. UI: Settings →
+  **Bulk seed** (paste, upload a `.json` — read client-side, not stored — or download a template).
 - **Admin management** (`resolvers/admin.ts`, **super-admin only** — `requireSuperAdmin`):
   `admins` lists all admins; `createAdmin(email,name,password)`, `updateAdmin(id,email?,name?)`,
   `changeAdminPassword(id,password)`, `deleteAdmin(id)`. The **super admin** is the env

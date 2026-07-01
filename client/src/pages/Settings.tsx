@@ -19,6 +19,7 @@ import {
   JIRA_USERS,
   DELETE_SQUAD,
   RESET_DATABASE,
+  SEED_CONFIG,
   ADD_MEMBER,
   UPDATE_MEMBER,
   DELETE_MEMBER,
@@ -51,6 +52,7 @@ export default function Settings() {
       <div className="space-y-5">
         <SquadsSection currentId={squadId} setSquadId={setSquadId} isAdmin={isAdmin} />
         {isSuperAdmin && <AdminsSection />}
+        {isAdmin && <SeedSection />}
         {isAdmin && <DangerZone setSquadId={setSquadId} />}
       </div>
     );
@@ -283,6 +285,89 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
         />
       )}
     </div>
+  );
+}
+
+// --------------------------- Bulk seed (admin) ---------------------------
+function SeedSection() {
+  const { t } = useTranslation();
+  const apollo = useApolloClient();
+  const [seed, { loading }] = useMutation(SEED_CONFIG);
+  const [json, setJson] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const example = `{
+  "squads": [
+    { "name": "Athens", "boardId": "ATH" }
+  ],
+  "teams": [
+    { "name": "Budi", "fullName": "Budi Santoso", "position": "FE", "squads": ["Athens"] }
+  ]
+}`;
+
+  const run = async () => {
+    setMsg(null);
+    try {
+      const res = await seed({ variables: { json } });
+      const r = res.data?.seedConfig;
+      setMsg(t("settings.seedResult", { squads: r.squads, created: r.membersCreated, updated: r.membersUpdated }));
+      await apollo.refetchQueries({ include: [SQUADS, SQUAD] });
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`);
+    }
+  };
+
+  // Read an uploaded .json file into the textarea. The file itself is never
+  // uploaded/stored — only its text is read client-side and sent as the json arg.
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setJson(String(reader.result ?? ""));
+    reader.onerror = () => setMsg("Error: could not read file");
+    reader.readAsText(file);
+    e.target.value = ""; // allow re-selecting the same file
+  };
+
+  const downloadTemplate = () => {
+    const blob = new Blob([example + "\n"], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dashboard-config-seed.template.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <section className="card">
+      <h2 className="mb-1 text-base font-bold">{t("settings.seedTitle")}</h2>
+      <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">{t("settings.seedDesc")}</p>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <label className="btn-ghost cursor-pointer text-sm">
+          {t("settings.seedUpload")}
+          <input type="file" accept="application/json,.json" className="hidden" onChange={onFile} />
+        </label>
+        <button className="btn-ghost text-sm" onClick={downloadTemplate}>
+          {t("settings.seedDownloadTemplate")}
+        </button>
+        <button className="btn-ghost text-sm" onClick={() => setJson(example)} disabled={loading}>
+          {t("settings.seedExample")}
+        </button>
+      </div>
+      <textarea
+        className="input h-40 w-full font-mono text-xs"
+        placeholder={example}
+        value={json}
+        onChange={(e) => setJson(e.target.value)}
+      />
+      <div className="mt-2 flex items-center gap-2">
+        <button className="btn-primary" onClick={run} disabled={loading || !json.trim()}>
+          {loading ? t("settings.seedRunning") : t("settings.seedRun")}
+        </button>
+      </div>
+      {msg && <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{msg}</div>}
+    </section>
   );
 }
 

@@ -100,6 +100,12 @@ export const typeDefs = /* GraphQL */ `
     doneCount: Int!
   }
 
+  type SeedResult {
+    squads: Int!
+    membersCreated: Int!
+    membersUpdated: Int!
+  }
+
   # A grooming source: one future (not-yet-started) sprint, or the backlog.
   type GroomingBucket {
     key: String!
@@ -370,6 +376,9 @@ export const typeDefs = /* GraphQL */ `
     login(email: String!, password: String!): AuthPayload!
     # Guest access for running standup: no account, name only. Non-admin.
     guestLogin(name: String!): AuthPayload!
+
+    # Bulk-seed squads + members from a JSON config (admin only). Idempotent.
+    seedConfig(json: String!): SeedResult!
 
     # --- Admin account management (super-admin only) ---
     createAdmin(email: String!, name: String!, password: String!): User!

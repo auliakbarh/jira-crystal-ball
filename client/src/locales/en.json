@@ -337,7 +337,15 @@
     "addSprint": "Add Sprint",
     "sprintLabel": "Sprint {{number}}",
     "publicHolidaysTitle": "Public Holidays",
-    "holidayDate": "Date"
+    "holidayDate": "Date",
+    "seedTitle": "Bulk seed (squads + members)",
+    "seedDesc": "Paste or upload a JSON config to create/update squads and team members (idempotent — safe to re-run). Uploaded files are read in your browser and not stored.",
+    "seedRun": "Run seed",
+    "seedRunning": "Seeding…",
+    "seedExample": "Fill example",
+    "seedUpload": "⬆ Upload JSON",
+    "seedDownloadTemplate": "⬇ Download template",
+    "seedResult": "Done: {{squads}} squad(s), {{created}} member(s) created, {{updated}} updated."
   },
   "panels": {
     "teamTitle": "Team Members",
@@ -539,7 +547,7 @@
     "settingsTitle": "Settings (admin)",
     "settingsItem1": "Squads — add/switch/delete; edit name, board id, Story Point fields (default + FE/BE/QA; pick from the board field list), per-squad Confluence Space Key + Parent ID (blank = global env default), and the Tarot default point scale (Fibonacci/Scrum/Custom — a host can still override per room).",
     "settingsItem2": "Members — add with a short name, optional full name, and position; edit or delete existing members inline. Plus leave (Annual/Sick/Permission + substitute), Sprints, Public Holidays, JIRA Board test.",
-    "settingsItem3": "Bulk setup: admins can seed squads + members from a JSON file via npm run db:seed:config (idempotent; see DEPLOYMENT docs).",
+    "settingsItem3": "Bulk setup: seed squads + members from JSON — in Settings → Bulk seed (paste or upload, download a template), or via `npm run db:seed:config` (idempotent).",
     "settingsItem4": "Member JIRA account id (optional) — the opaque Atlassian id (e.g. 5b10ac8d82e05b22cc7d4ef5), not the email; links the member to their JIRA assignee. The field is a picker: choose a JIRA user (name + email) from the dropdown to fill the id, or paste one manually.",
     "settingsItem5": "Admin Accounts — visible only to the environment super admin (the seeded SEED_ADMIN_EMAIL account). Add new admins (email + name + password), edit their name/email, reset their password, or delete them. Regular admins can use every other setting but cannot manage admin accounts. The super admin row is read-only and cannot be edited or deleted (prevents lockout).",
     "settingsItem6": "Danger Zone — reset the database (admin only).",

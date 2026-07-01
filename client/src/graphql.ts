@@ -107,6 +107,16 @@ export const BURNDOWN = gql`
   }
 `;
 
+export const SEED_CONFIG = gql`
+  mutation SeedConfig($json: String!) {
+    seedConfig(json: $json) {
+      squads
+      membersCreated
+      membersUpdated
+    }
+  }
+`;
+
 export const ADMINS = gql`
   query Admins {
     admins {

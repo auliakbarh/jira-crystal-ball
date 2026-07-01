@@ -2,8 +2,9 @@
 // admin" (SEED_ADMIN_EMAIL). Regular admins can use the app but cannot create,
 // edit, delete, or reset the password of admin accounts.
 import type { Context } from "../context.js";
-import { requireSuperAdmin, isSuperAdminUser } from "../context.js";
+import { requireSuperAdmin, isSuperAdminUser, requireAdmin } from "../context.js";
 import { hashPassword } from "../auth.js";
+import { seedFromConfig, type SeedConfig } from "../seedConfigCore.js";
 
 function normEmail(email: string): string {
   return email.toLowerCase().trim();
@@ -27,6 +28,20 @@ export const adminResolvers = {
   },
 
   Mutation: {
+    seedConfig: async (_p: unknown, { json }: { json: string }, ctx: Context) => {
+      await requireAdmin(ctx);
+      let cfg: SeedConfig;
+      try {
+        cfg = JSON.parse(json);
+      } catch (e: any) {
+        throw new Error(`Invalid JSON: ${e?.message ?? e}`);
+      }
+      if (typeof cfg !== "object" || cfg === null || (!cfg.squads && !cfg.teams)) {
+        throw new Error('Config must be an object with "squads" and/or "teams" arrays.');
+      }
+      return seedFromConfig(ctx.prisma, cfg);
+    },
+
     createAdmin: async (
       _p: unknown,
       { email, name, password }: { email: string; name: string; password: string },
