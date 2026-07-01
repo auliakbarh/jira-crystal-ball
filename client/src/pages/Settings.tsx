@@ -2,7 +2,14 @@ import { useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { useSquad } from "../context/SquadContext";
 import { useAuth } from "../context/AuthContext";
+import ConfirmModal from "../components/ConfirmModal";
 import {
+  ME,
+  ADMINS,
+  CREATE_ADMIN,
+  UPDATE_ADMIN,
+  CHANGE_ADMIN_PASSWORD,
+  DELETE_ADMIN,
   SQUAD,
   SQUADS,
   CREATE_SQUAD,
@@ -31,6 +38,9 @@ export default function Settings() {
   const { squadId, setSquadId } = useSquad();
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
+  // Fresh super-admin flag from the server (cached localStorage user may predate it).
+  const { data: meData } = useQuery(ME, { skip: !isAdmin });
+  const isSuperAdmin = !!meData?.me?.isSuperAdmin;
   const { data, refetch } = useQuery(SQUAD, { variables: { id: squadId }, skip: !squadId });
   const squad = data?.squad;
 
@@ -38,6 +48,7 @@ export default function Settings() {
     return (
       <div className="space-y-5">
         <SquadsSection currentId={squadId} setSquadId={setSquadId} isAdmin={isAdmin} />
+        {isSuperAdmin && <AdminsSection />}
         {isAdmin && <DangerZone setSquadId={setSquadId} />}
       </div>
     );
@@ -57,7 +68,217 @@ export default function Settings() {
       <SprintsSection squadId={squadId} sprints={squad?.sprints ?? []} refetch={refetch} />
       <HolidaysSection squadId={squadId} holidays={squad?.holidays ?? []} refetch={refetch} />
 
+      {isSuperAdmin && <AdminsSection />}
       {isAdmin && <DangerZone setSquadId={setSquadId} />}
+    </div>
+  );
+}
+
+// --------------------------- Admins (super-admin only) ---------------------------
+function AdminsSection() {
+  const { data, refetch } = useQuery(ADMINS);
+  const [create, { loading: creating }] = useMutation(CREATE_ADMIN);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const admins = data?.admins ?? [];
+
+  const add = async () => {
+    setMsg(null);
+    try {
+      await create({ variables: { email, name, password } });
+      setEmail("");
+      setName("");
+      setPassword("");
+      await refetch();
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`);
+    }
+  };
+
+  return (
+    <section className="card">
+      <h2 className="mb-1 text-base font-bold">Admin Accounts</h2>
+      <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+        Only you (the environment super admin) can add, edit, delete, or reset passwords for
+        admin accounts. The super admin account itself cannot be modified here.
+      </p>
+      <div className="space-y-2">
+        {admins.map((a: any) => (
+          <AdminRow key={a.id} admin={a} refetch={refetch} />
+        ))}
+      </div>
+      <div className="mt-4 border-t border-gray-200 pt-3 dark:border-gray-700">
+        <div className="mb-2 text-sm font-semibold">Add admin</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="input max-w-[220px]"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            className="input max-w-[180px]"
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            className="input max-w-[200px]"
+            type="password"
+            placeholder="Password (min 6)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            className="btn-primary"
+            onClick={add}
+            disabled={creating || !email.trim() || !name.trim() || password.length < 6}
+          >
+            {creating ? "Adding…" : "Add"}
+          </button>
+        </div>
+      </div>
+      {msg && <div className="mt-2 text-sm text-red-600 dark:text-red-400">{msg}</div>}
+    </section>
+  );
+}
+
+function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
+  const [update, { loading: saving }] = useMutation(UPDATE_ADMIN);
+  const [changePw, { loading: pwLoading }] = useMutation(CHANGE_ADMIN_PASSWORD);
+  const [del, { loading: deleting }] = useMutation(DELETE_ADMIN);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(admin.name);
+  const [email, setEmail] = useState(admin.email);
+  const [pw, setPw] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  if (admin.isSuperAdmin) {
+    return (
+      <div className="flex items-center justify-between rounded border border-gray-200 px-3 py-2 dark:border-gray-700">
+        <div>
+          <span className="font-medium">{admin.name}</span>
+          <span className="ml-2 text-sm text-gray-500">{admin.email}</span>
+        </div>
+        <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+          Super admin (env)
+        </span>
+      </div>
+    );
+  }
+
+  const save = async () => {
+    setMsg(null);
+    try {
+      await update({ variables: { id: admin.id, name, email } });
+      setEditing(false);
+      await refetch();
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`);
+    }
+  };
+  const resetPw = async () => {
+    setMsg(null);
+    try {
+      await changePw({ variables: { id: admin.id, password: pw } });
+      setPw("");
+      setMsg("Password updated.");
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`);
+    }
+  };
+  const remove = async () => {
+    setMsg(null);
+    try {
+      await del({ variables: { id: admin.id } });
+      await refetch();
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="rounded border border-gray-200 px-3 py-2 dark:border-gray-700">
+      <div className="flex flex-wrap items-center gap-2">
+        {editing ? (
+          <>
+            <input
+              className="input max-w-[180px]"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Name"
+            />
+            <input
+              className="input max-w-[220px]"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+            />
+            <button className="btn-primary" onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              className="text-sm text-gray-500 hover:underline"
+              onClick={() => {
+                setEditing(false);
+                setName(admin.name);
+                setEmail(admin.email);
+              }}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="font-medium">{admin.name}</span>
+            <span className="text-sm text-gray-500">{admin.email}</span>
+            <div className="ml-auto flex items-center gap-3">
+              <button
+                className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+                onClick={() => setEditing(true)}
+              >
+                Edit
+              </button>
+              <button
+                className="text-sm text-red-600 hover:underline dark:text-red-400"
+                onClick={() => setConfirming(true)}
+                disabled={deleting}
+              >
+                Delete
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input
+          className="input max-w-[200px]"
+          type="password"
+          placeholder="New password (min 6)"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+        />
+        <button className="btn-primary" onClick={resetPw} disabled={pwLoading || pw.length < 6}>
+          {pwLoading ? "Saving…" : "Reset password"}
+        </button>
+      </div>
+      {msg && <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{msg}</div>}
+      {confirming && (
+        <ConfirmModal
+          title="Delete admin"
+          message={`Delete admin ${admin.email}? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          busy={deleting}
+          onConfirm={remove}
+          onClose={() => setConfirming(false)}
+        />
+      )}
     </div>
   );
 }
@@ -69,10 +290,9 @@ function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
   const [reseed, setReseed] = useState(true);
   const [confirmText, setConfirmText] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const doReset = async () => {
-    if (confirmText !== "RESET") return;
-    if (!confirm("This permanently deletes ALL squads and their data. Continue?")) return;
     setMsg(null);
     try {
       await reset({ variables: { reseedDefaults: reseed } });
@@ -83,6 +303,8 @@ function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
       setConfirmText("");
     } catch (e: any) {
       setMsg(`Error: ${e.message}`);
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -105,11 +327,22 @@ function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
         />
-        <button className="btn-danger" onClick={doReset} disabled={loading || confirmText !== "RESET"}>
+        <button className="btn-danger" onClick={() => setConfirming(true)} disabled={loading || confirmText !== "RESET"}>
           {loading ? "Resetting…" : "Reset Database"}
         </button>
       </div>
       {msg && <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{msg}</div>}
+      {confirming && (
+        <ConfirmModal
+          title="Reset database"
+          message="This permanently deletes ALL squads and their data (members, leaves, holidays, sprints, standup entries, blockers, JIRA configs). User accounts are kept. This cannot be undone."
+          confirmLabel="Reset Database"
+          danger
+          busy={loading}
+          onConfirm={doReset}
+          onClose={() => setConfirming(false)}
+        />
+      )}
     </section>
   );
 }
@@ -126,8 +359,9 @@ function SquadsSection({
 }) {
   const { data, refetch } = useQuery(SQUADS);
   const [create] = useMutation(CREATE_SQUAD);
-  const [del] = useMutation(DELETE_SQUAD);
+  const [del, { loading: deleting }] = useMutation(DELETE_SQUAD);
   const [name, setName] = useState("");
+  const [delTarget, setDelTarget] = useState<{ id: string; label: string } | null>(null);
   const squads = data?.squads ?? [];
 
   const add = async () => {
@@ -138,13 +372,16 @@ function SquadsSection({
     if (res.data?.createSquad?.id) setSquadId(res.data.createSquad.id);
   };
 
-  const remove = async (id: string, label: string) => {
-    if (!confirm(`Delete squad "${label}"? All its sprints, members, blockers and JIRA config are removed.`))
-      return;
+  const remove = (id: string, label: string) => setDelTarget({ id, label });
+
+  const performDelete = async () => {
+    if (!delTarget) return;
+    const { id } = delTarget;
     await del({ variables: { id } });
     const rest = squads.filter((s: any) => s.id !== id);
     await refetch();
     if (currentId === id && rest[0]) setSquadId(rest[0].id);
+    setDelTarget(null);
   };
 
   return (
@@ -177,6 +414,17 @@ function SquadsSection({
           />
         ))}
       </ul>
+      {delTarget && (
+        <ConfirmModal
+          title="Delete squad"
+          message={`Delete squad "${delTarget.label}"? All its sprints, members, blockers and JIRA config are removed. This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          busy={deleting}
+          onConfirm={performDelete}
+          onClose={() => setDelTarget(null)}
+        />
+      )}
     </section>
   );
 }
@@ -205,6 +453,15 @@ function SquadRow({
   const [spQA, setSpQA] = useState(squad.spFieldQA ?? "");
   const [confSpace, setConfSpace] = useState(squad.confluenceSpaceKey ?? "");
   const [confParent, setConfParent] = useState(squad.confluenceParentId ?? "");
+  const [tarotType, setTarotType] = useState(squad.tarotScaleType ?? "");
+  const [tarotValues, setTarotValues] = useState(() => {
+    try {
+      const arr = JSON.parse(squad.tarotScaleValues ?? "[]");
+      return Array.isArray(arr) ? arr.join(", ") : "";
+    } catch {
+      return "";
+    }
+  });
   const [update, { loading }] = useMutation(UPDATE_SQUAD);
 
   // Lazy-load the board's JIRA fields (id + name) when editing, to help pick SP fields.
@@ -227,6 +484,11 @@ function SquadRow({
         spFieldQA: spQA,
         confluenceSpaceKey: confSpace,
         confluenceParentId: confParent,
+        tarotScaleType: tarotType,
+        tarotScaleValues:
+          tarotType === "CUSTOM"
+            ? JSON.stringify(tarotValues.split(/[,\s]+/).map(Number).filter((n) => Number.isFinite(n)))
+            : "",
       },
     });
     setEditing(false);
@@ -311,6 +573,32 @@ function SquadRow({
               onChange={(e) => setConfParent(e.target.value)}
             />
           </div>
+        </div>
+        <div className="text-xs text-gray-500">
+          Tarot (planning poker) default scale — used when a host opens a new room (the host
+          can still override per-room). <code>?</code> and <code>☕</code> cards are always added.
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="label">Default scale</label>
+            <select className="input max-w-[160px]" value={tarotType} onChange={(e) => setTarotType(e.target.value)}>
+              <option value="">— (Fibonacci)</option>
+              <option value="FIBONACCI">Fibonacci</option>
+              <option value="SCRUM">Scrum</option>
+              <option value="CUSTOM">Custom</option>
+            </select>
+          </div>
+          {tarotType === "CUSTOM" && (
+            <div>
+              <label className="label">Custom values</label>
+              <input
+                className="input max-w-[260px]"
+                placeholder="e.g. 1, 2, 3, 5, 8, 13"
+                value={tarotValues}
+                onChange={(e) => setTarotValues(e.target.value)}
+              />
+            </div>
+          )}
         </div>
         {/* Quick reference: list of fields with ids (filterable by browser datalist above) */}
         {fields.length > 0 && (

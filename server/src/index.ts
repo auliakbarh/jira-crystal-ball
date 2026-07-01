@@ -13,14 +13,35 @@ import { buildContext, contextFromAuthHeader } from "./context.js";
 import { env } from "./env.js";
 import { prisma } from "./db.js";
 import { startScheduler } from "./scheduler.js";
+import { startTarotPresenceSweep } from "./tarotPresence.js";
 
 const schema = makeExecutableSchema({ typeDefs, resolvers });
+
+// Origin allow-list, shared by HTTP CORS and the WebSocket handshake.
+// Dev: allow everything. Prod: only CORS_ORIGINS; requests without an Origin
+// header (curl, server-to-server) always pass.
+function originAllowed(origin?: string | null): boolean {
+  if (!env.isProd) return true;
+  if (!origin) return true;
+  return env.corsOrigins.includes(origin);
+}
+
+if (env.isProd && env.corsOrigins.length === 0) {
+  console.warn(
+    "⚠️  CORS_ORIGINS is empty in production — browser cross-origin requests will be blocked. " +
+      "Set CORS_ORIGINS to your client URL(s), e.g. https://app.example.com",
+  );
+}
 
 const app = express();
 const httpServer = createServer(app);
 
 // WebSocket server for GraphQL subscriptions at the same path ("/graphql").
-const wsServer = new WebSocketServer({ server: httpServer, path: "/graphql" });
+const wsServer = new WebSocketServer({
+  server: httpServer,
+  path: "/graphql",
+  verifyClient: ({ origin }, done) => done(originAllowed(origin)),
+});
 const wsCleanup = useServer(
   {
     schema,
@@ -56,7 +77,14 @@ const gqlMiddleware = expressMiddleware(server, {
   context: async ({ req }) => buildContext({ req: { headers: req.headers as any } }),
 });
 // Serve GraphQL at /graphql and at / (root) for backward compatibility.
-app.use(["/graphql", "/"], cors<cors.CorsRequest>(), express.json({ limit: "2mb" }), gqlMiddleware);
+const corsOptions: cors.CorsOptions = {
+  origin(origin, cb) {
+    if (originAllowed(origin)) cb(null, true);
+    else cb(new Error(`Origin not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+};
+app.use(["/graphql", "/"], cors<cors.CorsRequest>(corsOptions), express.json({ limit: "2mb" }), gqlMiddleware);
 
 async function shutdown() {
   await server.stop();
@@ -69,4 +97,5 @@ httpServer.listen(env.port, () => {
   console.log(`🔮 JIRA Crystal Ball GraphQL ready at http://localhost:${env.port}/graphql`);
   console.log(`   Subscriptions (WebSocket) at ws://localhost:${env.port}/graphql`);
   startScheduler();
+  startTarotPresenceSweep();
 });

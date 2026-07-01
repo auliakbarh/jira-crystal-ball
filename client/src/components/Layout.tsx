@@ -58,6 +58,12 @@ export default function Layout() {
             <NavLink to="/board" className={linkClass}>
               Board
             </NavLink>
+            <NavLink to="/clairvoyance" className={linkClass}>
+              Clairvoyance
+            </NavLink>
+            <NavLink to="/tarot" className={linkClass}>
+              Tarot
+            </NavLink>
             <NavLink to="/previous" className={linkClass}>
               Previous Sprints
             </NavLink>

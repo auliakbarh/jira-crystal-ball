@@ -23,7 +23,33 @@ async function tick() {
   }
 }
 
+// Purge ended tarot rooms past the retention window (default 30 days), so
+// history doesn't accumulate forever. 0 disables. Cascades rounds/votes/results.
+const TAROT_RETENTION_DAYS = Number(process.env.TAROT_ROOM_RETENTION_DAYS ?? "30");
+
+async function purgeOldTarotRooms() {
+  if (!Number.isFinite(TAROT_RETENTION_DAYS) || TAROT_RETENTION_DAYS <= 0) return;
+  const cutoff = new Date(Date.now() - TAROT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  try {
+    const res = await prisma.tarotRoom.deleteMany({
+      where: { status: "ENDED", endedAt: { lt: cutoff } },
+    });
+    if (res.count) console.log(`🧹 Purged ${res.count} ended tarot room(s) older than ${TAROT_RETENTION_DAYS}d`);
+  } catch (e: any) {
+    console.error("Tarot room purge failed:", e?.message ?? e);
+  }
+}
+
 export function startScheduler() {
+  // Tarot room retention runs regardless of Confluence config.
+  setTimeout(() => void purgeOldTarotRooms(), 20_000);
+  setInterval(() => void purgeOldTarotRooms(), 60 * 60 * 1000);
+  console.log(
+    TAROT_RETENTION_DAYS > 0
+      ? `Scheduler: tarot room retention = ${TAROT_RETENTION_DAYS} days.`
+      : "Scheduler: tarot room retention disabled.",
+  );
+
   if (!confluenceConfigured()) {
     console.log("Scheduler: Confluence not configured — auto-export disabled.");
     return;

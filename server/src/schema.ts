@@ -21,7 +21,10 @@ export const typeDefs = /* GraphQL */ `
     email: String!
     name: String!
     isAdmin: Boolean!
+    # True for the env "super admin" (SEED_ADMIN_EMAIL) — may manage other admins.
+    isSuperAdmin: Boolean!
     isGuest: Boolean
+    createdAt: String
   }
 
   type AuthPayload {
@@ -41,6 +44,9 @@ export const typeDefs = /* GraphQL */ `
     # Per-squad Confluence export target (fallback: global env).
     confluenceSpaceKey: String
     confluenceParentId: String
+    # Tarot default story-point scale for this squad.
+    tarotScaleType: String
+    tarotScaleValues: String
     members: [TeamMember!]!
     sprints: [Sprint!]!
     holidays: [Holiday!]!
@@ -295,7 +301,9 @@ export const typeDefs = /* GraphQL */ `
     currentSprint(squadId: ID!): Sprint
     boardTickets(squadId: ID!, refresh: Boolean): [JiraTicket!]!
     activeSprintTickets(squadId: ID!, refresh: Boolean): [JiraTicket!]!
+    nextSprintTickets(squadId: ID!, refresh: Boolean): [JiraTicket!]!
     jiraActiveSprint(squadId: ID!): JiraSprint
+    jiraNextSprint(squadId: ID!): JiraSprint
     standupEntries(sprintId: ID!): [StandupEntry!]!
     dashboard(sprintId: ID!, date: Date): [DashboardRow!]!
     blockers(squadId: ID!, includeResolved: Boolean): [Blocker!]!
@@ -308,12 +316,26 @@ export const typeDefs = /* GraphQL */ `
     jiraUsers(squadId: ID!): [JiraUser!]!
     # Public: distinct team-member names for the guest-login name suggestion.
     memberSuggestions: [MemberSuggestion!]!
+
+    # All admin accounts. Super-admin only.
+    admins: [User!]!
+
+    # --- Tarot (planning poker) ---
+    tarotRooms(squadId: ID!): [TarotRoomSummary!]!
+    tarotRoom(id: ID!, key: String): TarotRoom
+    tarotTickets(roomId: ID!, refresh: Boolean): [TarotTicket!]!
   }
 
   type Mutation {
     login(email: String!, password: String!): AuthPayload!
     # Guest access for running standup: no account, name only. Non-admin.
     guestLogin(name: String!): AuthPayload!
+
+    # --- Admin account management (super-admin only) ---
+    createAdmin(email: String!, name: String!, password: String!): User!
+    updateAdmin(id: ID!, email: String, name: String): User!
+    changeAdminPassword(id: ID!, password: String!): Boolean!
+    deleteAdmin(id: ID!): Boolean!
 
     createSquad(name: String!, defaultBoardId: String): Squad!
     updateSquad(
@@ -326,6 +348,8 @@ export const typeDefs = /* GraphQL */ `
       spFieldQA: String
       confluenceSpaceKey: String
       confluenceParentId: String
+      tarotScaleType: String
+      tarotScaleValues: String
     ): Squad!
     deleteSquad(id: ID!): Boolean!
 
@@ -365,6 +389,35 @@ export const typeDefs = /* GraphQL */ `
 
     # Export a past sprint's standup report to a new Confluence page.
     exportSprintToConfluence(sprintId: ID!): ConfluenceExport!
+
+    # --- Tarot (planning poker) ---
+    # key = client-held token identifying the host/participant across reconnects.
+    createTarotRoom(squadId: ID!, hostName: String!, hostKey: String!): TarotRoom!
+    joinTarotRoom(roomId: ID!, name: String!, key: String!): TarotRoom!
+    leaveTarotRoom(roomId: ID!, key: String!): Boolean!
+    tarotHeartbeat(roomId: ID!, key: String!): Boolean!
+    kickTarotParticipant(roomId: ID!, key: String!, participantId: ID!): Boolean!
+    setTarotScale(roomId: ID!, key: String!, scaleType: String!, scaleValues: [Float!], setDefault: Boolean): TarotRoom!
+    # Host starts (or restarts) a tarot session for a ticket.
+    startTarotRound(roomId: ID!, key: String!, ticketKey: String!): TarotRound!
+    # Guest selects/confirms a card. confirmed=false → preview (can still change).
+    castTarotVote(roomId: ID!, key: String!, value: String!, confirmed: Boolean!): Boolean!
+    # Host re-opens voting for the current ticket (cards reshuffle face-down).
+    nextTarotCycle(roomId: ID!, key: String!): TarotRound!
+    # Host forces the reveal early (needs at least one confirmed vote).
+    forceRevealTarotRound(roomId: ID!, key: String!): TarotRound!
+    # Host sets the ticket's story point + per-role points (each <= effort).
+    decideTarotPoint(roomId: ID!, key: String!, effort: Float!, pointFE: Float, pointBE: Float, pointQA: Float): TarotResult!
+    # Host: clear all decided points in the room (guarded by typing RESET client-side).
+    resetTarotPoints(roomId: ID!, key: String!): Boolean!
+    # Host (active room) or admin. Requires every next-sprint ticket to be pointed.
+    endTarotRoom(roomId: ID!, key: String!): Boolean!
+    # Host may delete an ACTIVE room; once ENDED only an admin can delete.
+    deleteTarotRoom(roomId: ID!, key: String!): Boolean!
+    # Host: write decided points to JIRA. fields = subset of ["point","fe","be","qa"].
+    syncTarotToJira(roomId: ID!, key: String!, fields: [String!]!): TarotSyncResult!
+    # Host: restore JIRA field values captured before the last sync.
+    resetTarotSync(roomId: ID!, key: String!): Boolean!
   }
 
   type ConfluenceExport {
@@ -386,7 +439,123 @@ export const typeDefs = /* GraphQL */ `
     kind: String!
   }
 
+  # --- Tarot (planning poker) types ---
+  type TarotParticipant {
+    id: ID!
+    name: String!
+    isHost: Boolean!
+    online: Boolean!
+    hasVoted: Boolean! # confirmed a card in the current round
+    joinedAt: String!
+  }
+
+  # A revealed vote (participant name + chosen value). Only populated once the
+  # round is REVEALED; before that only counts are exposed (so no peeking).
+  type TarotVoteResult {
+    participantId: ID!
+    name: String!
+    value: String!
+  }
+
+  type TarotRound {
+    id: ID!
+    ticketKey: String!
+    ticketSummary: String
+    ticketType: String
+    ticketPriority: String
+    ticketUrl: String
+    status: String! # VOTING | REVEALED | DECIDED
+    cycle: Int!
+    createdAt: String! # round start time (for the elapsed timer)
+    voteCount: Int! # confirmed votes so far
+    revealed: Boolean!
+    votes: [TarotVoteResult!]! # empty until revealed
+    syncPercent: Int # team synchronization %, when revealed
+    suggestion: String # most-picked value (null on a draw), when revealed
+  }
+
+  type TarotResult {
+    ticketKey: String!
+    ticketSummary: String
+    parentKey: String
+    parentName: String
+    effort: Float!
+    pointFE: Float
+    pointBE: Float
+    pointQA: Float
+    decidedAt: String!
+    syncedAt: String
+  }
+
+  # A next-sprint ticket as shown in a Tarot room, with its decided point (if any).
+  type TarotTicket {
+    key: String!
+    summary: String
+    issueType: String
+    priority: String
+    status: String
+    url: String!
+    parentKey: String
+    parentName: String
+    result: TarotResult
+  }
+
+  type TarotRoom {
+    id: ID!
+    squadId: ID!
+    name: String!
+    hostName: String!
+    status: String! # ACTIVE | ENDED
+    scaleType: String!
+    scaleValues: [String!]! # deck values incl special "?" and "coffee"
+    sprintName: String
+    createdAt: String!
+    endedAt: String
+    isHost: Boolean! # true when the requesting key is the host
+    viewerKicked: Boolean! # true when the requesting key was kicked from the room
+    viewerVote: TarotViewerVote # the requester's own vote in the current round (for reload rehydrate)
+    participants: [TarotParticipant!]!
+    currentRound: TarotRound
+    results: [TarotResult!]!
+  }
+
+  type TarotViewerVote {
+    value: String!
+    confirmed: Boolean!
+  }
+
+  # Lightweight row for the room landing list.
+  type TarotRoomSummary {
+    id: ID!
+    name: String!
+    hostName: String!
+    status: String!
+    createdAt: String!
+    endedAt: String
+    participantCount: Int!
+  }
+
+  type TarotSyncResult {
+    updated: Int!
+    tickets: [String!]!
+    failed: [String!]!
+  }
+
+  # Fired when a sprint's standup lock or any of its cells/blockers change.
+  type StandupChange {
+    sprintId: ID!
+    kind: String!
+  }
+
+  # Fired on any tarot room change (join/leave/vote/reveal/decided/…).
+  type TarotRoomEvent {
+    roomId: ID!
+    kind: String!
+    actor: String
+  }
+
   type Subscription {
     standupChanged(sprintId: ID!): StandupChange!
+    tarotRoomChanged(roomId: ID!): TarotRoomEvent!
   }
 `;

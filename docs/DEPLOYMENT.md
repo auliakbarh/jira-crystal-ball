@@ -16,7 +16,10 @@ Three pieces to deploy:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | **Long random string** — sign in tokens. Rotating it logs everyone out. |
 | `PORT` | HTTP port (default 4000) |
-| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | initial admin for `npm run db:seed` |
+| `NODE_ENV` | `production` enables the CORS allow-list (below); anything else is dev (permissive). |
+| `CORS_ORIGINS` | **Comma-separated** browser origins allowed in production (e.g. `https://app.example.com,https://admin.example.com`). Gates both HTTP CORS and the WebSocket handshake. Empty in production → browser cross-origin requests are blocked (a startup warning is logged). Ignored in dev. Non-browser clients (curl / server-to-server, no `Origin` header) always pass. See "Finding the infra env values". |
+| `REDIS_URL` | Optional. Redis connection string for **multi-instance** pub/sub (subscriptions fan out across nodes). Blank → in-memory (single instance only). See "Finding the infra env values". |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | initial admin for `npm run db:seed`. **`SEED_ADMIN_EMAIL` also designates the "super admin"** — the only account that can manage other admins (Settings → Admin Accounts). Matched by email at runtime, so keep it in sync with the seeded user. |
 | `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | **global** JIRA credentials (all squads) |
 | `JIRA_DEFAULT_BOARD_ID` / `JIRA_JQL` | optional fallback board id / JQL override |
 | `CONFLUENCE_BASE_URL` | Confluence site URL; blank → uses `JIRA_BASE_URL` |
@@ -54,6 +57,54 @@ curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_BASE_URL/wiki/api/v2/spaces?keys
 curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_BASE_URL/rest/api/3/field" \
   | jq -r '.[] | select(.name|test("point";"i")) | "\(.id) | \(.name)"'
 ```
+
+## Finding the infra env values (`CORS_ORIGINS`, `REDIS_URL`, `VITE_GRAPHQL_URL`)
+
+These are about **your own deployment topology**, not Atlassian.
+
+### `VITE_GRAPHQL_URL` (frontend)
+Public URL of the GraphQL server, baked into the client at build time. It's where the
+browser sends GraphQL/WebSocket traffic — e.g. `https://api.example.com/graphql`. If the
+API is served on the same host as the client, use that host + `/graphql`.
+
+### `CORS_ORIGINS` (backend, production)
+The **browser origin(s)** allowed to call the API. An origin is `scheme://host[:port]` with
+**no path and no trailing slash** — take it from where the **client** is served (i.e. the
+origin part of `VITE_GRAPHQL_URL`'s host, or wherever the frontend is hosted), **not** the
+API URL if they differ.
+
+```bash
+CORS_ORIGINS="https://crystalball.example.com"
+# multiple (comma-separated):
+CORS_ORIGINS="https://crystalball.example.com,https://admin.example.com"
+# local dev value (only matters if you set NODE_ENV=production locally):
+CORS_ORIGINS="http://localhost:5173"
+```
+
+Rules: matched **exactly** — `https://` ≠ `http://`, `app.x.com` ≠ `x.com`, a different port
+is a different origin. Only enforced when `NODE_ENV=production` (dev allows all). Empty in
+production blocks all browser cross-origin requests (a warning is logged at startup). The
+same list also gates the WebSocket handshake, so the client origin must be listed or live
+subscriptions are refused.
+
+### `REDIS_URL` (backend, optional — multi-instance only)
+Only needed when running **more than one** server instance (horizontal scale), so GraphQL
+subscriptions (standup / tarot realtime) fan out across nodes. A **single instance** should
+leave it blank (`REDIS_URL=""`) → in-memory pub/sub. Format:
+
+```bash
+REDIS_URL="redis://localhost:6379"              # local / docker, no auth
+REDIS_URL="redis://:mypassword@10.0.0.5:6379"   # with password
+REDIS_URL="rediss://default:token@host:6379"    # TLS (managed, e.g. Upstash)
+```
+
+Where to get the value:
+- **Self-hosted / docker:** the host:port you run Redis on (`redis://localhost:6379`).
+- **Managed** (AWS ElastiCache, Redis Cloud, Upstash, Railway, …): copy the "connection
+  string / URL" from the provider's dashboard. Use `rediss://` if the provider requires TLS.
+
+A wrong URL or an unreachable host under multi-instance means subscription events won't
+reach clients on other nodes (see `server/src/pubsub.ts`).
 
 ## Option A — Docker Postgres + Node processes (simple VM)
 
@@ -187,10 +238,20 @@ The project uses **Prisma migrations** (a reviewable history under
 
 ## CORS
 
-Apollo standalone enables permissive CORS by default, which is fine when the frontend is
-served from a different origin. To restrict it, front the API with a reverse proxy and
-limit `Access-Control-Allow-Origin`, or migrate to the Express integration with a
-configured `cors` middleware.
+CORS is **permissive in development** (all origins) and **restricted in production**. Set
+`NODE_ENV=production` and list your client origin(s) in `CORS_ORIGINS`:
+
+```bash
+NODE_ENV=production
+CORS_ORIGINS=https://app.example.com,https://admin.example.com
+```
+
+The same allow-list gates the WebSocket handshake (subscriptions), so the client URL must
+be listed or live subscriptions will be refused. Requests without an `Origin` header (curl,
+server-to-server, health checks) always pass. If `CORS_ORIGINS` is empty in production the
+server logs a warning at startup and blocks browser cross-origin calls — set it to your
+client URL(s). Enforcement lives in `originAllowed()` in `server/src/index.ts`; you can
+still additionally front the API with a reverse proxy if you prefer.
 
 ## Generating a JWT secret
 
@@ -213,6 +274,7 @@ out) — expected.
 
 - [ ] Set a strong, unique `JWT_SECRET` (see "Generating a JWT secret" above).
 - [ ] Change the seeded admin password (or seed with your own credentials).
+- [ ] Set `NODE_ENV=production` and `CORS_ORIGINS` to your client URL(s) — see "CORS".
 - [ ] Serve everything over HTTPS.
 - [ ] **Protect the JIRA API token.** It now lives in `JIRA_API_TOKEN` (server env), not
       the database. Inject it via your platform's secrets manager; don't commit `.env`.

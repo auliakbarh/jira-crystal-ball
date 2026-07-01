@@ -16,17 +16,19 @@ jira-crystal-ball/
 │       ├── jira.ts            # JIRA Cloud REST client
 │       ├── context.ts         # request context + requireAuth
 │       ├── schema.ts          # GraphQL typeDefs
-│       ├── resolvers.ts       # all resolvers + Date scalar + blocker sync
+│       ├── pubsub.ts          # in-memory PubSub (standup + tarot topics)
+│       ├── resolvers/         # per-domain: squad, standup, confluence, tarot, admin, shared, index
 │       ├── seed.ts            # seeds admin user + default squads (Athens/Berlin/Cairo)
 │       └── seed-config.ts     # bulk-seeds squads + members from a JSON file (idempotent)
 └── client/                    # React + Vite frontend
+    ├── public/sounds/         # tarot WAV sounds (join/select/reveal)
     └── src/
-        ├── apollo.ts          # Apollo Client + auth link
-        ├── graphql.ts         # all queries/mutations
+        ├── apollo.ts          # Apollo Client + auth/WS split link
+        ├── graphql.ts         # all queries/mutations/subscriptions
         ├── context/           # Auth, Theme, Squad providers
-        ├── components/        # Layout, Modal, JiraConfigForm, panels, StandupTable/Row
-        ├── pages/             # Login, Dashboard, Board, PreviousSprints, Settings
-        └── lib/helpers.ts     # date + status/position color helpers
+        ├── components/        # Layout, Modal, panels, StandupTable/Row, tarot/*
+        ├── pages/             # Login, Dashboard, Board, Clairvoyance, Tarot, TarotRoom, PreviousSprints, Settings
+        └── lib/               # helpers.ts, tarot.ts (uid + card meta), sound.ts
 ```
 
 ## Data model
@@ -45,6 +47,14 @@ jira-crystal-ball/
 | `StandupSession` | sprintId (unique), leadName, leadKey, lastSeen | live standup lock (heartbeat) |
 | `StandupLog` | squadId, leadName, startedAt, endedAt, durationSec | completed standup duration log |
 | `ExportLog` | sprintId, squadId, pageId, url, action, actor?, createdAt | Confluence export history |
+| `TarotRoom` | squadId, hostName, hostKey, status `ACTIVE\|ENDED`, scaleType `FIBONACCI\|SCRUM\|CUSTOM`, scaleValues (JSON nums), currentRoundId?, sprintName?, endedAt? | one ACTIVE room per squad; `hostKey` = client token (host may be a guest) |
+| `TarotParticipant` | roomId, name, key, isHost, joinedAt, lastSeen, leftAt?, kicked | attendance log + live presence (online = recent `lastSeen`); unique per (roomId, key) |
+| `TarotRound` | roomId, ticketKey + snapshot, status `VOTING\|REVEALED\|DECIDED`, cycle | one voting cycle per ticket; re-vote ("next cycle") creates a new round |
+| `TarotVote` | roundId, participantId, participantName, value, confirmed | unique per (round, participant); `value` = number-as-string or `?`/`coffee` |
+| `TarotResult` | roomId, ticketKey, effort, pointFE/BE/QA?, decidedAt, jiraPrevValues?, syncedAt? | decided point history; `jiraPrevValues` snapshots Jira fields before sync (reset restores) |
+
+Squad also carries `tarotScaleType?` / `tarotScaleValues?` — the per-squad default deck a
+host can set via the room scale dialog ("set as default").
 
 ### Blocker sync rules (in `saveStandupEntry`)
 
@@ -66,8 +76,15 @@ Subscriptions run over WebSocket at `ws://localhost:4000/graphql` (token sent vi
 `graphql-ws`/`ws`. All operations except `login`/`guestLogin`/`memberSuggestions` require
 `Authorization: Bearer <token>`.
 
+**Pub/sub backend** (`pubsub.ts`): in-memory `graphql-subscriptions` by default (single
+process). Set `REDIS_URL` to use `graphql-redis-subscriptions` (+ `ioredis`) so events fan
+out across **multiple instances** — required for horizontal scaling. Note: the presence
+sweep runs per-instance, so with N nodes an offline transition may publish up to N times
+(clients just refetch; harmless).
+
 **Subscriptions:** `standupChanged(sprintId)` → `{ sprintId, kind }` fires on
-`start`/`end`/`entry`; the dashboard refetches live (no polling).
+`start`/`end`/`entry`; the dashboard refetches live (no polling). `tarotRoomChanged(roomId)`
+→ `{ roomId, kind, actor }` fires on every Tarot room change (see below).
 
 ### Queries
 
@@ -93,6 +110,11 @@ Subscriptions run over WebSocket at `ws://localhost:4000/graphql` (token sent vi
 | `jiraFields` | `squadId` | all board JIRA fields `{ id, name }` (for picking the SP field) |
 | `jiraUsers` | `squadId` | human JIRA users `{ accountId, displayName, email }` (for the member account-id picker; needs *Browse users* permission) |
 | `memberSuggestions` | — | **public** (no auth) distinct member names `{ name, fullName }` for the guest-login name suggestion |
+| `nextSprintTickets` | `squadId`, `refresh?` | board's **next (future) sprint** `[JiraTicket]` — powers Clairvoyance + Tarot |
+| `jiraNextSprint` | `squadId` | live next-sprint info `{ id, number, name, startDate, endDate }` |
+| `tarotRooms` | `squadId` | `[TarotRoomSummary]` (id, hostName, status, participantCount), newest first |
+| `tarotRoom` | `id`, `key?` | full `TarotRoom` (participants, currentRound w/ vote stats, results); `key` sets `isHost`/`viewerKicked` |
+| `tarotTickets` | `roomId`, `refresh?` | next-sprint `[TarotTicket]` (ticket + its decided `result`, if any) |
 
 ### Mutations
 
@@ -103,7 +125,14 @@ Subscriptions run over WebSocket at `ws://localhost:4000/graphql` (token sent vi
 `resetDatabase`, `startStandup`, `standupHeartbeat`, `endStandup`,
 `exportSprintToConfluence`.
 
-**Subscription:** `standupChanged(sprintId)` → `{ sprintId, kind }`.
+**Tarot mutations:** `createTarotRoom`, `joinTarotRoom`, `leaveTarotRoom`,
+`tarotHeartbeat`, `kickTarotParticipant`, `setTarotScale`, `startTarotRound`,
+`castTarotVote`, `nextTarotCycle`, `forceRevealTarotRound`, `decideTarotPoint`,
+`resetTarotPoints`, `endTarotRoom`, `deleteTarotRoom`, `syncTarotToJira` (returns
+`{ updated, tickets, failed }`), `resetTarotSync`. See the Tarot section below.
+
+**Subscription:** `standupChanged(sprintId)` → `{ sprintId, kind }`;
+`tarotRoomChanged(roomId)` → `{ roomId, kind, actor }`.
 
 **Standup session lock** (`StandupSession`, one per sprint): `startStandup(sprintId,
 leadName, leadKey)` claims the lock; the client sends a `standupHeartbeat` every ~20s and
@@ -134,6 +163,14 @@ Notes:
   (cascading every related record); users are preserved. With `reseedDefaults: true` it
   recreates the Athens/Berlin/Cairo squads. Exposed in the UI as **Settings → Danger
   Zone** (admin only, type-to-confirm).
+- **Admin management** (`resolvers/admin.ts`, **super-admin only** — `requireSuperAdmin`):
+  `admins` lists all admins; `createAdmin(email,name,password)`, `updateAdmin(id,email?,name?)`,
+  `changeAdminPassword(id,password)`, `deleteAdmin(id)`. The **super admin** is the env
+  account whose email = `SEED_ADMIN_EMAIL` (`isSuperAdminUser`, matched by email — no DB
+  column/migration; `User.isSuperAdmin` is a derived field resolver). It manages *other*
+  admins only: every mutation rejects a target that is itself (`The env super admin cannot
+  be modified`), preventing self-lockout. Passwords require ≥6 chars; emails are unique.
+  Exposed in the UI as **Settings → Admin Accounts**.
 - The `Date` scalar is serialized as `YYYY-MM-DD` (calendar dates, UTC-midnight parsed).
 
 ### Example
@@ -190,6 +227,15 @@ accepted — `resolveBoardId` looks it up to the project's first board via
 JIRA responses are cached in-process for 60s (`force` bypasses; Board "Refresh" and
 "Sync from JIRA" force).
 
+**Next (future) sprint** — `fetchNextSprintInfo` / `fetchNextSprintIssues` resolve the
+board's first `state=future` sprint (= current + 1) and pull its issues (paginated, cached
+under `nextInfo`/`nextIssues`). Powers Clairvoyance and the Tarot ticket list.
+
+**Write-back** — `getIssueFieldValues(cfg, key, [fieldIds])` reads current numeric field
+values; `updateIssueFields(cfg, key, { fieldId: value })` does `PUT /rest/api/3/issue/{key}`
+and busts the read cache. Used only by Tarot's Jira sync (and its reset). `resolveSquadSpIds`
+exposes the squad's resolved default/FE/BE/QA custom-field ids.
+
 ### Story Points
 Per squad you configure four Story-Point fields (default + FE + BE + QA) in
 **Settings → Squads → Edit** — each value is a **custom field id** (`customfield_10033`)
@@ -212,6 +258,54 @@ passes. Env: `CONFLUENCE_BASE_URL` (blank → JIRA), `CONFLUENCE_SPACE_KEY`,
 `CONFLUENCE_PARENT_ID` — the space key + parent id are **per-squad overridable**
 (`Squad.confluenceSpaceKey` / `confluenceParentId`, set in Settings → Squads → Edit;
 blank falls back to the env defaults). Credentials + base URL stay global.
+
+### Clairvoyance & Tarot
+
+**Clairvoyance** (`/clairvoyance`, `pages/Clairvoyance.tsx`) is read-only: it queries
+`nextSprintTickets` + `jiraNextSprint` and renders the next-sprint tickets grouped by
+parent/story (key/type/summary/status/priority), with an empty state + Reload.
+
+**Tarot** (`/tarot` landing, `/tarot/:roomId` room) is real-time planning poker
+(`server/src/resolvers/tarot.ts`, `client/src/components/tarot/*`):
+
+- **Identity** — each browser holds a stable `jcb_tarot_uid` (`lib/tarot.ts`) used as the
+  participant/host `key`. `(roomId, key)` is unique; the room's `hostKey` marks the host.
+  Host gameplay actions assert `hostKey === key`; management (reset/end/delete/sync) allows
+  host **or** admin, and deleting an **ended** room is admin-only. **Jira sync/reset also
+  require a non-guest** (`assertNotGuest`) — a guest host may not mutate the board.
+- **One active room per squad** — `createTarotRoom` re-checks + allocates `seq` + inserts
+  inside a **`Serializable` transaction**, so two simultaneous creates can't both pass
+  (write-skew); the loser (`P2034`) maps to "An active room already exists." Room name =
+  `"<Squad> - Sprint Planning #<seq> - <date>"`.
+- **Presence** — `TarotRoom.tsx` joins on mount, sends `tarotHeartbeat` every ~8s, leaves
+  on unmount, and also leaves on tab close via `fetch(keepalive)` (`pagehide`). `online` =
+  `lastSeen` within 15s. A server **presence sweep** (`tarotPresence.ts`, every 5s) detects
+  when a room's online set changes and publishes a `presence` event so peers update live.
+  Full room state is recomputed server-side per request (`buildRoom`) — vote values are
+  **hidden until the round is `REVEALED`**. `buildRoom` also returns the requester's own
+  `viewerVote` so a guest who **reloads** rehydrates their selection instead of re-voting.
+- **Events** — every mutation publishes `tarotRoomChanged(roomId)`; the room refetches and
+  plays sounds (`lib/sound.ts`, WAV files in `public/sounds/`: join, select, reveal). An
+  8s poll is a fallback if a WS event is missed.
+- **Voting** — `castTarotVote(value, confirmed)`; a round auto-reveals once every online
+  non-host voter has confirmed. The host can `forceRevealTarotRound` early (≥1 confirmed).
+  `voteStats` computes the team-synchronization % (top value share) and a suggestion (single
+  most-picked **numeric** value; null on a draw). `decideTarotPoint` stores effort + per-role
+  points (each ≤ effort) as a `TarotResult` and marks the round `DECIDED`; `nextTarotCycle`
+  opens a fresh round for the same ticket. `TarotRound.createdAt` drives a client elapsed
+  timer.
+- **Scales** — Fibonacci / Scrum presets or Custom numbers; `?` and `coffee` are always
+  appended to the deck. `setTarotScale(..., setDefault)` can persist the deck as the squad
+  default (`Squad.tarotScaleType/Values`).
+- **Jira sync** — `syncTarotToJira(fields)` maps `point→default`, `fe/be/qa→` the squad's
+  configured fields, snapshots prior Jira values into `TarotResult.jiraPrevValues`, then
+  PUTs the points **per-ticket with its own try/catch** (one failing issue doesn't abort the
+  rest; returns `{ updated, tickets, failed }`). `resetTarotSync` restores those snapshots.
+  `endTarotRoom` refuses unless every next-sprint ticket has a result.
+- **History & retention** — ended rooms keep full attendance + per-ticket results (grouped
+  by parent/story; `TarotResult` stores `parentKey/parentName/ticketSummary`). The scheduler
+  purges ended rooms older than `TAROT_ROOM_RETENTION_DAYS` (default 30; 0 disables).
+- **Activity log** — create/estimate/sync/reset/end write `ActivityLog` rows (`logTarot`).
 
 ## Frontend notes
 
@@ -264,3 +358,13 @@ blank falls back to the env defaults). Credentials + base URL stay global.
   button), then refetches the dashboard + blockers so the Blockers panel updates live.
 - The JIRA-not-configured modal renders on the Dashboard when `squad.jiraConfigured` is
   false and the user hasn't dismissed it.
+
+## Testing
+
+Server unit tests run with **Vitest** (`cd server && npm test`). Pure Tarot logic lives in
+`server/src/resolvers/tarotLogic.ts` (no I/O / side-effect imports) so it's testable in
+isolation — `tarotLogic.test.ts` covers `presetValues`/`deckStrings` (deck building +
+special cards), `voteStats` (sync % and most-picked suggestion, incl. draw → null and
+special-card handling), `isOnline` (heartbeat staleness), and `capRolePoint` (per-role
+point ≤ effort, with error paths). Resolver flows that need a database aren't covered yet
+(would want a throwaway Postgres + seeded fixtures).

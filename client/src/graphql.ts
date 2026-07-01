@@ -9,6 +9,7 @@ export const LOGIN = gql`
         email
         name
         isAdmin
+        isSuperAdmin
         isGuest
       }
     }
@@ -24,6 +25,7 @@ export const GUEST_LOGIN = gql`
         email
         name
         isAdmin
+        isSuperAdmin
         isGuest
       }
     }
@@ -57,8 +59,49 @@ export const ME = gql`
       email
       name
       isAdmin
+      isSuperAdmin
       isGuest
     }
+  }
+`;
+
+export const ADMINS = gql`
+  query Admins {
+    admins {
+      id
+      email
+      name
+      isSuperAdmin
+      createdAt
+    }
+  }
+`;
+
+export const CREATE_ADMIN = gql`
+  mutation CreateAdmin($email: String!, $name: String!, $password: String!) {
+    createAdmin(email: $email, name: $name, password: $password) {
+      id
+    }
+  }
+`;
+
+export const UPDATE_ADMIN = gql`
+  mutation UpdateAdmin($id: ID!, $email: String, $name: String) {
+    updateAdmin(id: $id, email: $email, name: $name) {
+      id
+    }
+  }
+`;
+
+export const CHANGE_ADMIN_PASSWORD = gql`
+  mutation ChangeAdminPassword($id: ID!, $password: String!) {
+    changeAdminPassword(id: $id, password: $password)
+  }
+`;
+
+export const DELETE_ADMIN = gql`
+  mutation DeleteAdmin($id: ID!) {
+    deleteAdmin(id: $id)
   }
 `;
 
@@ -74,6 +117,8 @@ export const SQUADS = gql`
       spFieldQA
       confluenceSpaceKey
       confluenceParentId
+      tarotScaleType
+      tarotScaleValues
       jiraConfigured
     }
   }
@@ -151,6 +196,8 @@ export const UPDATE_SQUAD = gql`
     $spFieldQA: String
     $confluenceSpaceKey: String
     $confluenceParentId: String
+    $tarotScaleType: String
+    $tarotScaleValues: String
   ) {
     updateSquad(
       id: $id
@@ -162,6 +209,8 @@ export const UPDATE_SQUAD = gql`
       spFieldQA: $spFieldQA
       confluenceSpaceKey: $confluenceSpaceKey
       confluenceParentId: $confluenceParentId
+      tarotScaleType: $tarotScaleType
+      tarotScaleValues: $tarotScaleValues
     ) {
       id
       name
@@ -172,6 +221,8 @@ export const UPDATE_SQUAD = gql`
       spFieldQA
       confluenceSpaceKey
       confluenceParentId
+      tarotScaleType
+      tarotScaleValues
     }
   }
 `;
@@ -223,6 +274,31 @@ export const ACTIVE_SPRINT_TICKETS = gql`
       carryOver
       carryOverCount
       carryOverSprints
+    }
+  }
+`;
+
+export const NEXT_SPRINT_TICKETS = gql`
+  query NextSprintTickets($squadId: ID!, $refresh: Boolean) {
+    nextSprintTickets(squadId: $squadId, refresh: $refresh) {
+      key
+      status
+      summary
+      url
+      priority
+      issueType
+      epicKey
+      epicName
+      parentKey
+      parentName
+      parentType
+    }
+    jiraNextSprint(squadId: $squadId) {
+      id
+      number
+      name
+      startDate
+      endDate
     }
   }
 `;
@@ -565,5 +641,248 @@ export const UPDATE_SPRINT = gql`
 export const DELETE_SPRINT = gql`
   mutation DeleteSprint($id: ID!) {
     deleteSprint(id: $id)
+  }
+`;
+
+// ---------------------------------------------------------------------------
+// Tarot (planning poker)
+// ---------------------------------------------------------------------------
+export const TAROT_ROOM_FIELDS = gql`
+  fragment TarotRoomFields on TarotRoom {
+    id
+    squadId
+    name
+    hostName
+    status
+    scaleType
+    scaleValues
+    sprintName
+    createdAt
+    endedAt
+    isHost
+    viewerKicked
+    viewerVote {
+      value
+      confirmed
+    }
+    participants {
+      id
+      name
+      isHost
+      online
+      hasVoted
+      joinedAt
+    }
+    currentRound {
+      id
+      ticketKey
+      ticketSummary
+      ticketType
+      ticketPriority
+      ticketUrl
+      status
+      cycle
+      createdAt
+      voteCount
+      revealed
+      syncPercent
+      suggestion
+      votes {
+        participantId
+        name
+        value
+      }
+    }
+    results {
+      ticketKey
+      ticketSummary
+      parentKey
+      parentName
+      effort
+      pointFE
+      pointBE
+      pointQA
+      decidedAt
+      syncedAt
+    }
+  }
+`;
+
+export const TAROT_ROOMS = gql`
+  query TarotRooms($squadId: ID!) {
+    tarotRooms(squadId: $squadId) {
+      id
+      name
+      hostName
+      status
+      createdAt
+      endedAt
+      participantCount
+    }
+  }
+`;
+
+export const TAROT_ROOM = gql`
+  query TarotRoom($id: ID!, $key: String) {
+    tarotRoom(id: $id, key: $key) {
+      ...TarotRoomFields
+    }
+  }
+  ${TAROT_ROOM_FIELDS}
+`;
+
+export const TAROT_TICKETS = gql`
+  query TarotTickets($roomId: ID!, $refresh: Boolean) {
+    tarotTickets(roomId: $roomId, refresh: $refresh) {
+      key
+      summary
+      issueType
+      priority
+      status
+      url
+      parentKey
+      parentName
+      result {
+        ticketKey
+        effort
+        pointFE
+        pointBE
+        pointQA
+        syncedAt
+      }
+    }
+  }
+`;
+
+export const CREATE_TAROT_ROOM = gql`
+  mutation CreateTarotRoom($squadId: ID!, $hostName: String!, $hostKey: String!) {
+    createTarotRoom(squadId: $squadId, hostName: $hostName, hostKey: $hostKey) {
+      ...TarotRoomFields
+    }
+  }
+  ${TAROT_ROOM_FIELDS}
+`;
+
+export const JOIN_TAROT_ROOM = gql`
+  mutation JoinTarotRoom($roomId: ID!, $name: String!, $key: String!) {
+    joinTarotRoom(roomId: $roomId, name: $name, key: $key) {
+      ...TarotRoomFields
+    }
+  }
+  ${TAROT_ROOM_FIELDS}
+`;
+
+export const LEAVE_TAROT_ROOM = gql`
+  mutation LeaveTarotRoom($roomId: ID!, $key: String!) {
+    leaveTarotRoom(roomId: $roomId, key: $key)
+  }
+`;
+
+export const TAROT_HEARTBEAT = gql`
+  mutation TarotHeartbeat($roomId: ID!, $key: String!) {
+    tarotHeartbeat(roomId: $roomId, key: $key)
+  }
+`;
+
+export const KICK_TAROT_PARTICIPANT = gql`
+  mutation KickTarotParticipant($roomId: ID!, $key: String!, $participantId: ID!) {
+    kickTarotParticipant(roomId: $roomId, key: $key, participantId: $participantId)
+  }
+`;
+
+export const SET_TAROT_SCALE = gql`
+  mutation SetTarotScale($roomId: ID!, $key: String!, $scaleType: String!, $scaleValues: [Float!], $setDefault: Boolean) {
+    setTarotScale(roomId: $roomId, key: $key, scaleType: $scaleType, scaleValues: $scaleValues, setDefault: $setDefault) {
+      ...TarotRoomFields
+    }
+  }
+  ${TAROT_ROOM_FIELDS}
+`;
+
+export const START_TAROT_ROUND = gql`
+  mutation StartTarotRound($roomId: ID!, $key: String!, $ticketKey: String!) {
+    startTarotRound(roomId: $roomId, key: $key, ticketKey: $ticketKey) {
+      id
+      ticketKey
+      status
+    }
+  }
+`;
+
+export const CAST_TAROT_VOTE = gql`
+  mutation CastTarotVote($roomId: ID!, $key: String!, $value: String!, $confirmed: Boolean!) {
+    castTarotVote(roomId: $roomId, key: $key, value: $value, confirmed: $confirmed)
+  }
+`;
+
+export const NEXT_TAROT_CYCLE = gql`
+  mutation NextTarotCycle($roomId: ID!, $key: String!) {
+    nextTarotCycle(roomId: $roomId, key: $key) {
+      id
+      ticketKey
+      status
+    }
+  }
+`;
+
+export const FORCE_REVEAL_TAROT_ROUND = gql`
+  mutation ForceRevealTarotRound($roomId: ID!, $key: String!) {
+    forceRevealTarotRound(roomId: $roomId, key: $key) {
+      id
+      status
+    }
+  }
+`;
+
+export const DECIDE_TAROT_POINT = gql`
+  mutation DecideTarotPoint($roomId: ID!, $key: String!, $effort: Float!, $pointFE: Float, $pointBE: Float, $pointQA: Float) {
+    decideTarotPoint(roomId: $roomId, key: $key, effort: $effort, pointFE: $pointFE, pointBE: $pointBE, pointQA: $pointQA) {
+      ticketKey
+      effort
+    }
+  }
+`;
+
+export const RESET_TAROT_POINTS = gql`
+  mutation ResetTarotPoints($roomId: ID!, $key: String!) {
+    resetTarotPoints(roomId: $roomId, key: $key)
+  }
+`;
+
+export const END_TAROT_ROOM = gql`
+  mutation EndTarotRoom($roomId: ID!, $key: String!) {
+    endTarotRoom(roomId: $roomId, key: $key)
+  }
+`;
+
+export const DELETE_TAROT_ROOM = gql`
+  mutation DeleteTarotRoom($roomId: ID!, $key: String!) {
+    deleteTarotRoom(roomId: $roomId, key: $key)
+  }
+`;
+
+export const SYNC_TAROT_TO_JIRA = gql`
+  mutation SyncTarotToJira($roomId: ID!, $key: String!, $fields: [String!]!) {
+    syncTarotToJira(roomId: $roomId, key: $key, fields: $fields) {
+      updated
+      tickets
+      failed
+    }
+  }
+`;
+
+export const RESET_TAROT_SYNC = gql`
+  mutation ResetTarotSync($roomId: ID!, $key: String!) {
+    resetTarotSync(roomId: $roomId, key: $key)
+  }
+`;
+
+export const TAROT_ROOM_CHANGED = gql`
+  subscription TarotRoomChanged($roomId: ID!) {
+    tarotRoomChanged(roomId: $roomId) {
+      roomId
+      kind
+      actor
+    }
   }
 `;
