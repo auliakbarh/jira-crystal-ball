@@ -1,14 +1,17 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useSquad } from "../context/SquadContext";
 import { SQUADS, CREATE_SQUAD } from "../graphql";
+import { setLanguage } from "../i18n";
 import { useState } from "react";
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
+  const { t, i18n } = useTranslation();
   const { squadId, setSquadId } = useSquad();
   const { data, refetch } = useQuery(SQUADS);
   const [createSquad] = useMutation(CREATE_SQUAD);
@@ -43,7 +46,7 @@ export default function Layout() {
             value={squadId ?? ""}
             onChange={(e) => setSquadId(e.target.value)}
           >
-            {squads.length === 0 && <option value="">No squads</option>}
+            {squads.length === 0 && <option value="">{t("common.noSquads")}</option>}
             {squads.map((s: any) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -53,56 +56,68 @@ export default function Layout() {
 
           <nav className="flex items-center gap-1">
             <NavLink to="/" end className={linkClass}>
-              Current Sprint
+              {t("nav.current")}
             </NavLink>
             <NavLink to="/board" className={linkClass}>
-              Board
+              {t("nav.board")}
             </NavLink>
             <NavLink to="/clairvoyance" className={linkClass}>
-              Clairvoyance
+              {t("nav.clairvoyance")}
             </NavLink>
             <NavLink to="/tarot" className={linkClass}>
-              Tarot
+              {t("nav.tarot")}
             </NavLink>
             <NavLink to="/previous" className={linkClass}>
-              Previous Sprints
+              {t("nav.previous")}
+            </NavLink>
+            <NavLink to="/velocity" className={linkClass}>
+              {t("nav.velocity")}
             </NavLink>
             {!user?.isGuest && (
               <NavLink to="/settings" className={linkClass}>
-                Settings
+                {t("nav.settings")}
               </NavLink>
             )}
             <NavLink to="/help" className={linkClass}>
-              Help
+              {t("nav.help")}
             </NavLink>
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
             {user?.isGuest && (
               <span className="chip bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                Guest
+                {t("common.guest")}
               </span>
             )}
             {!user?.isGuest && (
               <>
                 <input
                   className="input max-w-[130px]"
-                  placeholder="New squad…"
+                  placeholder={t("common.newSquad")}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && onCreate()}
                 />
-                <button className="btn-ghost" onClick={onCreate} title="Create squad">
+                <button className="btn-ghost" onClick={onCreate} title={t("common.createSquad")}>
                   +
                 </button>
               </>
             )}
-            <button className="btn-ghost" onClick={toggle} title="Toggle theme">
+            <select
+              className="input max-w-[70px] py-1 text-xs"
+              value={i18n.resolvedLanguage || "en"}
+              onChange={(e) => setLanguage(e.target.value)}
+              title={t("common.language")}
+            >
+              <option value="en">EN</option>
+              <option value="id">ID</option>
+            </select>
+            <button className="btn-ghost" onClick={toggle} title={t("common.toggleTheme")}>
               {theme === "dark" ? "☀️" : "🌙"}
             </button>
             <span className="hidden text-sm text-gray-500 sm:inline">{user?.name}</span>
             <button className="btn-ghost" onClick={logout}>
-              Logout
+              {t("common.logout")}
             </button>
           </div>
         </div>
@@ -112,12 +127,12 @@ export default function Layout() {
         {squadId ? (
           <Outlet />
         ) : (
-          <div className="card">No squad selected. Create one above to begin.</div>
+          <div className="card">{t("common.noSquadSelected")}</div>
         )}
       </main>
 
       <footer className="mx-auto max-w-[1400px] px-4 py-6 text-center text-xs text-gray-400">
-        🔮 JIRA Crystal Ball · Created by Aulia Akbar Harahap · June 2026
+        {t("common.footer")}
       </footer>
     </div>
   );

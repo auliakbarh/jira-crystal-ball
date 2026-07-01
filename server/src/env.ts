@@ -1,9 +1,28 @@
 import "dotenv/config";
+import { decryptSecret } from "./crypto.js";
 
 function required(name: string, fallback?: string): string {
   const v = process.env[name] ?? fallback;
   if (!v) throw new Error(`Missing required env var: ${name}`);
   return v;
+}
+
+// Resolve the JIRA API token from either a plaintext env var (JIRA_API_TOKEN)
+// or an encrypted one (JIRA_API_TOKEN_ENC + JIRA_ENC_KEY). Plaintext wins if set,
+// so existing deployments keep working; encrypted is opt-in for stricter setups.
+function resolveJiraToken(): string {
+  const plain = process.env.JIRA_API_TOKEN;
+  if (plain) return plain;
+  const enc = process.env.JIRA_API_TOKEN_ENC;
+  const key = process.env.JIRA_ENC_KEY;
+  if (enc && key) {
+    try {
+      return decryptSecret(enc, key);
+    } catch {
+      throw new Error("Failed to decrypt JIRA_API_TOKEN_ENC — check JIRA_ENC_KEY.");
+    }
+  }
+  return "";
 }
 
 export const env = {
@@ -27,7 +46,7 @@ export const env = {
   jira: {
     baseUrl: process.env.JIRA_BASE_URL ?? "",
     email: process.env.JIRA_EMAIL ?? "",
-    apiToken: process.env.JIRA_API_TOKEN ?? "",
+    apiToken: resolveJiraToken(),
     defaultBoardId: process.env.JIRA_DEFAULT_BOARD_ID ?? "",
     jql: process.env.JIRA_JQL ?? "",
     // Story Points custom field id (varies per JIRA site; Cloud default below).

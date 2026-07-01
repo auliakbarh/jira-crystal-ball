@@ -218,28 +218,38 @@ async function _fetchBoardIssues(cfg: JiraConfigLike): Promise<JiraTicket[]> {
   const spIds = await resolveSpIds(cfg);
 
   const fields = `summary,status,assignee,issuetype,parent,epic,priority,closedSprints${spFieldsParam(spIds) ? "," + spFieldsParam(spIds) : ""}`;
-  let url: string;
-  if (cfg.jql && cfg.jql.trim()) {
-    const params = new URLSearchParams({
-      jql: cfg.jql.trim(),
-      maxResults: "100",
-      fields,
-    });
-    url = `${base}/rest/api/3/search?${params.toString()}`;
-  } else {
-    const boardId = await resolveBoardId(cfg, base);
-    const params = new URLSearchParams({ maxResults: "100", fields });
-    url = `${base}/rest/agile/1.0/board/${boardId}/issue?${params.toString()}`;
-  }
+  const useJql = !!(cfg.jql && cfg.jql.trim());
+  const boardId = useJql ? null : await resolveBoardId(cfg, base);
 
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`JIRA request failed (${res.status}): ${body.slice(0, 300)}`);
+  // Paginate: JQL (`/search`) and board (`/board/{id}/issue`) both return
+  // { issues, total, startAt } — loop until we've seen `total` (or a short page).
+  const all: JiraTicket[] = [];
+  const seen = new Set<string>();
+  let startAt = 0;
+  // Guard against runaway loops; 50 pages * 100 = 5000 issues max.
+  for (let page = 0; page < 50; page++) {
+    const params = new URLSearchParams({ startAt: String(startAt), maxResults: "100", fields });
+    if (useJql) params.set("jql", cfg.jql!.trim());
+    const url = useJql
+      ? `${base}/rest/api/3/search?${params.toString()}`
+      : `${base}/rest/agile/1.0/board/${boardId}/issue?${params.toString()}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`JIRA request failed (${res.status}): ${body.slice(0, 300)}`);
+    }
+    const data: any = await res.json();
+    const issues: any[] = data.issues ?? [];
+    for (const issue of issues) {
+      if (issue.key && seen.has(issue.key)) continue;
+      if (issue.key) seen.add(issue.key);
+      all.push(mapIssue(base, issue, spIds));
+    }
+    startAt += issues.length;
+    const total = typeof data.total === "number" ? data.total : startAt;
+    if (issues.length === 0 || startAt >= total) break;
   }
-  const data: any = await res.json();
-  const issues: any[] = data.issues ?? [];
-  return issues.map((i) => mapIssue(base, i, spIds));
+  return all;
 }
 
 /**

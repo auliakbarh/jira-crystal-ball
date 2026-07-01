@@ -11,6 +11,7 @@ import Clairvoyance from "./pages/Clairvoyance";
 import Tarot from "./pages/Tarot";
 import TarotRoom from "./pages/TarotRoom";
 import PreviousSprints from "./pages/PreviousSprints";
+import Velocity from "./pages/Velocity";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
 
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="tarot" element={<Tarot />} />
         <Route path="tarot/:roomId" element={<TarotRoom />} />
         <Route path="previous" element={<PreviousSprints />} />
+        <Route path="velocity" element={<Velocity />} />
         <Route path="help" element={<Help />} />
         <Route
           path="settings"

@@ -7,6 +7,13 @@ export function clampPct(v: unknown): number {
   return typeof v === "number" ? Math.max(0, Math.min(100, Math.round(v))) : 0;
 }
 
+// A ticket status counts as "completed" for velocity/burndown. JIRA statuses
+// vary per project; match the common terminal ones case-insensitively.
+export function isDoneStatus(status?: string | null): boolean {
+  const s = (status ?? "").trim().toLowerCase();
+  return s === "done" || s === "closed" || s === "resolved" || s === "complete" || s === "completed";
+}
+
 // A standup session is "live" while its heartbeat is recent; after this the lead
 // is assumed gone (tab closed / logged out) and others may take over.
 export const STANDUP_STALE_MS = 20_000;

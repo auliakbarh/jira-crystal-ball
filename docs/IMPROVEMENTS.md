@@ -13,16 +13,20 @@ by value/effort within each group. ✅ = done.
       both HTTP CORS and the WebSocket handshake (`originAllowed` in `index.ts`); dev allows
       all, requests with no `Origin` (curl/server-to-server) always pass. Empty in prod logs
       a warning and blocks browser cross-origin calls.
-- [ ] **Encrypt or vault the JIRA API token** (currently a server env var; fine for a
-      single org, encrypt for stricter setups).
+- ✅ **Encrypt or vault the JIRA API token** — supports `JIRA_API_TOKEN_ENC` (AES-256-GCM
+      ciphertext) + `JIRA_ENC_KEY` decrypted at boot (`crypto.ts`, `resolveJiraToken` in
+      `env.ts`); plaintext `JIRA_API_TOKEN` still works (wins if set). Encrypt with
+      `JIRA_ENC_KEY=… npm run token:encrypt -- <token>` (`encryptToken.ts`).
 - [ ] **Per-squad membership & roles** — any logged-in member currently sees all squads.
 
 ## Performance
 - ✅ **JIRA response cache** — board/active-sprint fetches are cached with a short TTL;
       the Board "Refresh" forces a live re-pull. Cuts latency and JIRA rate-limit risk.
-- [ ] **Paginate `fetchBoardIssues`** (JQL/board path) — only active-sprint fetch is
-      paginated; a large board is capped at 100.
-- [ ] **Cleanup/retention** for `ActivityLog` / `StandupLog`.
+- ✅ **Paginate `fetchBoardIssues`** — both the JQL (`/search`) and board
+      (`/board/{id}/issue`) paths now loop `startAt` until `total` (cap 50 pages × 100),
+      deduped by key; no longer truncated at 100.
+- ✅ **Cleanup/retention** for `ActivityLog` / `StandupLog` — scheduler purges rows older
+      than `LOG_RETENTION_DAYS` (default 0 = keep forever), hourly (`purgeOldLogs`).
 
 ## Realtime / collaboration
 - ✅ **GraphQL subscriptions (WebSocket)** — `standupChanged(sprintId)` pushes lock/cell
@@ -39,7 +43,10 @@ by value/effort within each group. ✅ = done.
       squad's configured fields (`PUT /rest/api/3/issue`), reversible via a saved snapshot
       (`resetTarotSync`). Dashboard status/assignee write-back still open.
 - [ ] **Export** sprint summary / logs to CSV/PDF.
-- [ ] **Velocity / burndown** across sprints (story points).
+- ✅ **Velocity / burndown** across sprints (story points) — **Velocity** page: per-sprint
+      committed vs completed bars + average velocity, click a sprint for its daily burndown
+      (remaining vs ideal). Derived from `StandupEntry` snapshots (`resolvers/velocity.ts`,
+      queries `velocity`/`burndown`); no extra JIRA calls.
 - [ ] **Notifications** — new blocker / standup start → Slack or email.
 
 ## Robustness / quality
@@ -62,10 +69,15 @@ by value/effort within each group. ✅ = done.
       scheduler **auto-exports** a sprint once it ends.
 
 ## UX
-- [ ] **Mobile layout** for the wide standup table.
+- ✅ **Mobile layout** for the wide standup table — the table is wrapped in a horizontal
+      scroll container (`overflow-x-auto`, edge-bleed on small screens) so it never breaks
+      the page; full-bleed only under `sm`.
 - ✅ **Keyboard navigation** — Enter / Alt+↑↓ to move between standup cells.
 - ✅ **Help page** — `/help` route (`pages/Help.tsx`) explains how to use the dashboard.
-- [ ] **Proper i18n** (UI currently English with a few mixed strings).
+- ✅ **i18n (infra + EN/ID)** — `i18next` + `react-i18next` (`client/src/i18n.ts`), language
+      switcher in the header (persists in `localStorage` `jcb_lang`). Nav, common header UI,
+      and the Help page heading are translated (EN/ID); other page bodies still English —
+      wrap their strings in `t()` to extend. Full page-by-page translation still open.
 
 ## Clairvoyance & Tarot (Grooming + Planning Poker)
 New feature set (see USAGE §8–9, DOCUMENTATION → "Clairvoyance & Tarot").

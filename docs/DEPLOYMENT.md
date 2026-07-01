@@ -20,8 +20,11 @@ Three pieces to deploy:
 | `CORS_ORIGINS` | **Comma-separated** browser origins allowed in production (e.g. `https://app.example.com,https://admin.example.com`). Gates both HTTP CORS and the WebSocket handshake. Empty in production → browser cross-origin requests are blocked (a startup warning is logged). Ignored in dev. Non-browser clients (curl / server-to-server, no `Origin` header) always pass. See "Finding the infra env values". |
 | `REDIS_URL` | Optional. Redis connection string for **multi-instance** pub/sub (subscriptions fan out across nodes). Blank → in-memory (single instance only). See "Finding the infra env values". |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | initial admin for `npm run db:seed`. **`SEED_ADMIN_EMAIL` also designates the "super admin"** — the only account that can manage other admins (Settings → Admin Accounts). Matched by email at runtime, so keep it in sync with the seeded user. |
-| `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | **global** JIRA credentials (all squads) |
+| `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | **global** JIRA credentials (all squads). `JIRA_API_TOKEN` may be omitted in favour of the encrypted pair below. |
+| `JIRA_API_TOKEN_ENC` / `JIRA_ENC_KEY` | Optional encrypted alternative to `JIRA_API_TOKEN`: AES-256-GCM ciphertext + its passphrase, decrypted at boot. Used only when `JIRA_API_TOKEN` is unset. Generate the ciphertext with `npm run token:encrypt` (see "Encrypting the JIRA API token"). |
 | `JIRA_DEFAULT_BOARD_ID` / `JIRA_JQL` | optional fallback board id / JQL override |
+| `LOG_RETENTION_DAYS` | Optional. Purge `ActivityLog` / `StandupLog` rows older than N days (hourly). Default `0` = keep forever. |
+| `TAROT_ROOM_RETENTION_DAYS` | Optional. Purge ended tarot rooms older than N days. Default `30`; `0` disables. |
 | `CONFLUENCE_BASE_URL` | Confluence site URL; blank → uses `JIRA_BASE_URL` |
 | `CONFLUENCE_SPACE_KEY` | **global default** space the export page is created in (e.g. `MYHERO`); per-squad override in **Settings → Squads → Edit** |
 | `CONFLUENCE_PARENT_ID` | **global default** parent page/folder id the export nests under; per-squad override in **Settings → Squads → Edit** |
@@ -270,14 +273,37 @@ use a **different** value per environment, and inject it via your platform's sec
 manager in production. Rotating it invalidates all existing sessions (everyone is logged
 out) — expected.
 
+## Encrypting the JIRA API token
+
+By default the JIRA API token lives in plaintext `JIRA_API_TOKEN`. For stricter setups you
+can store it **encrypted at rest** and inject only the decryption key via your secrets
+manager. Two vars replace the plaintext one:
+
+- `JIRA_ENC_KEY` — a passphrase (any string; keep it in your secrets manager, not in `.env`).
+- `JIRA_API_TOKEN_ENC` — the token encrypted with that passphrase (AES-256-GCM).
+
+Generate the ciphertext (server workspace):
+
+```bash
+JIRA_ENC_KEY="your-passphrase" npm run token:encrypt -- "your-jira-api-token"
+# prints:  JIRA_API_TOKEN_ENC="…base64…"
+```
+
+Then in the environment: set `JIRA_API_TOKEN_ENC` + `JIRA_ENC_KEY`, and **remove**
+`JIRA_API_TOKEN`. At boot the server decrypts it (`resolveJiraToken` in `env.ts`). Plaintext
+`JIRA_API_TOKEN` still wins if present, so this is fully opt-in and backward compatible. A
+wrong `JIRA_ENC_KEY` fails fast with a clear error.
+
 ## Security checklist (do before production)
 
 - [ ] Set a strong, unique `JWT_SECRET` (see "Generating a JWT secret" above).
 - [ ] Change the seeded admin password (or seed with your own credentials).
 - [ ] Set `NODE_ENV=production` and `CORS_ORIGINS` to your client URL(s) — see "CORS".
 - [ ] Serve everything over HTTPS.
-- [ ] **Protect the JIRA API token.** It now lives in `JIRA_API_TOKEN` (server env), not
-      the database. Inject it via your platform's secrets manager; don't commit `.env`.
+- [ ] **Protect the JIRA API token.** It lives in `JIRA_API_TOKEN` (server env), not the
+      database. Inject it via your platform's secrets manager; don't commit `.env`. For
+      stricter setups, store it encrypted (`JIRA_API_TOKEN_ENC` + `JIRA_ENC_KEY`) — see
+      "Encrypting the JIRA API token".
 - [ ] Lock down database network access (private subnet / firewall).
 - [ ] Take regular database backups (`pg_dump` / managed snapshots).
 - [ ] Consider rate-limiting the `login` mutation.

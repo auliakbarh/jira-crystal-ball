@@ -9,6 +9,7 @@ import { SquadProvider } from "./context/SquadContext";
 import { ToastProvider } from "./context/ToastContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import App from "./App";
+import "./i18n";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

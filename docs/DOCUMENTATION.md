@@ -13,21 +13,25 @@ jira-crystal-ball/
 │       ├── env.ts             # env loading/validation
 │       ├── db.ts              # Prisma client singleton
 │       ├── auth.ts            # bcrypt + JWT helpers
-│       ├── jira.ts            # JIRA Cloud REST client
-│       ├── context.ts         # request context + requireAuth
+│       ├── crypto.ts          # AES-256-GCM secret encrypt/decrypt (JIRA token at rest)
+│       ├── encryptToken.ts    # CLI: encrypt the JIRA token (npm run token:encrypt)
+│       ├── jira.ts            # JIRA Cloud REST client (paginated board/sprint fetch)
+│       ├── context.ts         # request context + requireAuth/requireAdmin/requireSuperAdmin
 │       ├── schema.ts          # GraphQL typeDefs
+│       ├── scheduler.ts       # hourly: Confluence auto-export + tarot/log retention purge
 │       ├── pubsub.ts          # in-memory PubSub (standup + tarot topics)
-│       ├── resolvers/         # per-domain: squad, standup, confluence, tarot, admin, shared, index
+│       ├── resolvers/         # per-domain: squad, standup, confluence, tarot, admin, velocity, shared, index
 │       ├── seed.ts            # seeds admin user + default squads (Athens/Berlin/Cairo)
 │       └── seed-config.ts     # bulk-seeds squads + members from a JSON file (idempotent)
 └── client/                    # React + Vite frontend
     ├── public/sounds/         # tarot WAV sounds (join/select/reveal)
     └── src/
         ├── apollo.ts          # Apollo Client + auth/WS split link
+        ├── i18n.ts            # i18next setup (EN/ID) + language switcher helper
         ├── graphql.ts         # all queries/mutations/subscriptions
         ├── context/           # Auth, Theme, Squad providers
         ├── components/        # Layout, Modal, panels, StandupTable/Row, tarot/*
-        ├── pages/             # Login, Dashboard, Board, Clairvoyance, Tarot, TarotRoom, PreviousSprints, Settings
+        ├── pages/             # Login, Dashboard, Board, Clairvoyance, Tarot, TarotRoom, PreviousSprints, Velocity, Settings
         └── lib/               # helpers.ts, tarot.ts (uid + card meta), sound.ts
 ```
 
@@ -171,6 +175,11 @@ Notes:
   admins only: every mutation rejects a target that is itself (`The env super admin cannot
   be modified`), preventing self-lockout. Passwords require ≥6 chars; emails are unique.
   Exposed in the UI as **Settings → Admin Accounts**.
+- **Velocity / burndown** (`resolvers/velocity.ts`): `velocity(squadId, limit)` returns
+  per-sprint `{ committedPoints, completedPoints, ticketCount, doneCount }` (oldest→newest,
+  last `limit`); `burndown(sprintId)` returns daily `{ date, remainingPoints, idealPoints }`.
+  Both derive from `StandupEntry` snapshots (latest per ticket; "done" = status in
+  done/closed/resolved/complete via `isDoneStatus`) — no extra JIRA calls. UI: **Velocity** page.
 - The `Date` scalar is serialized as `YYYY-MM-DD` (calendar dates, UTC-midnight parsed).
 
 ### Example

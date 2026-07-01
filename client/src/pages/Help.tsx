@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 const SECTIONS: { title: string; items: string[] }[] = [
   {
     title: "Getting started",
@@ -68,6 +70,13 @@ const SECTIONS: { title: string; items: string[] }[] = [
     ],
   },
   {
+    title: "Velocity & Burndown",
+    items: [
+      "Story points per sprint (last 12): committed vs completed bars, plus the average completed velocity. Data comes from standup ticket snapshots (story points + status), so run standups to populate it.",
+      "Click a sprint bar to see its daily burndown — remaining points vs the ideal straight line across the sprint's calendar days. A ticket counts as completed once its status is Done/Closed/Resolved.",
+    ],
+  },
+  {
     title: "Settings (admin)",
     items: [
       "Squads — add/switch/delete; edit name, board id, Story Point fields (default + FE/BE/QA; pick from the board field list), per-squad Confluence Space Key + Parent ID (blank = global env default), and the Tarot default point scale (Fibonacci/Scrum/Custom — a host can still override per room).",
@@ -81,13 +90,12 @@ const SECTIONS: { title: string; items: string[] }[] = [
 ];
 
 export default function Help() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-5">
       <div className="card">
-        <h1 className="text-xl font-bold">❓ How to use the dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          A quick guide to running standups with JIRA Crystal Ball.
-        </p>
+        <h1 className="text-xl font-bold">{t("help.heading")}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t("help.subtitle")}</p>
       </div>
 
       {SECTIONS.map((s) => (

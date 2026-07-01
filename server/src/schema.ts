@@ -87,6 +87,26 @@ export const typeDefs = /* GraphQL */ `
     name: String!
   }
 
+  # Per-sprint story-point throughput, for the Velocity chart.
+  type SprintVelocity {
+    sprintId: ID!
+    number: Int!
+    name: String
+    startDate: Date!
+    endDate: Date!
+    committedPoints: Float!
+    completedPoints: Float!
+    ticketCount: Int!
+    doneCount: Int!
+  }
+
+  # One day of a sprint's burndown (remaining vs the ideal straight line).
+  type BurndownPoint {
+    date: Date!
+    remainingPoints: Float!
+    idealPoints: Float!
+  }
+
   type Sprint {
     id: ID!
     number: Int!
@@ -319,6 +339,11 @@ export const typeDefs = /* GraphQL */ `
 
     # All admin accounts. Super-admin only.
     admins: [User!]!
+
+    # Per-sprint story-point velocity (oldest to newest); limit caps to the last N.
+    velocity(squadId: ID!, limit: Int): [SprintVelocity!]!
+    # Daily burndown for one sprint (remaining vs ideal).
+    burndown(sprintId: ID!): [BurndownPoint!]!
 
     # --- Tarot (planning poker) ---
     tarotRooms(squadId: ID!): [TarotRoomSummary!]!

@@ -13,6 +13,7 @@
     "db:migrate:status": "prisma migrate status",
     "seed": "tsx src/seed.ts",
     "seed:config": "tsx src/seed-config.ts",
+    "token:encrypt": "tsx src/encryptToken.ts",
     "postinstall": "prisma generate",
     "test": "vitest run"
   },

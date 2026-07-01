@@ -40,6 +40,23 @@ async function purgeOldTarotRooms() {
   }
 }
 
+// Purge ActivityLog / StandupLog rows past the retention window. 0 (default)
+// disables — keep everything. Both are audit/history tables that grow forever.
+const LOG_RETENTION_DAYS = Number(process.env.LOG_RETENTION_DAYS ?? "0");
+
+async function purgeOldLogs() {
+  if (!Number.isFinite(LOG_RETENTION_DAYS) || LOG_RETENTION_DAYS <= 0) return;
+  const cutoff = new Date(Date.now() - LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  try {
+    const act = await prisma.activityLog.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    const std = await prisma.standupLog.deleteMany({ where: { endedAt: { lt: cutoff } } });
+    if (act.count || std.count)
+      console.log(`🧹 Purged ${act.count} activity + ${std.count} standup log(s) older than ${LOG_RETENTION_DAYS}d`);
+  } catch (e: any) {
+    console.error("Log purge failed:", e?.message ?? e);
+  }
+}
+
 export function startScheduler() {
   // Tarot room retention runs regardless of Confluence config.
   setTimeout(() => void purgeOldTarotRooms(), 20_000);
@@ -48,6 +65,15 @@ export function startScheduler() {
     TAROT_RETENTION_DAYS > 0
       ? `Scheduler: tarot room retention = ${TAROT_RETENTION_DAYS} days.`
       : "Scheduler: tarot room retention disabled.",
+  );
+
+  // Activity/standup log retention, same cadence.
+  setTimeout(() => void purgeOldLogs(), 25_000);
+  setInterval(() => void purgeOldLogs(), 60 * 60 * 1000);
+  console.log(
+    LOG_RETENTION_DAYS > 0
+      ? `Scheduler: activity/standup log retention = ${LOG_RETENTION_DAYS} days.`
+      : "Scheduler: activity/standup log retention disabled.",
   );
 
   if (!confluenceConfigured()) {

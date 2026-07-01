@@ -65,6 +65,32 @@ export const ME = gql`
   }
 `;
 
+export const VELOCITY = gql`
+  query Velocity($squadId: ID!, $limit: Int) {
+    velocity(squadId: $squadId, limit: $limit) {
+      sprintId
+      number
+      name
+      startDate
+      endDate
+      committedPoints
+      completedPoints
+      ticketCount
+      doneCount
+    }
+  }
+`;
+
+export const BURNDOWN = gql`
+  query Burndown($sprintId: ID!) {
+    burndown(sprintId: $sprintId) {
+      date
+      remainingPoints
+      idealPoints
+    }
+  }
+`;
+
 export const ADMINS = gql`
   query Admins {
     admins {

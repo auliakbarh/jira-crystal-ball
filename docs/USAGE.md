@@ -23,7 +23,7 @@ The seeded account (its email = `SEED_ADMIN_EMAIL`) is the **super admin**. It's
 one that can add / edit / delete admins and reset their passwords, in **Settings → Admin
 Accounts**. Admins created there are regular admins — they use every other setting but
 can't manage admin accounts. The super admin can only manage *other* admins; its own row is
-read-only (so it can't lock itself out). See §10.
+read-only (so it can't lock itself out). See §11.
 
 ## 2. Pick or create a squad
 
@@ -189,7 +189,20 @@ Each ticket shows a card with:
 Grouping and these snapshots work for any sprint recorded after this version (each saved
 entry stores the ticket's epic/parent at the time).
 
-## 8. Clairvoyance (Sprint Grooming)
+## 8. Velocity & Burndown
+
+Open **Velocity** for story-point trends across sprints (the last 12):
+
+- **Story points per sprint** — two bars per sprint: **Committed** (total points) vs
+  **Completed** (points on Done/Closed/Resolved tickets), plus the **average completed**
+  velocity for planning. Hover a sprint for its exact numbers.
+- **Burndown** — click any sprint bar to see its daily burndown below: **Remaining** points
+  vs the **Ideal** straight line across the sprint's calendar days.
+
+All of this is derived from the **standup ticket snapshots** (story points + status recorded
+per day), so it fills in as you run standups — no extra JIRA calls, no manual entry.
+
+## 9. Clairvoyance (Sprint Grooming)
 
 The **Clairvoyance** menu is a **read-only** view of the **next sprint**'s tickets — the
 JIRA *future*-state sprint that follows the active one (sprint + 1) — pulled live from
@@ -200,7 +213,7 @@ Each row shows the ticket **key** (links to JIRA), **type**, **summary**, **stat
 created yet in JIRA, an empty state with a **↻ Reload** button is shown. Results are
 cached ~60s server-side; Reload forces a re-pull.
 
-## 9. Tarot (Planning Poker)
+## 10. Tarot (Planning Poker)
 
 The **Tarot** menu runs collaborative estimation of the next sprint's tickets — it
 supports **Sprint Planning**. Available to anyone logged in (guest or admin).
@@ -265,7 +278,7 @@ disables) and can otherwise only be **deleted by an admin**.
 **Activity log.** Key actions (create, estimate, sync, reset, end) are recorded in the
 squad's **Update Log**.
 
-## 10. Manage admin accounts (super admin)
+## 11. Manage admin accounts (super admin)
 
 The **super admin** — the seeded account whose email = `SEED_ADMIN_EMAIL` — sees an **Admin
 Accounts** panel in **Settings**. There it can:
@@ -278,7 +291,7 @@ Accounts** panel in **Settings**. There it can:
 The super admin can only manage **other** admins — its own row is read-only, so it can't
 demote, delete, or lock itself out. The panel is hidden for regular admins and guests.
 
-## 11. Reset the database (admin only)
+## 12. Reset the database (admin only)
 
 Admins see a **Danger Zone** at the bottom of **Settings**. **Reset Database** deletes
 every squad and all data under them (members, leaves, holidays, sprints, standup entries,
@@ -286,14 +299,18 @@ blockers, JIRA configs) — user logins are kept. Tick **Recreate default squads
 re-add Athens / Berlin / Cairo afterwards. You must type `RESET` to enable the button.
 This cannot be undone.
 
-## 12. Health check
+## 13. Health check
 
 Open **`/health`** (no login needed) for a status page showing the GraphQL API, database
 and JIRA-credential checks, auto-refreshing every 15s. Unknown URLs show a 404 page.
 
-## 13. Theme
+## 14. Theme & language
 
 Use the 🌙 / ☀️ button in the header to toggle dark/light mode. Your choice is remembered.
+
+Next to it, the **EN / ID** dropdown switches the interface language (English / Indonesian);
+the choice persists across sessions. Navigation, common header controls, and the Help page
+are translated — other pages are English for now.
 
 ## Tips
 

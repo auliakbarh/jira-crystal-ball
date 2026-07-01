@@ -186,6 +186,8 @@ export default function StandupTable({
         </div>
       )}
 
+      {/* Horizontal scroll on small screens so the wide table never breaks the layout. */}
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <table className="w-full min-w-[720px] table-fixed border-collapse text-left">
         <colgroup>
           <col style={{ width: "24%" }} />
@@ -247,6 +249,7 @@ export default function StandupTable({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
