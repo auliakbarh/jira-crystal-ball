@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import { client } from "./apollo";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { MuteProvider } from "./context/MuteContext";
 import { SquadProvider } from "./context/SquadContext";
 import { ToastProvider } from "./context/ToastContext";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -16,6 +17,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ApolloProvider client={client}>
       <ThemeProvider>
+        <MuteProvider>
         <ToastProvider>
           <AuthProvider>
             <SquadProvider>
@@ -27,6 +29,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             </SquadProvider>
           </AuthProvider>
         </ToastProvider>
+        </MuteProvider>
       </ThemeProvider>
     </ApolloProvider>
   </React.StrictMode>,

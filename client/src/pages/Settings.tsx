@@ -48,36 +48,75 @@ export default function Settings() {
   const isSuperAdmin = !!meData?.me?.isSuperAdmin;
   const { data, refetch } = useQuery(SQUAD, { variables: { id: squadId }, skip: !squadId });
   const squad = data?.squad;
+  const [active, setActive] = useState("squads");
 
-  if (!squadId)
-    return (
-      <div className="space-y-5">
-        <SquadsSection currentId={squadId} setSquadId={setSquadId} isAdmin={isAdmin} />
-        {isSuperAdmin && <AdminsSection />}
-        {isAdmin && <SeedSection />}
-        {isAdmin && <DangerZone setSquadId={setSquadId} />}
-      </div>
-    );
+  // Master-detail: pick a category on the left, its detail shows on the right.
+  const nav = [
+    { key: "squads", label: t("settings.navSquads"), show: true },
+    { key: "jira", label: t("settings.navJira"), show: !!squadId },
+    { key: "members", label: t("settings.navMembers"), show: !!squadId },
+    { key: "sprints", label: t("settings.navSprints"), show: !!squadId },
+    { key: "holidays", label: t("settings.navHolidays"), show: !!squadId },
+    { key: "admins", label: t("settings.navAdmins"), show: isSuperAdmin },
+    { key: "gemini", label: t("settings.navGemini"), show: isAdmin },
+    { key: "seed", label: t("settings.navSeed"), show: isAdmin },
+    { key: "danger", label: t("settings.navDanger"), show: isAdmin },
+  ].filter((n) => n.show);
+  const activeKey = nav.some((n) => n.key === active) ? active : nav[0].key;
+
+  const detail = () => {
+    switch (activeKey) {
+      case "jira":
+        return squadId ? (
+          <section className="card">
+            <h2 className="mb-3 text-base font-bold">{t("settings.jiraBoardTitle")}</h2>
+            <JiraConfigForm squadId={squadId} currentBoardId={squad?.defaultBoardId} onSaved={refetch} />
+          </section>
+        ) : null;
+      case "members":
+        return squadId ? <MembersSection squadId={squadId} members={squad?.members ?? []} refetch={refetch} /> : null;
+      case "sprints":
+        return squadId ? <SprintsSection squadId={squadId} sprints={squad?.sprints ?? []} refetch={refetch} /> : null;
+      case "holidays":
+        return squadId ? <HolidaysSection squadId={squadId} holidays={squad?.holidays ?? []} refetch={refetch} /> : null;
+      case "admins":
+        return <AdminsSection />;
+      case "gemini":
+        return <GeminiSection />;
+      case "seed":
+        return <SeedSection />;
+      case "danger":
+        return <DangerZone setSquadId={setSquadId} />;
+      default:
+        return <SquadsSection currentId={squadId} setSquadId={setSquadId} isAdmin={isAdmin} />;
+    }
+  };
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-xl font-bold">{t("settings.pageTitle", { name: squad?.name })}</h1>
-
-      <SquadsSection currentId={squadId} setSquadId={setSquadId} isAdmin={isAdmin} />
-
-      <section className="card">
-        <h2 className="mb-3 text-base font-bold">{t("settings.jiraBoardTitle")}</h2>
-        <JiraConfigForm squadId={squadId} currentBoardId={squad?.defaultBoardId} onSaved={refetch} />
-      </section>
-
-      <MembersSection squadId={squadId} members={squad?.members ?? []} refetch={refetch} />
-      <SprintsSection squadId={squadId} sprints={squad?.sprints ?? []} refetch={refetch} />
-      <HolidaysSection squadId={squadId} holidays={squad?.holidays ?? []} refetch={refetch} />
-
-      {isSuperAdmin && <AdminsSection />}
-      {isAdmin && <GeminiSection />}
-      {isAdmin && <SeedSection />}
-      {isAdmin && <DangerZone setSquadId={setSquadId} />}
+    <div>
+      <h1 className="mb-4 text-xl font-bold">{squadId ? t("settings.pageTitle", { name: squad?.name }) : t("nav.settings")}</h1>
+      <div className="flex flex-col gap-5 sm:flex-row">
+        <aside className="shrink-0 sm:w-56">
+          <div className="flex gap-1 overflow-x-auto sm:flex-col">
+            {nav.map((n) => (
+              <button
+                key={n.key}
+                onClick={() => setActive(n.key)}
+                className={`whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium ${
+                  activeKey === n.key
+                    ? n.key === "danger"
+                      ? "bg-red-600 text-white"
+                      : "bg-brand text-white"
+                    : `hover:bg-gray-200 dark:hover:bg-gray-800 ${n.key === "danger" ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-300"}`
+                }`}
+              >
+                {n.label}
+              </button>
+            ))}
+          </div>
+        </aside>
+        <div className="min-w-0 flex-1 space-y-5">{detail()}</div>
+      </div>
     </div>
   );
 }

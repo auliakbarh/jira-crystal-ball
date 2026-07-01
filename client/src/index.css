@@ -121,3 +121,26 @@ body {
     transform: translateX(100%);
   }
 }
+
+/* Native date picker: clear, clickable indicator. Its color follows the app
+   theme via `color-scheme` (set below), so no manual invert is needed. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.75;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Smooth color cross-fade during a theme switch. The class is added only for the
+   duration of the toggle (see ThemeContext) so it doesn't slow normal hover/state
+   color changes. */
+.theme-anim * {
+  transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease,
+    fill 0.5s ease, stroke 0.5s ease, box-shadow 0.5s ease !important;
+}
+
+/* Force native controls (date picker, scrollbars, selects) to match the app
+   theme instead of the OS setting. The .dark class lives on <html>. */
+:root { color-scheme: light; }
+:root.dark { color-scheme: dark; }
