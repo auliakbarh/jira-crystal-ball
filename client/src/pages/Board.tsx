@@ -171,29 +171,29 @@ export default function Board() {
                     </td>
                   </tr>
                 )}
-                {grp.rows.map((t: any) => (
-                  <tr key={t.key} className="border-b border-gray-100 dark:border-gray-800">
+                {grp.rows.map((tk: any) => (
+                  <tr key={tk.key} className="border-b border-gray-100 dark:border-gray-800">
                     <td className="p-2">
-                      <a href={t.url} target="_blank" rel="noreferrer" className="font-mono font-bold text-brand hover:underline">
-                        {t.key}
+                      <a href={tk.url} target="_blank" rel="noreferrer" className="font-mono font-bold text-brand hover:underline">
+                        {tk.key}
                       </a>
                     </td>
                     <td className="p-2">
-                      {t.issueType && (
+                      {tk.issueType && (
                         <span className="chip bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
-                          {t.issueType}
+                          {tk.issueType}
                         </span>
                       )}
                     </td>
                     <td className="p-2">
-                      {t.status && <span className={`chip ${statusColor(t.status)}`}>{t.status}</span>}
+                      {tk.status && <span className={`chip ${statusColor(tk.status)}`}>{tk.status}</span>}
                     </td>
                     <td className="p-2">
-                      {t.priority && <span className={`chip ${priorityColor(t.priority)}`}>{t.priority}</span>}
+                      {tk.priority && <span className={`chip ${priorityColor(tk.priority)}`}>{tk.priority}</span>}
                     </td>
-                    <td className="p-2 font-mono text-xs">{t.storyPoints ?? "—"}</td>
-                    <td className="p-2">{t.summary}</td>
-                    <td className="p-2">{t.assignee ?? <span className="text-gray-400">{t("board.unassigned")}</span>}</td>
+                    <td className="p-2 font-mono text-xs">{tk.storyPoints ?? "—"}</td>
+                    <td className="p-2">{tk.summary}</td>
+                    <td className="p-2">{tk.assignee ?? <span className="text-gray-400">{t("board.unassigned")}</span>}</td>
                   </tr>
                 ))}
               </Fragment>
