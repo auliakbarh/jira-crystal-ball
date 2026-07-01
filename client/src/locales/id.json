@@ -695,6 +695,8 @@
     "tipHost3Title": "Host · Putuskan & ulangi",
     "tipHost3Body": "Tetapkan story point (saran terisi otomatis) dan poin per peran FE/BE/QA (masing-masing ≤ effort). Sebaran besar? Diskusikan outlier dan jalankan Siklus berikutnya. Ganti skala (Fibonacci/Scrum/Kustom) bila perlu.",
     "tipHost4Title": "Host · Selesaikan & sinkron",
-    "tipHost4Body": "Akhiri ruang setelah semua tiket dipoin. Lalu Sinkron ke Jira menulis effort + poin per peran ke field squad (dapat dibatalkan via Reset Jira). Tamu tidak bisa sinkron — hanya host/admin yang masuk."
+    "tipHost4Body": "Akhiri ruang setelah semua tiket dipoin. Lalu Sinkron ke Jira menulis effort + poin per peran ke field squad (dapat dibatalkan via Reset Jira). Tamu tidak bisa sinkron — hanya host/admin yang masuk.",
+    "guestNoSync": "Login untuk sync ke Jira",
+    "guestNoSyncHint": "Sync Jira butuh akun yang login (host atau admin). Tamu bisa menjalankan sesi tapi tak bisa menulis ke board Jira."
   }
 }

@@ -128,6 +128,9 @@ export default function HostRoom({ room, uid, tick, refetchRoom }: any) {
               {busy ? tr("tarot.resetting") : tr("tarot.resetJiraBtn")}
             </button>
           )}
+          {allPointed && !canSync && (
+            <span className="text-xs text-gray-400" title={tr("tarot.guestNoSyncHint")}>ℹ️ {tr("tarot.guestNoSync")}</span>
+          )}
           <button className="btn-ghost text-green-600" disabled={busy} onClick={() => call(() => endRoom({ variables: { roomId, key: uid } }), { success: tr("tarot.sessionEndedToast") })}>{tr("tarot.endRoom")}</button>
           <button className="btn-ghost text-red-600" disabled={busy} onClick={() => setModal("delete")}>{tr("tarot.delete")}</button>
         </div>
@@ -382,6 +385,9 @@ function EndedHost({ room, uid, refetchRoom }: any) {
             <button className="btn-ghost text-amber-600" disabled={busy} onClick={() => setModal("resetJira")}>
               {busy ? t("tarot.resetting") : t("tarot.resetJiraBtn")}
             </button>
+          )}
+          {hasResults && !canSync && (
+            <span className="text-xs text-gray-400" title={t("tarot.guestNoSyncHint")}>ℹ️ {t("tarot.guestNoSync")}</span>
           )}
           <button className="btn-ghost" onClick={() => navigate("/tarot")}>{t("tarot.roomsNav")}</button>
           <button className="btn-ghost text-red-600" disabled={busy} onClick={() => setModal("delete")}>{t("tarot.deleteAdmin")}</button>

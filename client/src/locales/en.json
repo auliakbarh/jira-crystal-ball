@@ -695,6 +695,8 @@
     "tipHost3Title": "Host · Decide & repeat",
     "tipHost3Body": "Set the story point (suggestion pre-filled) and per-role FE/BE/QA points (each ≤ effort). Big spread? Discuss the outliers and run Next cycle. Change the scale (Fibonacci/Scrum/Custom) if needed.",
     "tipHost4Title": "Host · Finish & sync",
-    "tipHost4Body": "End the room once every ticket is pointed. Then Sync to Jira writes effort + per-role points to the squad's fields (reversible via Reset Jira). Guests can't sync — only a signed-in host/admin."
+    "tipHost4Body": "End the room once every ticket is pointed. Then Sync to Jira writes effort + per-role points to the squad's fields (reversible via Reset Jira). Guests can't sync — only a signed-in host/admin.",
+    "guestNoSync": "Sign in to sync to Jira",
+    "guestNoSyncHint": "Jira sync needs a logged-in account (host or admin). Guests can run the session but can't write to the Jira board."
   }
 }
