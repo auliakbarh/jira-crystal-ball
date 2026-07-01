@@ -198,7 +198,11 @@ Open **Velocity** for story-point trends across sprints (the last 12):
     recorded each day, stored in the app DB). It fills in as you run standups here — sprints
     never run through a standup won't appear. Includes the burndown.
   - **From JIRA** — computed **live from JIRA's closed sprints** (the board's story points), so
-    it works even without standups. No burndown for this source (JIRA has no per-day snapshot).
+    it works even without standups. For each closed sprint: **Committed** = sum of story points
+    of all its issues, **Completed** = sum for Done/Closed/Resolved issues. Uses the squad's
+    configured Story Points field (Settings → Squads → Edit), shows the last 12 closed sprints,
+    and refreshes ~60s. No burndown for this source (JIRA has no per-day snapshot). Note:
+    "Committed" reflects the issues currently in the sprint, not a sprint-start snapshot.
 - **Story points per sprint** — two bars per sprint: **Committed** (total points) vs
   **Completed** (points on Done/Closed/Resolved tickets), plus the **average completed**
   velocity for planning. Hover a sprint for its exact numbers.

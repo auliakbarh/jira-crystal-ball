@@ -186,10 +186,18 @@ Notes:
     only reflects sprints that were actually run through standups here.
   - `burndown(sprintId)` — daily `{ date, remainingPoints, idealPoints }`, also from
     `StandupEntry` (DB source only).
-  - `jiraVelocity(squadId, limit)` — same shape but computed **live from JIRA** closed sprints
-    (`fetchJiraVelocity` in `jira.ts`: `/board/{id}/sprint?state=closed` → each sprint's issues,
-    committed = Σ story points, completed = Σ SP of Done/Closed/Resolved). No standups needed;
-    no burndown for this source (JIRA has no per-day snapshot here).
+  - `jiraVelocity(squadId, limit)` — same shape but computed **live from JIRA**
+    (`fetchJiraVelocity` in `jira.ts`, cached 60s). Steps:
+    1. Resolve the board id + the squad's Story Points field (`resolveSpIds` → `spIds.default`,
+       global fallback).
+    2. `GET /board/{id}/sprint?state=closed` → keep sprints with start+end dates, sort by
+       start date, take the **last `limit`** (default 12).
+    3. For each: paginate `/board/{id}/sprint/{sid}/issue`; `committedPoints` = Σ story points
+       of **all** issues in the sprint, `completedPoints` = Σ SP of **Done/Closed/Resolved**
+       issues (`isDoneName`); `number` parsed from the sprint name (fallback: running index).
+    - Caveats: story points come from the squad's configured SP field (wrong/blank field → 0).
+      `committedPoints` reflects the issues **currently** in that closed sprint (JIRA's Agile API
+      exposes no sprint-start commitment snapshot). Only **closed** sprints appear. No burndown.
   - UI: **Velocity** page with a **From standups / From JIRA** source toggle.
 - The `Date` scalar is serialized as `YYYY-MM-DD` (calendar dates, UTC-midnight parsed).
 
