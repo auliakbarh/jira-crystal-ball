@@ -48,7 +48,7 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
   };
 
   return (
-    <section className="card">
+    <section className="card w-full max-w-md">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-600 dark:text-gray-300">{title ?? "Tips"}</h2>
         <div className="flex items-center gap-2">
