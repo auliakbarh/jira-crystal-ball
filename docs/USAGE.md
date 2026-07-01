@@ -19,6 +19,12 @@ For management, use **Admin login** (link on the guest page). The seeded admin i
 **admin@example.com / admin123** (change it in production). Only admins reach Settings and
 can always edit / take over a standup.
 
+The seeded account (its email = `SEED_ADMIN_EMAIL`) is the **super admin**. It's the only
+one that can add / edit / delete admins and reset their passwords, in **Settings → Admin
+Accounts**. Admins created there are regular admins — they use every other setting but
+can't manage admin accounts. The super admin can only manage *other* admins; its own row is
+read-only (so it can't lock itself out). See §10.
+
 ## 2. Pick or create a squad
 
 Use the squad dropdown in the header. To add a team, type a name in the **New squad…**
@@ -259,7 +265,20 @@ disables) and can otherwise only be **deleted by an admin**.
 **Activity log.** Key actions (create, estimate, sync, reset, end) are recorded in the
 squad's **Update Log**.
 
-## 10. Reset the database (admin only)
+## 10. Manage admin accounts (super admin)
+
+The **super admin** — the seeded account whose email = `SEED_ADMIN_EMAIL` — sees an **Admin
+Accounts** panel in **Settings**. There it can:
+
+- **Add admin** — enter email + name + password (min 6 chars). New admins are *regular*
+  admins: full access to every setting except this panel.
+- **Edit** an admin's name / email, **Reset password** (min 6), or **Delete** an admin
+  (type-to-confirm).
+
+The super admin can only manage **other** admins — its own row is read-only, so it can't
+demote, delete, or lock itself out. The panel is hidden for regular admins and guests.
+
+## 11. Reset the database (admin only)
 
 Admins see a **Danger Zone** at the bottom of **Settings**. **Reset Database** deletes
 every squad and all data under them (members, leaves, holidays, sprints, standup entries,
@@ -267,12 +286,12 @@ blockers, JIRA configs) — user logins are kept. Tick **Recreate default squads
 re-add Athens / Berlin / Cairo afterwards. You must type `RESET` to enable the button.
 This cannot be undone.
 
-## 11. Health check
+## 12. Health check
 
 Open **`/health`** (no login needed) for a status page showing the GraphQL API, database
 and JIRA-credential checks, auto-refreshing every 15s. Unknown URLs show a 404 page.
 
-## 12. Theme
+## 13. Theme
 
 Use the 🌙 / ☀️ button in the header to toggle dark/light mode. Your choice is remembered.
 

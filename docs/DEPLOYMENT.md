@@ -16,7 +16,9 @@ Three pieces to deploy:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | **Long random string** — sign in tokens. Rotating it logs everyone out. |
 | `PORT` | HTTP port (default 4000) |
-| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | initial admin for `npm run db:seed` |
+| `NODE_ENV` | `production` enables the CORS allow-list (below); anything else is dev (permissive). |
+| `CORS_ORIGINS` | **Comma-separated** browser origins allowed in production (e.g. `https://app.example.com,https://admin.example.com`). Gates both HTTP CORS and the WebSocket handshake. Empty in production → browser cross-origin requests are blocked (a startup warning is logged). Ignored in dev. Non-browser clients (curl / server-to-server, no `Origin` header) always pass. |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | initial admin for `npm run db:seed`. **`SEED_ADMIN_EMAIL` also designates the "super admin"** — the only account that can manage other admins (Settings → Admin Accounts). Matched by email at runtime, so keep it in sync with the seeded user. |
 | `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | **global** JIRA credentials (all squads) |
 | `JIRA_DEFAULT_BOARD_ID` / `JIRA_JQL` | optional fallback board id / JQL override |
 | `CONFLUENCE_BASE_URL` | Confluence site URL; blank → uses `JIRA_BASE_URL` |
@@ -187,10 +189,20 @@ The project uses **Prisma migrations** (a reviewable history under
 
 ## CORS
 
-Apollo standalone enables permissive CORS by default, which is fine when the frontend is
-served from a different origin. To restrict it, front the API with a reverse proxy and
-limit `Access-Control-Allow-Origin`, or migrate to the Express integration with a
-configured `cors` middleware.
+CORS is **permissive in development** (all origins) and **restricted in production**. Set
+`NODE_ENV=production` and list your client origin(s) in `CORS_ORIGINS`:
+
+```bash
+NODE_ENV=production
+CORS_ORIGINS=https://app.example.com,https://admin.example.com
+```
+
+The same allow-list gates the WebSocket handshake (subscriptions), so the client URL must
+be listed or live subscriptions will be refused. Requests without an `Origin` header (curl,
+server-to-server, health checks) always pass. If `CORS_ORIGINS` is empty in production the
+server logs a warning at startup and blocks browser cross-origin calls — set it to your
+client URL(s). Enforcement lives in `originAllowed()` in `server/src/index.ts`; you can
+still additionally front the API with a reverse proxy if you prefer.
 
 ## Generating a JWT secret
 
@@ -213,6 +225,7 @@ out) — expected.
 
 - [ ] Set a strong, unique `JWT_SECRET` (see "Generating a JWT secret" above).
 - [ ] Change the seeded admin password (or seed with your own credentials).
+- [ ] Set `NODE_ENV=production` and `CORS_ORIGINS` to your client URL(s) — see "CORS".
 - [ ] Serve everything over HTTPS.
 - [ ] **Protect the JIRA API token.** It now lives in `JIRA_API_TOKEN` (server env), not
       the database. Inject it via your platform's secrets manager; don't commit `.env`.

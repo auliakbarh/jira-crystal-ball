@@ -10,6 +10,18 @@ export const env = {
   databaseUrl: required("DATABASE_URL"),
   jwtSecret: required("JWT_SECRET", "dev-insecure-secret"),
   port: parseInt(process.env.PORT ?? "4000", 10),
+  isProd: (process.env.NODE_ENV ?? "development") === "production",
+  // Allowed browser origins for CORS + WebSocket. Comma-separated. In production
+  // only these origins may make cross-origin (browser) requests; in development
+  // all origins are allowed. Non-browser clients (no Origin header) always pass.
+  corsOrigins: (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+  // The env "super admin" — the seeded root account. Only this user may manage
+  // (create / edit / delete / reset-password) other admin accounts. Matched by
+  // email so no DB migration is needed; keep in sync with seed.ts.
+  superAdminEmail: (process.env.SEED_ADMIN_EMAIL ?? "admin@example.com").toLowerCase(),
   // JIRA credentials live in the environment (global, not per-squad).
   // Only the board id is per-squad (Squad.defaultBoardId) and is optional.
   jira: {

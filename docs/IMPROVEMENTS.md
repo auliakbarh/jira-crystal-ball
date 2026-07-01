@@ -5,8 +5,14 @@ by value/effort within each group. ✅ = done.
 
 ## Security / auth
 - ✅ **Rate-limit `login`** — throttle repeated failed logins to slow brute-force.
-- [ ] **Change-password / admin management UI** — admins are seed-only today.
-- [ ] **Restrict CORS** in production (Apollo standalone is permissive by default).
+- ✅ **Change-password / admin management UI** — Settings → **Admin Accounts** (super-admin
+      only) creates/edits/deletes admins + resets passwords. Super admin = the env
+      `SEED_ADMIN_EMAIL` account (matched by email, no migration); it manages *other* admins
+      only and can't modify itself (`requireSuperAdmin`, `resolvers/admin.ts`).
+- ✅ **Restrict CORS** in production — `CORS_ORIGINS` (comma-separated) allow-list gates
+      both HTTP CORS and the WebSocket handshake (`originAllowed` in `index.ts`); dev allows
+      all, requests with no `Origin` (curl/server-to-server) always pass. Empty in prod logs
+      a warning and blocks browser cross-origin calls.
 - [ ] **Encrypt or vault the JIRA API token** (currently a server env var; fine for a
       single org, encrypt for stricter setups).
 - [ ] **Per-squad membership & roles** — any logged-in member currently sees all squads.

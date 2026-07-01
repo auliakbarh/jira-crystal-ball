@@ -93,6 +93,13 @@ export const DateScalar = new GraphQLScalarType({
 
 // Shared field resolvers for log/date types (ISO string serialization).
 export const fieldResolvers = {
+  User: {
+    // Derived, not stored: env super admin is matched by email. Guests → false.
+    isSuperAdmin: (u: any) =>
+      !!u?.isAdmin && (u.email ?? "").toLowerCase() === env.superAdminEmail,
+    createdAt: (u: any) =>
+      u?.createdAt instanceof Date ? u.createdAt.toISOString() : u?.createdAt ?? null,
+  },
   Squad: {
     members: (s: any, _a: unknown, ctx: Context) =>
       ctx.prisma.teamMember.findMany({ where: { squadId: s.id }, orderBy: { name: "asc" } }),

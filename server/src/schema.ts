@@ -21,7 +21,10 @@ export const typeDefs = /* GraphQL */ `
     email: String!
     name: String!
     isAdmin: Boolean!
+    # True for the env "super admin" (SEED_ADMIN_EMAIL) — may manage other admins.
+    isSuperAdmin: Boolean!
     isGuest: Boolean
+    createdAt: String
   }
 
   type AuthPayload {
@@ -314,6 +317,9 @@ export const typeDefs = /* GraphQL */ `
     # Public: distinct team-member names for the guest-login name suggestion.
     memberSuggestions: [MemberSuggestion!]!
 
+    # All admin accounts. Super-admin only.
+    admins: [User!]!
+
     # --- Tarot (planning poker) ---
     tarotRooms(squadId: ID!): [TarotRoomSummary!]!
     tarotRoom(id: ID!, key: String): TarotRoom
@@ -324,6 +330,12 @@ export const typeDefs = /* GraphQL */ `
     login(email: String!, password: String!): AuthPayload!
     # Guest access for running standup: no account, name only. Non-admin.
     guestLogin(name: String!): AuthPayload!
+
+    # --- Admin account management (super-admin only) ---
+    createAdmin(email: String!, name: String!, password: String!): User!
+    updateAdmin(id: ID!, email: String, name: String): User!
+    changeAdminPassword(id: ID!, password: String!): Boolean!
+    deleteAdmin(id: ID!): Boolean!
 
     createSquad(name: String!, defaultBoardId: String): Squad!
     updateSquad(

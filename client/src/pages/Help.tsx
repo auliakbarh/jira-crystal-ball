@@ -74,6 +74,7 @@ const SECTIONS: { title: string; items: string[] }[] = [
       "Members — add with a short name, optional full name, and position; edit or delete existing members inline. Plus leave (Annual/Sick/Permission + substitute), Sprints, Public Holidays, JIRA Board test.",
       "Bulk setup: admins can seed squads + members from a JSON file via `npm run db:seed:config` (idempotent; see DEPLOYMENT docs).",
       "Member JIRA account id (optional) — the opaque Atlassian id (e.g. 5b10ac8d82e05b22cc7d4ef5), not the email; links the member to their JIRA assignee. The field is a picker: choose a JIRA user (name + email) from the dropdown to fill the id, or paste one manually (profile URL …/jira/people/<id>, or /rest/api/3/user/search?query=<email>).",
+      "Admin Accounts — visible only to the environment super admin (the seeded SEED_ADMIN_EMAIL account). Add new admins (email + name + password), edit their name/email, reset their password, or delete them. Regular admins can use every other setting but cannot manage admin accounts. The super admin row is read-only and cannot be edited or deleted (prevents lockout).",
       "Danger Zone — reset the database (admin only).",
     ],
   },

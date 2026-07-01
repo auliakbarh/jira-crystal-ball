@@ -9,6 +9,7 @@ export const LOGIN = gql`
         email
         name
         isAdmin
+        isSuperAdmin
         isGuest
       }
     }
@@ -24,6 +25,7 @@ export const GUEST_LOGIN = gql`
         email
         name
         isAdmin
+        isSuperAdmin
         isGuest
       }
     }
@@ -57,8 +59,49 @@ export const ME = gql`
       email
       name
       isAdmin
+      isSuperAdmin
       isGuest
     }
+  }
+`;
+
+export const ADMINS = gql`
+  query Admins {
+    admins {
+      id
+      email
+      name
+      isSuperAdmin
+      createdAt
+    }
+  }
+`;
+
+export const CREATE_ADMIN = gql`
+  mutation CreateAdmin($email: String!, $name: String!, $password: String!) {
+    createAdmin(email: $email, name: $name, password: $password) {
+      id
+    }
+  }
+`;
+
+export const UPDATE_ADMIN = gql`
+  mutation UpdateAdmin($id: ID!, $email: String, $name: String) {
+    updateAdmin(id: $id, email: $email, name: $name) {
+      id
+    }
+  }
+`;
+
+export const CHANGE_ADMIN_PASSWORD = gql`
+  mutation ChangeAdminPassword($id: ID!, $password: String!) {
+    changeAdminPassword(id: $id, password: $password)
+  }
+`;
+
+export const DELETE_ADMIN = gql`
+  mutation DeleteAdmin($id: ID!) {
+    deleteAdmin(id: $id)
   }
 `;
 

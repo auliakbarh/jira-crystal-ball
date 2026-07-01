@@ -17,7 +17,7 @@ jira-crystal-ball/
 │       ├── context.ts         # request context + requireAuth
 │       ├── schema.ts          # GraphQL typeDefs
 │       ├── pubsub.ts          # in-memory PubSub (standup + tarot topics)
-│       ├── resolvers/         # per-domain: squad, standup, confluence, tarot, shared, index
+│       ├── resolvers/         # per-domain: squad, standup, confluence, tarot, admin, shared, index
 │       ├── seed.ts            # seeds admin user + default squads (Athens/Berlin/Cairo)
 │       └── seed-config.ts     # bulk-seeds squads + members from a JSON file (idempotent)
 └── client/                    # React + Vite frontend
@@ -163,6 +163,14 @@ Notes:
   (cascading every related record); users are preserved. With `reseedDefaults: true` it
   recreates the Athens/Berlin/Cairo squads. Exposed in the UI as **Settings → Danger
   Zone** (admin only, type-to-confirm).
+- **Admin management** (`resolvers/admin.ts`, **super-admin only** — `requireSuperAdmin`):
+  `admins` lists all admins; `createAdmin(email,name,password)`, `updateAdmin(id,email?,name?)`,
+  `changeAdminPassword(id,password)`, `deleteAdmin(id)`. The **super admin** is the env
+  account whose email = `SEED_ADMIN_EMAIL` (`isSuperAdminUser`, matched by email — no DB
+  column/migration; `User.isSuperAdmin` is a derived field resolver). It manages *other*
+  admins only: every mutation rejects a target that is itself (`The env super admin cannot
+  be modified`), preventing self-lockout. Passwords require ≥6 chars; emails are unique.
+  Exposed in the UI as **Settings → Admin Accounts**.
 - The `Date` scalar is serialized as `YYYY-MM-DD` (calendar dates, UTC-midnight parsed).
 
 ### Example
