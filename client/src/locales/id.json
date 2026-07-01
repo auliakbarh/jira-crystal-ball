@@ -245,7 +245,11 @@
     "testConnection": "Uji koneksi",
     "cancel": "Batal",
     "working": "Memproses…",
-    "confirm": "Konfirmasi"
+    "confirm": "Konfirmasi",
+    "hold": "Tahan",
+    "resume": "Lanjut",
+    "holdHint": "Tahan (terblokir / deprioritas) — baris jadi abu-abu",
+    "resumeHint": "Lanjutkan — hapus tahan"
   },
   "settings": {
     "pageTitle": "Pengaturan — {{name}}",
@@ -538,7 +542,8 @@
     "settingsItem3": "Penyiapan massal: admin dapat menyemai squad + anggota dari file JSON melalui npm run db:seed:config (idempoten; lihat dokumen DEPLOYMENT).",
     "settingsItem4": "Id akun JIRA anggota (opsional) — id Atlassian buram (mis. 5b10ac8d82e05b22cc7d4ef5), bukan email; menghubungkan anggota ke penerima tugas JIRA mereka. Field ini adalah picker: pilih pengguna JIRA (nama + email) dari dropdown untuk mengisi id, atau tempel manual.",
     "settingsItem5": "Akun Admin — hanya terlihat oleh super admin lingkungan (akun SEED_ADMIN_EMAIL yang disemai). Tambah admin baru (email + nama + kata sandi), edit nama/email mereka, reset kata sandi, atau hapus mereka. Admin biasa dapat menggunakan setiap pengaturan lain tetapi tidak dapat mengelola akun admin. Baris super admin hanya-baca dan tidak dapat diedit atau dihapus (mencegah terkunci).",
-    "settingsItem6": "Zona Bahaya — reset basis data (hanya admin)."
+    "settingsItem6": "Zona Bahaya — reset basis data (hanya admin).",
+    "standupItem8": "Tahan — tandai tiket ditahan (terblokir / deprioritas) via tombol Hold; baris jadi abu-abu. Lanjut menghapusnya. Ini penanda visual per tanggal; tak mengubah poin atau progres."
   },
   "tarot": {
     "couldNotLoadRooms": "Tidak dapat memuat ruang: {{message}}",

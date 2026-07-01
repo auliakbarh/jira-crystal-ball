@@ -199,6 +199,7 @@ export const typeDefs = /* GraphQL */ `
     updateText: String
     progress: Int!
     blockerNote: String
+    hold: Boolean!
   }
 
   type StandupSession {
@@ -300,6 +301,7 @@ export const typeDefs = /* GraphQL */ `
     updateText: String
     progress: Int
     blockerNote: String
+    hold: Boolean
   }
 
   input BlockerInput {

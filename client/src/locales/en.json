@@ -245,7 +245,11 @@
     "testConnection": "Test connection",
     "cancel": "Cancel",
     "working": "Working…",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "hold": "Hold",
+    "resume": "Resume",
+    "holdHint": "Put on hold (blocked / deprioritized) — greys out the row",
+    "resumeHint": "Resume — remove hold"
   },
   "settings": {
     "pageTitle": "Settings — {{name}}",
@@ -538,7 +542,8 @@
     "settingsItem3": "Bulk setup: admins can seed squads + members from a JSON file via npm run db:seed:config (idempotent; see DEPLOYMENT docs).",
     "settingsItem4": "Member JIRA account id (optional) — the opaque Atlassian id (e.g. 5b10ac8d82e05b22cc7d4ef5), not the email; links the member to their JIRA assignee. The field is a picker: choose a JIRA user (name + email) from the dropdown to fill the id, or paste one manually.",
     "settingsItem5": "Admin Accounts — visible only to the environment super admin (the seeded SEED_ADMIN_EMAIL account). Add new admins (email + name + password), edit their name/email, reset their password, or delete them. Regular admins can use every other setting but cannot manage admin accounts. The super admin row is read-only and cannot be edited or deleted (prevents lockout).",
-    "settingsItem6": "Danger Zone — reset the database (admin only)."
+    "settingsItem6": "Danger Zone — reset the database (admin only).",
+    "standupItem8": "Hold — mark a ticket on hold (blocked / deprioritized) with the Hold button; the row greys out. Resume clears it. It's a visual cue saved per date; it doesn't change points or progress."
   },
   "tarot": {
     "couldNotLoadRooms": "Could not load rooms: {{message}}",

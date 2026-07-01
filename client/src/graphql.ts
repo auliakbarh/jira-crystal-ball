@@ -453,6 +453,7 @@ export const DASHBOARD = gql`
         updateText
         progress
         blockerNote
+        hold
       }
     }
   }
@@ -481,6 +482,7 @@ export const STANDUP_ENTRIES = gql`
       updateText
       progress
       blockerNote
+      hold
     }
   }
 `;
@@ -574,6 +576,7 @@ export const SAVE_ENTRY = gql`
       updateText
       progress
       blockerNote
+      hold
     }
   }
 `;

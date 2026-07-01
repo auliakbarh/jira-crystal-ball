@@ -184,6 +184,7 @@ export const standupResolvers = {
         updateText: input.updateText ?? "",
         progress: clampPct(input.progress),
         blockerNote: input.blockerNote ?? "",
+        hold: !!input.hold,
       };
 
       const entry = await ctx.prisma.standupEntry.upsert({

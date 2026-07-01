@@ -22,6 +22,7 @@ export default function Help() {
         t("helpSections.standupItem5"),
         t("helpSections.standupItem6"),
         t("helpSections.standupItem7"),
+        t("helpSections.standupItem8"),
       ],
     },
     {

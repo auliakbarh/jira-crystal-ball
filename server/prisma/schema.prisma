@@ -219,6 +219,8 @@ model StandupEntry {
   updateText  String?  @default("")
   progress    Int      @default(0) // 0..100 (overall)
   blockerNote String?  @default("")
+  // Ticket put on hold during standup (blocked / deprioritized). Renders greyed out.
+  hold        Boolean  @default(false)
 
   updatedAt   DateTime @updatedAt
 

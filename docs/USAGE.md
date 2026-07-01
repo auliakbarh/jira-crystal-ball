@@ -103,6 +103,10 @@ A **status filter** sits above the table (same chips as the Board): **Done** and
 
 Tickets that also appear in an earlier sprint of the squad show a **↪ carry-over** flag.
 
+**Hold.** Click **Hold** on a ticket row to mark it on hold (e.g. blocked or deprioritized);
+the row greys out and shows a ⏸ Hold chip. Click **Resume** to clear it. Hold is saved per
+standup date and doesn't change the ticket's story points or progress — it's a visual cue.
+
 **Progress** can be set with the slider **or** typed directly in the number box (0–100).
 
 Rows can be **grouped by Epic or Parent/Story**, each ticket shows its **priority**, and

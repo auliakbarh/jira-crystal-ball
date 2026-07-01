@@ -66,6 +66,7 @@ export default function StandupRow({
   const [beProg, setBeProg] = useState<number>(e?.beProgress ?? 0);
   const [qaProg, setQaProg] = useState<number>(e?.qaProgress ?? 0);
   const [blocker, setBlocker] = useState(e?.blockerNote ?? "");
+  const [hold, setHold] = useState<boolean>(e?.hold ?? false);
   const [saved, setSaved] = useState(false);
   const [expand, setExpand] = useState<null | "update" | "blocker">(null);
 
@@ -89,6 +90,7 @@ export default function StandupRow({
     setBeProg(e?.beProgress ?? 0);
     setQaProg(e?.qaProgress ?? 0);
     setBlocker(e?.blockerNote ?? "");
+    setHold(e?.hold ?? false);
   }, [e?.id, ticketKey, date]);
 
   // Overall ticket % mirrors the average of filled assignee progresses;
@@ -107,7 +109,7 @@ export default function StandupRow({
       ? Math.round(filledRoles.reduce((s, r) => s + (Number(r.val) || 0), 0) / filledRoles.length)
       : Number(progress) || 0;
 
-  const doSave = async () => {
+  const doSave = async (holdValue: boolean = hold) => {
     await save({
       variables: {
         input: {
@@ -136,12 +138,19 @@ export default function StandupRow({
           updateText: update,
           progress: overallProgress,
           blockerNote: blocker || null,
+          hold: holdValue,
         },
         leadKey: leadKey ?? null,
       },
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
+  };
+
+  const toggleHold = async () => {
+    const next = !hold;
+    setHold(next);
+    await doSave(next);
   };
 
   const dirtyRef = useRef(false);
@@ -154,7 +163,11 @@ export default function StandupRow({
   };
 
   return (
-    <tr className="border-b border-gray-100 align-top dark:border-gray-800">
+    <tr
+      className={`border-b border-gray-100 align-top dark:border-gray-800 ${
+        hold ? "bg-gray-100 opacity-60 grayscale dark:bg-gray-800/50" : ""
+      }`}
+    >
       {/* Ticket info */}
       <td className="p-2 align-top">
         {/* Line 1: type + ticket number + carry-over icon */}
@@ -191,6 +204,20 @@ export default function StandupRow({
           {status && <span className={`chip ${statusColor(status)}`}>{status}</span>}
           {storyPoints != null && (
             <span className="chip bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200">{storyPoints} SP</span>
+          )}
+          {hold && (
+            <span className="chip bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-200">⏸ {t("comp.hold")}</span>
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={toggleHold}
+              disabled={loading}
+              className="chip border border-gray-300 bg-transparent text-gray-500 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
+              title={hold ? t("comp.resumeHint") : t("comp.holdHint")}
+            >
+              {hold ? t("comp.resume") : t("comp.hold")}
+            </button>
           )}
         </div>
         {summary && <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">{summary}</div>}
@@ -319,7 +346,7 @@ export default function StandupRow({
       </td>
 
       <td className="p-2 pr-4 text-center align-top">
-        <button className="btn-ghost text-xs" onClick={doSave} disabled={loading || !canEdit}>
+        <button className="btn-ghost text-xs" onClick={() => doSave()} disabled={loading || !canEdit}>
           {loading ? "…" : saved ? "✓" : "💾"}
         </button>
         {expand && (
