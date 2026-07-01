@@ -49,6 +49,57 @@ model Squad {
   blockers   Blocker[]
   logs       ActivityLog[]
   tarotRooms TarotRoom[]
+  fortuneDrafts   FortuneDraft[]
+  fortuneHistory  FortuneHistory[]
+}
+
+// ---------------------------------------------------------------------------
+// Fortune — Gemini-powered ticket creator. Drafts (WIP) + history (log).
+// Shared per-squad: any member sees them; delete gated to creator/super-admin.
+// payload/turns/usage stored as JSON strings (shapes owned by the client).
+// ---------------------------------------------------------------------------
+model FortuneDraft {
+  id            String   @id @default(cuid())
+  squad         Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  squadId       String
+  createdById   String
+  createdByName String
+  mode          String   // single | epic | import
+  summary       String
+  payload       String   // JSON: { single } | { plan }
+  requirementText String?
+  turns         String?  // JSON: [{ role, text }]
+  usage         String?  // JSON: usage snapshot
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([squadId, updatedAt])
+}
+
+// Global key/value app settings editable at runtime by admins (e.g. Gemini
+// temperature). Env vars remain the default when a key is absent.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model FortuneHistory {
+  id        String   @id @default(cuid())
+  squad     Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  squadId   String
+  actorId   String
+  actorName String
+  action    String   // generated | created | updated | reverted
+  mode      String   // single | epic | import
+  summary   String
+  jiraKey   String?
+  payload   String?  // JSON snapshot for recreate
+  turns     String?  // JSON context
+  usage     String?  // JSON usage
+  createdAt DateTime @default(now())
+
+  @@index([squadId, createdAt])
 }
 
 // A live "standup in progress" lock. One active session per sprint: only the

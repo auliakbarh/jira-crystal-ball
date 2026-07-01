@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -35,6 +35,15 @@ export default function Layout() {
       isActive ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800"
     }`;
 
+  // "Crystal Ball" standup group (dropdown): Current Sprint + The Spread (Board).
+  const loc = useLocation();
+  const [ballOpen, setBallOpen] = useState(false);
+  const ballActive = loc.pathname === "/" || loc.pathname === "/board";
+  const ballItemClass = ({ isActive }: { isActive: boolean }) =>
+    `block rounded px-3 py-1.5 text-sm ${
+      isActive ? "bg-brand text-white" : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+    }`;
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-gray-800 dark:bg-gray-950/90">
@@ -55,12 +64,30 @@ export default function Layout() {
           </select>
 
           <nav className="flex items-center gap-1">
-            <NavLink to="/" end className={linkClass}>
-              {t("nav.current")}
-            </NavLink>
-            <NavLink to="/board" className={linkClass}>
-              {t("nav.board")}
-            </NavLink>
+            {/* Crystal Ball standup group */}
+            <div className="relative">
+              <button
+                onClick={() => setBallOpen((o) => !o)}
+                className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium ${
+                  ballActive ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800"
+                }`}
+              >
+                {t("nav.crystalBall")} <span className="text-[10px] leading-none">▾</span>
+              </button>
+              {ballOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setBallOpen(false)} />
+                  <div className="absolute left-0 z-20 mt-1 min-w-[170px] rounded-md border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    <NavLink to="/" end className={ballItemClass} onClick={() => setBallOpen(false)}>
+                      {t("nav.current")}
+                    </NavLink>
+                    <NavLink to="/board" className={ballItemClass} onClick={() => setBallOpen(false)}>
+                      {t("nav.board")}
+                    </NavLink>
+                  </div>
+                </>
+              )}
+            </div>
             <NavLink to="/clairvoyance" className={linkClass}>
               {t("nav.clairvoyance")}
             </NavLink>
@@ -73,6 +100,11 @@ export default function Layout() {
             <NavLink to="/velocity" className={linkClass}>
               {t("nav.velocity")}
             </NavLink>
+            {!user?.isGuest && (
+              <NavLink to="/fortune" className={linkClass}>
+                {t("nav.fortune")}
+              </NavLink>
+            )}
             {!user?.isGuest && (
               <NavLink to="/settings" className={linkClass}>
                 {t("nav.settings")}

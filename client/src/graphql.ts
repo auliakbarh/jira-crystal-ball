@@ -964,3 +964,152 @@ export const TAROT_ROOM_CHANGED = gql`
     }
   }
 `;
+
+// ─────────────────────────── Fortune (Gemini ticket creator) ───────────────
+export const FORTUNE_MODELS = gql`
+  query FortuneModels {
+    fortuneModels
+  }
+`;
+
+export const FORTUNE_SEARCH_TICKETS = gql`
+  query FortuneSearchTickets($squadId: ID!, $query: String!) {
+    fortuneSearchTickets(squadId: $squadId, query: $query) {
+      key
+      summary
+      issueType
+    }
+  }
+`;
+
+export const FORTUNE_DRAFTS = gql`
+  query FortuneDrafts($squadId: ID!) {
+    fortuneDrafts(squadId: $squadId) {
+      id
+      mode
+      summary
+      createdById
+      createdByName
+      createdAt
+      updatedAt
+      payload
+      requirementText
+      turns
+      usage
+      canDelete
+    }
+  }
+`;
+
+export const FORTUNE_HISTORY = gql`
+  query FortuneHistory($squadId: ID!, $limit: Int) {
+    fortuneHistory(squadId: $squadId, limit: $limit) {
+      id
+      action
+      mode
+      summary
+      byId
+      byName
+      createdAt
+      jiraKey
+      payload
+      turns
+      usage
+    }
+  }
+`;
+
+const FORTUNE_RESULT_FIELDS = `
+  mode
+  payload
+  turns
+  ticketKey
+  prev
+  usage {
+    promptTokens
+    outputTokens
+    totalTokens
+    model
+    estCostUSD
+    estCostIDR
+  }
+`;
+
+export const FORTUNE_GENERATE = gql`
+  mutation FortuneGenerate($squadId: ID!, $mode: String!, $lang: String, $issuetype: String, $model: String, $text: String, $files: [FortuneFileInput!]) {
+    fortuneGenerate(squadId: $squadId, mode: $mode, lang: $lang, issuetype: $issuetype, model: $model, text: $text, files: $files) {
+      ${FORTUNE_RESULT_FIELDS}
+    }
+  }
+`;
+
+export const FORTUNE_REFINE = gql`
+  mutation FortuneRefine($squadId: ID!, $mode: String!, $model: String, $instruction: String!, $payload: String!, $turns: String!) {
+    fortuneRefine(squadId: $squadId, mode: $mode, model: $model, instruction: $instruction, payload: $payload, turns: $turns) {
+      ${FORTUNE_RESULT_FIELDS}
+    }
+  }
+`;
+
+export const FORTUNE_IMPORT = gql`
+  mutation FortuneImport($squadId: ID!, $ticketKey: String!) {
+    fortuneImport(squadId: $squadId, ticketKey: $ticketKey) {
+      ${FORTUNE_RESULT_FIELDS}
+    }
+  }
+`;
+
+export const FORTUNE_CREATE = gql`
+  mutation FortuneCreate($squadId: ID!, $mode: String!, $payload: String!, $reporterEmail: String) {
+    fortuneCreate(squadId: $squadId, mode: $mode, payload: $payload, reporterEmail: $reporterEmail) {
+      mode
+      created
+      epic
+      children
+      reporterWarning
+    }
+  }
+`;
+
+export const FORTUNE_UPDATE = gql`
+  mutation FortuneUpdate($squadId: ID!, $ticketKey: String!, $payload: String!) {
+    fortuneUpdate(squadId: $squadId, ticketKey: $ticketKey, payload: $payload)
+  }
+`;
+
+export const FORTUNE_UNDO = gql`
+  mutation FortuneUndo($squadId: ID!, $ticketKey: String!, $prev: String!) {
+    fortuneUndo(squadId: $squadId, ticketKey: $ticketKey, prev: $prev)
+  }
+`;
+
+export const SAVE_FORTUNE_DRAFT = gql`
+  mutation SaveFortuneDraft($squadId: ID!, $id: ID, $mode: String!, $summary: String!, $payload: String!, $requirementText: String, $turns: String, $usage: String) {
+    saveFortuneDraft(squadId: $squadId, id: $id, mode: $mode, summary: $summary, payload: $payload, requirementText: $requirementText, turns: $turns, usage: $usage) {
+      id
+    }
+  }
+`;
+
+export const DELETE_FORTUNE_DRAFT = gql`
+  mutation DeleteFortuneDraft($id: ID!) {
+    deleteFortuneDraft(id: $id)
+  }
+`;
+
+export const GEMINI_SETTINGS = gql`
+  query GeminiSettings {
+    geminiSettings {
+      temperature
+      defaultTemperature
+      model
+      configured
+    }
+  }
+`;
+
+export const SET_GEMINI_TEMPERATURE = gql`
+  mutation SetGeminiTemperature($value: Float!) {
+    setGeminiTemperature(value: $value)
+  }
+`;

@@ -30,6 +30,8 @@ import {
   CREATE_SPRINT,
   UPDATE_SPRINT,
   DELETE_SPRINT,
+  GEMINI_SETTINGS,
+  SET_GEMINI_TEMPERATURE,
 } from "../graphql";
 import { POSITION_COLORS, LEAVE_TYPES, LEAVE_LABELS } from "../lib/helpers";
 import JiraConfigForm from "../components/JiraConfigForm";
@@ -73,9 +75,99 @@ export default function Settings() {
       <HolidaysSection squadId={squadId} holidays={squad?.holidays ?? []} refetch={refetch} />
 
       {isSuperAdmin && <AdminsSection />}
+      {isAdmin && <GeminiSection />}
       {isAdmin && <SeedSection />}
       {isAdmin && <DangerZone setSquadId={setSquadId} />}
     </div>
+  );
+}
+
+// --------------------------- Gemini (Fortune) settings — admin ---------------------------
+// Suggested temperature presets shown as quick-pick chips beside the input.
+const TEMP_PRESETS = [
+  { value: 0, key: "settings.geminiPreset0" },
+  { value: 0.2, key: "settings.geminiPreset02" },
+  { value: 0.4, key: "settings.geminiPreset04" },
+  { value: 0.7, key: "settings.geminiPreset07" },
+  { value: 1, key: "settings.geminiPreset10" },
+];
+
+function GeminiSection() {
+  const { t } = useTranslation();
+  const { data, refetch } = useQuery(GEMINI_SETTINGS);
+  const [setTemp, { loading }] = useMutation(SET_GEMINI_TEMPERATURE);
+  const [value, setValue] = useState<string>("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const s = data?.geminiSettings;
+
+  // Seed the input from the server value once loaded.
+  const current = s?.temperature;
+  if (value === "" && current != null) setValue(String(current));
+
+  const save = async (v?: number) => {
+    setMsg(null);
+    const num = v ?? Number(value);
+    if (!Number.isFinite(num) || num < 0 || num > 2) { setMsg(t("settings.geminiRange")); return; }
+    try {
+      const res = await setTemp({ variables: { value: num } });
+      setValue(String(res.data.setGeminiTemperature));
+      await refetch();
+      setMsg(t("settings.geminiSaved", { value: res.data.setGeminiTemperature }));
+    } catch (e: any) {
+      setMsg(t("settings.errorPrefix", { message: e.message }));
+    }
+  };
+
+  return (
+    <section className="card">
+      <h2 className="mb-1 text-base font-bold">{t("settings.geminiTitle")}</h2>
+      <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">{t("settings.geminiDesc")}</p>
+
+      {!s?.configured && (
+        <div className="mb-3 rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+          {t("settings.geminiNotConfigured")}
+        </div>
+      )}
+
+      <label className="block text-sm font-medium">{t("settings.geminiTemperature")}</label>
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        <input
+          className="input max-w-[120px]"
+          type="number"
+          min={0}
+          max={2}
+          step={0.1}
+          list="gemini-temp-suggestions"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <datalist id="gemini-temp-suggestions">
+          {TEMP_PRESETS.map((p) => <option key={p.value} value={p.value} />)}
+        </datalist>
+        <button className="btn-primary" onClick={() => save()} disabled={loading}>
+          {loading ? t("settings.geminiSaving") : t("settings.geminiSave")}
+        </button>
+        {s?.defaultTemperature != null && (
+          <span className="text-xs text-gray-400">{t("settings.geminiDefault", { value: s.defaultTemperature })} · {s?.model}</span>
+        )}
+      </div>
+
+      {/* Suggested presets */}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {TEMP_PRESETS.map((p) => (
+          <button
+            key={p.value}
+            onClick={() => { setValue(String(p.value)); save(p.value); }}
+            className={`rounded-full border px-2.5 py-1 text-xs ${Number(value) === p.value ? "border-brand bg-brand/10 text-brand" : "border-gray-300 text-gray-600 hover:border-brand/50 dark:border-gray-700 dark:text-gray-300"}`}
+            title={t(p.key)}
+          >
+            {p.value} · {t(p.key)}
+          </button>
+        ))}
+      </div>
+
+      {msg && <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{msg}</div>}
+    </section>
   );
 }
 

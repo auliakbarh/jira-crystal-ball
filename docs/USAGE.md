@@ -23,7 +23,7 @@ The seeded account (its email = `SEED_ADMIN_EMAIL`) is the **super admin**. It's
 one that can add / edit / delete admins and reset their passwords, in **Settings → Admin
 Accounts**. Admins created there are regular admins — they use every other setting but
 can't manage admin accounts. The super admin can only manage *other* admins; its own row is
-read-only (so it can't lock itself out). See §11.
+read-only (so it can't lock itself out). See §12.
 
 ## 2. Pick or create a squad
 
@@ -301,7 +301,47 @@ disables) and can otherwise only be **deleted by an admin**.
 **Activity log.** Key actions (create, estimate, sync, reset, end) are recorded in the
 squad's **Update Log**.
 
-## 11. Manage admin accounts (super admin)
+## 11. Fortune (draft tickets with Gemini)
+
+**Fortune** drafts JIRA tickets with Google Gemini. **Signed-in members only** (guests
+can't create tickets). Requires a server-side `GEMINI_API_KEY` (plaintext, or encrypted
+`GEMINI_API_KEY_ENC` + `GEMINI_ENC_KEY`), and JIRA configured for the selected squad.
+
+**Modes** (top of the page): **Single ticket**, **Epic breakdown**, and **Import** (refine
+an existing ticket). Tabs: **New draft**, **Drafts**, **History**.
+
+**Generate.** Drop files (text / image / PDF) and/or type a requirement, pick a **Gemini
+model** (a recommended default is preselected; the list comes from your key's available
+models), then generate. Output follows the house **Gherkin UAC** template (GIVEN/WHEN/THEN,
+EN|ID tables, image placeholders). Edit anything in the review step.
+
+**Refine.** Send a follow-up instruction and Gemini rewrites the draft, keeping the prior
+context (shown in the *Context & conversation* panel). **Usage** (tokens) + an **estimated**
+cost (USD & IDR — actual billing lives in Google Cloud Console) are shown per draft.
+
+**Create.** A popup shows the target **board** (from the selected squad) and asks for the
+**reporter's JIRA email** (resolved to an accountId; if not found, the ticket is still
+created and you're warned). Epics create the Epic then each linked child.
+
+**Import → Update → Undo.** Search a board ticket by key or title, edit + refine it, then
+**Update** JIRA. An **Undo** button restores the ticket's original summary/description.
+
+**Drafts & History.** Save a draft to continue later (update the open one or save as new).
+**History** logs who generated / created / updated / reverted each ticket, with usage + cost;
+**Recreate** reopens an entry in the edit view first. Drafts/history are shared per-squad;
+**delete** is limited to the creator or a super admin. History auto-purges after
+`FORTUNE_HISTORY_RETENTION_DAYS` (default 90; 0 disables) — created tickets are untouched.
+
+**After creating:** replace the `[image-…]` placeholders + TBD links (Figma/PRD/Postman/API)
+in the description, and complete the remaining JIRA fields (assignee, story points, sprint,
+components) directly on the ticket.
+
+**Admin — model temperature.** In **Settings → Gemini (Fortune) settings**, an admin sets the
+global sampling **temperature** (0–2; suggestions: 0 deterministic, **0.2 consistent —
+recommended**, 0.4 balanced, 0.7 creative, 1.0 very creative). Lower = more consistent
+adherence to the template; higher = more varied wording. Default comes from `GEMINI_TEMPERATURE`.
+
+## 12. Manage admin accounts (super admin)
 
 The **super admin** — the seeded account whose email = `SEED_ADMIN_EMAIL` — sees an **Admin
 Accounts** panel in **Settings**. There it can:
@@ -314,7 +354,7 @@ Accounts** panel in **Settings**. There it can:
 The super admin can only manage **other** admins — its own row is read-only, so it can't
 demote, delete, or lock itself out. The panel is hidden for regular admins and guests.
 
-## 12. Reset the database (admin only)
+## 13. Reset the database (admin only)
 
 Admins see a **Danger Zone** at the bottom of **Settings**. **Reset Database** deletes
 every squad and all data under them (members, leaves, holidays, sprints, standup entries,
@@ -322,12 +362,12 @@ blockers, JIRA configs) — user logins are kept. Tick **Recreate default squads
 re-add Athens / Berlin / Cairo afterwards. You must type `RESET` to enable the button.
 This cannot be undone.
 
-## 13. Health check
+## 14. Health check
 
 Open **`/health`** (no login needed) for a status page showing the GraphQL API, database
 and JIRA-credential checks, auto-refreshing every 15s. Unknown URLs show a 404 page.
 
-## 14. Theme & language
+## 15. Theme & language
 
 Use the 🌙 / ☀️ button in the header to toggle dark/light mode. Your choice is remembered.
 

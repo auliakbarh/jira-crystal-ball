@@ -67,6 +67,19 @@ export default function Help() {
       ],
     },
     {
+      title: t("helpSections.fortuneTitle"),
+      items: [
+        t("helpSections.fortuneItem1"),
+        t("helpSections.fortuneItem2"),
+        t("helpSections.fortuneItem3"),
+        t("helpSections.fortuneItem4"),
+        t("helpSections.fortuneItem5"),
+        t("helpSections.fortuneItem6"),
+        t("helpSections.fortuneItem7"),
+        t("helpSections.fortuneItem8"),
+      ],
+    },
+    {
       title: t("helpSections.previousSprintsTitle"),
       items: [
         t("helpSections.previousSprintsItem1"),

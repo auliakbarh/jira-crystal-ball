@@ -12,6 +12,7 @@ import Tarot from "./pages/Tarot";
 import TarotRoom from "./pages/TarotRoom";
 import PreviousSprints from "./pages/PreviousSprints";
 import Velocity from "./pages/Velocity";
+import Fortune from "./pages/Fortune";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
 
@@ -47,6 +48,14 @@ export default function App() {
         <Route path="tarot/:roomId" element={<TarotRoom />} />
         <Route path="previous" element={<PreviousSprints />} />
         <Route path="velocity" element={<Velocity />} />
+        <Route
+          path="fortune"
+          element={
+            <AdminOrMember>
+              <Fortune />
+            </AdminOrMember>
+          }
+        />
         <Route path="help" element={<Help />} />
         <Route
           path="settings"
