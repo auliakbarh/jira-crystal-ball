@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useSubscription } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import {
@@ -16,6 +17,7 @@ import HostRoom from "../components/tarot/HostRoom";
 import GuestRoom from "../components/tarot/GuestRoom";
 
 export default function TarotRoom() {
+  const { t } = useTranslation();
   const { roomId = "" } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ export default function TarotRoom() {
     joinRoom({ variables: { roomId, name: user?.name ?? "Guest", key: uid } })
       .then(() => refetch())
       .catch((e) => {
-        const msg = e.message ?? "Could not join room";
+        const msg = e.message ?? t("tarot.couldNotJoinRoom");
         // An ended room can't be joined, but we still want to view its results —
         // the room query loads it and the ended view renders. Don't block on that.
         if (/ended/i.test(msg)) {
@@ -119,7 +121,7 @@ export default function TarotRoom() {
   // Kicked → bounce back to the Tarot landing.
   useEffect(() => {
     if (room?.viewerKicked) {
-      toast.info("You were removed from the room by the host.");
+      toast.info(t("tarot.removedByHost"));
       navigate("/tarot", { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,13 +132,13 @@ export default function TarotRoom() {
       <div className="card text-sm">
         <p className="text-red-600 dark:text-red-400">{joinError}</p>
         <button className="btn-ghost mt-2" onClick={() => navigate("/tarot")}>
-          ← Back to rooms
+          {t("tarot.backToRooms")}
         </button>
       </div>
     );
   }
 
-  if (!room) return <div className="card text-sm text-gray-500">Loading room…</div>;
+  if (!room) return <div className="card text-sm text-gray-500">{t("tarot.loadingRoom")}</div>;
 
   // Host always gets the host view. An admin who isn't the host gets it too for
   // an ENDED room (history) so they can review + sync/undo/delete; on an active

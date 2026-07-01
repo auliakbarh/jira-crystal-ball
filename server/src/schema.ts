@@ -100,6 +100,14 @@ export const typeDefs = /* GraphQL */ `
     doneCount: Int!
   }
 
+  # A grooming source: one future (not-yet-started) sprint, or the backlog.
+  type GroomingBucket {
+    key: String!
+    label: String!
+    kind: String! # FUTURE_SPRINT | BACKLOG
+    tickets: [JiraTicket!]!
+  }
+
   # One day of a sprint's burndown (remaining vs the ideal straight line).
   type BurndownPoint {
     date: Date!
@@ -324,6 +332,8 @@ export const typeDefs = /* GraphQL */ `
     nextSprintTickets(squadId: ID!, refresh: Boolean): [JiraTicket!]!
     jiraActiveSprint(squadId: ID!): JiraSprint
     jiraNextSprint(squadId: ID!): JiraSprint
+    # Grooming sources: all future sprints (each with issues) + the backlog.
+    groomingBuckets(squadId: ID!, refresh: Boolean): [GroomingBucket!]!
     standupEntries(sprintId: ID!): [StandupEntry!]!
     dashboard(sprintId: ID!, date: Date): [DashboardRow!]!
     blockers(squadId: ID!, includeResolved: Boolean): [Blocker!]!

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 // Elapsed time since a round started (count-up). Ticks once per second.
 export default function RoundTimer({ startedAt }: { startedAt: string }) {
+  const { t } = useTranslation();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -13,7 +15,7 @@ export default function RoundTimer({ startedAt }: { startedAt: string }) {
   const mm = Math.floor(sec / 60);
   const ss = sec % 60;
   return (
-    <span className="font-mono tabular-nums" title="Time since this round started">
+    <span className="font-mono tabular-nums" title={t("tarot.timeSinceRoundStarted")}>
       ⏱ {mm}:{String(ss).padStart(2, "0")}
     </span>
   );

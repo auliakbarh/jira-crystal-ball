@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { STANDUP_LOGS } from "../graphql";
 import { formatDuration } from "../lib/helpers";
 import { toCsv, downloadCsv } from "../lib/csv";
@@ -8,6 +9,7 @@ const PAGE = 20;
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function StandupDurationLog({ squadId }: { squadId: string }) {
+  const { t } = useTranslation();
   const { data, fetchMore } = useQuery(STANDUP_LOGS, {
     variables: { squadId, limit: PAGE, offset: 0 },
     fetchPolicy: "cache-and-network",
@@ -36,7 +38,7 @@ export default function StandupDurationLog({ squadId }: { squadId: string }) {
   return (
     <div className="card">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-bold">⏱ Standup Duration Log</h2>
+        <h2 className="text-base font-bold">{t("panels.durationTitle")}</h2>
         {logs.length > 0 && (
           <button
             className="text-xs text-brand hover:underline"
@@ -50,12 +52,12 @@ export default function StandupDurationLog({ squadId }: { squadId: string }) {
               );
             }}
           >
-            ⬇ CSV
+            {t("panels.durationCsv")}
           </button>
         )}
       </div>
       {logs.length === 0 ? (
-        <p className="text-sm text-gray-500">No completed standups yet.</p>
+        <p className="text-sm text-gray-500">{t("panels.durationEmpty")}</p>
       ) : (
         <div className="max-h-72 overflow-y-auto overscroll-contain pr-1" onScroll={onScroll}>
           <ul className="space-y-1.5">
@@ -77,8 +79,8 @@ export default function StandupDurationLog({ squadId }: { squadId: string }) {
               );
             })}
           </ul>
-          {more && <p className="py-2 text-center text-xs text-gray-400">Loading…</p>}
-          {done && <p className="py-2 text-center text-xs text-gray-300">End of log</p>}
+          {more && <p className="py-2 text-center text-xs text-gray-400">{t("panels.durationLoading")}</p>}
+          {done && <p className="py-2 text-center text-xs text-gray-300">{t("panels.durationEndOfLog")}</p>}
         </div>
       )}
     </div>

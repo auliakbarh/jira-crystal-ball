@@ -1,13 +1,26 @@
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@apollo/client";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useSquad } from "../context/SquadContext";
 import { useToast } from "../context/ToastContext";
 import { CREATE_TAROT_ROOM, TAROT_ROOMS } from "../graphql";
 import { getTarotUid } from "../lib/tarot";
+import TipsCarousel, { TipCard } from "../components/TipsCarousel";
 
 export default function Tarot() {
+  const { t } = useTranslation();
+  const TAROT_TIPS: TipCard[] = [
+    { icon: "👤", title: t("tarot.tipGuest1Title"), body: t("tarot.tipGuest1Body") },
+    { icon: "👤", title: t("tarot.tipGuest2Title"), body: t("tarot.tipGuest2Body") },
+    { icon: "👤", title: t("tarot.tipGuest3Title"), body: t("tarot.tipGuest3Body") },
+    { icon: "❓", title: t("tarot.tipGuest4Title"), body: t("tarot.tipGuest4Body") },
+    { icon: "🎩", title: t("tarot.tipHost1Title"), body: t("tarot.tipHost1Body") },
+    { icon: "🎩", title: t("tarot.tipHost2Title"), body: t("tarot.tipHost2Body") },
+    { icon: "🎩", title: t("tarot.tipHost3Title"), body: t("tarot.tipHost3Body") },
+    { icon: "🎩", title: t("tarot.tipHost4Title"), body: t("tarot.tipHost4Body") },
+  ];
   const { squadId } = useSquad();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -21,7 +34,7 @@ export default function Tarot() {
   const [createRoom, { loading: creating }] = useMutation(CREATE_TAROT_ROOM);
 
   useEffect(() => {
-    if (error) toast.error(`Could not load rooms: ${error.message}`);
+    if (error) toast.error(t("tarot.couldNotLoadRooms", { message: error.message }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error]);
 
@@ -37,11 +50,11 @@ export default function Tarot() {
       });
       const id = res.data?.createTarotRoom?.id;
       if (id) {
-        toast.success("Room created.");
+        toast.success(t("tarot.roomCreated"));
         navigate(`/tarot/${id}`);
       }
     } catch (e: any) {
-      toast.error(e.message ?? "Could not create room");
+      toast.error(e.message ?? t("tarot.couldNotCreateRoom"));
       await refetch();
     }
   };
@@ -50,41 +63,43 @@ export default function Tarot() {
     <div className="space-y-5">
       <div className="card flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold">🃏 Tarot — Planning Poker</h1>
-          <p className="text-sm text-gray-500">Estimate next-sprint tickets together. Helps Sprint Planning.</p>
+          <h1 className="text-lg font-bold">{t("tarot.pageTitle")}</h1>
+          <p className="text-sm text-gray-500">{t("tarot.pageSubtitle")}</p>
         </div>
         <button
           className="btn-primary"
           onClick={onCreate}
           disabled={creating || !!activeRoom}
-          title={activeRoom ? "An active room already exists for this squad" : "Create a room"}
+          title={activeRoom ? t("tarot.activeRoomExistsTitle") : t("tarot.createRoomTitle")}
         >
-          {creating ? "Creating…" : "+ Create room"}
+          {creating ? t("tarot.creating") : t("tarot.createRoom")}
         </button>
       </div>
 
       {activeRoom && (
         <div className="card flex items-center justify-between bg-amber-50 text-sm dark:bg-amber-900/20">
           <span>
-            A room hosted by <b>{activeRoom.hostName}</b> is currently active. Join it instead of creating a new one.
+            {t("tarot.activeRoomBannerBefore")} <b>{activeRoom.hostName}</b> {t("tarot.activeRoomBannerAfter")}
           </span>
           <button className="btn-ghost" onClick={() => navigate(`/tarot/${activeRoom.id}`)}>
-            Join →
+            {t("tarot.join")}
           </button>
         </div>
       )}
 
       {error && <div className="card text-sm text-red-600 dark:text-red-400">{error.message}</div>}
 
+      <TipsCarousel title={t("tarot.howToPlay")} cards={TAROT_TIPS} />
+
       {loading && rooms.length === 0 ? (
         <div className="card flex items-center gap-2 text-sm text-gray-500">
           <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-          Loading rooms…
+          {t("tarot.loadingRooms")}
         </div>
       ) : rooms.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <div className="text-4xl">🪄</div>
-          <p className="text-sm text-gray-500">No rooms yet. Create one to start estimating.</p>
+          <p className="text-sm text-gray-500">{t("tarot.noRoomsYet")}</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -103,11 +118,11 @@ export default function Tarot() {
                       : "bg-gray-100 text-gray-500 dark:bg-gray-800"
                   }`}
                 >
-                  {r.status === "ACTIVE" ? "Active" : "Ended"}
+                  {r.status === "ACTIVE" ? t("tarot.statusActive") : t("tarot.statusEnded")}
                 </span>
               </div>
               <div className="mt-1 text-xs text-gray-500">
-                Host: {r.hostName} · {new Date(r.createdAt).toLocaleString()} · 👥 {r.participantCount}
+                {t("tarot.hostLabel", { name: r.hostName })} · {new Date(r.createdAt).toLocaleString()} · 👥 {r.participantCount}
               </div>
             </button>
           ))}

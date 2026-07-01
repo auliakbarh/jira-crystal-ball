@@ -415,6 +415,80 @@ async function _fetchNextSprintIssues(cfg: JiraConfigLike): Promise<JiraTicket[]
   return all;
 }
 
+// Paginate any board issue endpoint (sprint issues / backlog) into JiraTickets.
+async function paginateIssues(
+  base: string,
+  headers: Record<string, string>,
+  path: string,
+  fields: string,
+  spIds: SpIds,
+): Promise<JiraTicket[]> {
+  const all: JiraTicket[] = [];
+  const seen = new Set<string>();
+  let startAt = 0;
+  for (let page = 0; page < 50; page++) {
+    const params = new URLSearchParams({ startAt: String(startAt), maxResults: "100", fields });
+    const sep = path.includes("?") ? "&" : "?";
+    const res = await fetch(`${base}${path}${sep}${params.toString()}`, { headers });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`JIRA request failed (${res.status}): ${body.slice(0, 300)}`);
+    }
+    const data: any = await res.json();
+    const issues: any[] = data.issues ?? [];
+    for (const issue of issues) {
+      if (issue.key && seen.has(issue.key)) continue;
+      if (issue.key) seen.add(issue.key);
+      all.push(mapIssue(base, issue, spIds));
+    }
+    startAt += issues.length;
+    const total = typeof data.total === "number" ? data.total : startAt;
+    if (issues.length === 0 || startAt >= total) break;
+  }
+  return all;
+}
+
+// A grooming bucket: one future (not-yet-started) sprint, or the backlog.
+export interface GroomingBucket {
+  key: string;
+  label: string;
+  kind: "FUTURE_SPRINT" | "BACKLOG";
+  tickets: JiraTicket[];
+}
+
+/** All future sprints (each with its issues) + the backlog, for grooming. */
+export function fetchGroomingBuckets(cfg: JiraConfigLike, opts: JiraFetchOpts = {}): Promise<GroomingBucket[]> {
+  return cached("grooming", cfg, !!opts.force, () => _fetchGroomingBuckets(cfg));
+}
+
+async function _fetchGroomingBuckets(cfg: JiraConfigLike): Promise<GroomingBucket[]> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const headers = jiraHeaders(cfg);
+  const boardId = await resolveBoardId(cfg, base);
+  const spIds = await resolveSpIds(cfg);
+  const fields = `summary,status,assignee,issuetype,parent,epic,priority,closedSprints${spFieldsParam(spIds) ? "," + spFieldsParam(spIds) : ""}`;
+
+  const buckets: GroomingBucket[] = [];
+
+  // Future (not-yet-started) sprints, in board order.
+  const sres = await fetch(`${base}/rest/agile/1.0/board/${boardId}/sprint?state=future`, { headers });
+  if (!sres.ok) {
+    const body = await sres.text().catch(() => "");
+    throw new Error(`JIRA future-sprint lookup failed (${sres.status}): ${body.slice(0, 300)}`);
+  }
+  const sdata: any = await sres.json();
+  for (const s of sdata.values ?? []) {
+    const tickets = await paginateIssues(base, headers, `/rest/agile/1.0/board/${boardId}/sprint/${s.id}/issue`, fields, spIds);
+    buckets.push({ key: `sprint-${s.id}`, label: s.name ?? `Sprint ${s.id}`, kind: "FUTURE_SPRINT", tickets });
+  }
+
+  // Backlog: issues not assigned to any sprint.
+  const backlog = await paginateIssues(base, headers, `/rest/agile/1.0/board/${boardId}/backlog`, fields, spIds);
+  buckets.push({ key: "backlog", label: "Backlog", kind: "BACKLOG", tickets: backlog });
+
+  return buckets;
+}
+
 /** First future (next) sprint on the board, or null. */
 export function fetchNextSprintInfo(cfg: JiraConfigLike, opts: JiraFetchOpts = {}): Promise<JiraSprintInfo | null> {
   return cached("nextInfo", cfg, !!opts.force, () => _fetchNextSprintInfo(cfg));

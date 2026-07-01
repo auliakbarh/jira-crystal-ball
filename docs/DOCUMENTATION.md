@@ -175,6 +175,10 @@ Notes:
   admins only: every mutation rejects a target that is itself (`The env super admin cannot
   be modified`), preventing self-lockout. Passwords require ≥6 chars; emails are unique.
   Exposed in the UI as **Settings → Admin Accounts**.
+- **Grooming** (`groomingBuckets(squadId, refresh)` in `resolvers/squad.ts` →
+  `fetchGroomingBuckets` in `jira.ts`): returns grooming sources — every **future**
+  (not-yet-started) sprint, each with its issues, plus the **Backlog** (`/board/{id}/backlog`).
+  Powers the Clairvoyance source dropdown. All issue fetches are paginated.
 - **Velocity / burndown** (`resolvers/velocity.ts`): `velocity(squadId, limit)` returns
   per-sprint `{ committedPoints, completedPoints, ticketCount, doneCount }` (oldest→newest,
   last `limit`); `burndown(sprintId)` returns daily `{ date, remainingPoints, idealPoints }`.

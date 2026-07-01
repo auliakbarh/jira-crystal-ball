@@ -74,10 +74,11 @@ by value/effort within each group. ✅ = done.
       the page; full-bleed only under `sm`.
 - ✅ **Keyboard navigation** — Enter / Alt+↑↓ to move between standup cells.
 - ✅ **Help page** — `/help` route (`pages/Help.tsx`) explains how to use the dashboard.
-- ✅ **i18n (infra + EN/ID)** — `i18next` + `react-i18next` (`client/src/i18n.ts`), language
-      switcher in the header (persists in `localStorage` `jcb_lang`). Nav, common header UI,
-      and the Help page heading are translated (EN/ID); other page bodies still English —
-      wrap their strings in `t()` to extend. Full page-by-page translation still open.
+- ✅ **i18n (EN/ID, full frontend)** — `i18next` + `react-i18next` (`client/src/i18n.ts`),
+      header language switcher (persists in `localStorage` `jcb_lang`). Strings live in
+      `client/src/locales/{en,id}.json` (~650 keys) keyed by per-page/component namespace;
+      every page + component is translated (Dashboard, Board, Clairvoyance, Tarot, Previous,
+      Velocity, Settings, Login, Guest, Health, Help, panels, shared components).
 
 ## Clairvoyance & Tarot (Grooming + Planning Poker)
 New feature set (see USAGE §8–9, DOCUMENTATION → "Clairvoyance & Tarot").
@@ -97,7 +98,12 @@ New feature set (see USAGE §8–9, DOCUMENTATION → "Clairvoyance & Tarot").
       `TAROT_ROOM_RETENTION_DAYS` (default 30; 0 disables).
 - ✅ **Activity log** — create/estimate/sync/reset/end recorded via `logTarot`.
 - ✅ **Pure logic + tests** — `tarotLogic.ts` + `tarotLogic.test.ts` (deck/voteStats/cap).
-- [ ] **Per-room sweep leadership** — with N instances the presence sweep can publish an
-      offline event up to N times (harmless refetch); elect a leader to dedupe.
-- [ ] **Resolver-level integration tests** — need a throwaway Postgres + fixtures.
+- ✅ **Per-room sweep leadership** — with `REDIS_URL` set, instances elect a single sweep
+      leader via a short Redis lease (`acquireLeadership` in `tarotPresence.ts`), so an
+      offline event is published once, not once-per-instance. Single instance (no Redis)
+      always sweeps; Redis errors fail open.
+- ✅ **Resolver-level integration tests** — `resolvers.integration.test.ts` runs against a
+      real Postgres when `TEST_DATABASE_URL` is set (skipped otherwise, so `npm test` stays
+      green). Seeds a squad/sprint/entries, asserts `velocity`/`burndown`/`squads`. Run:
+      `npm run test:integration`.
 - [ ] **Round countdown / auto-reveal timer** — optional time-box per round.

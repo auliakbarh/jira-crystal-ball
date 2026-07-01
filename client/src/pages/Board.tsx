@@ -1,10 +1,12 @@
 import { Fragment, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { useSquad } from "../context/SquadContext";
 import { ACTIVE_SPRINT_TICKETS } from "../graphql";
 import { statusColor, priorityColor, issueTypeRank, hiddenByDefaultStatus as hiddenByDefault } from "../lib/helpers";
 
 export default function Board() {
+  const { t } = useTranslation();
   const { squadId } = useSquad();
   const { data, loading, error, refetch } = useQuery(ACTIVE_SPRINT_TICKETS, {
     variables: { squadId, refresh: false },
@@ -63,19 +65,19 @@ export default function Board() {
     <div className="space-y-5">
       <div className="card flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold">Board — Active Sprint Tickets</h1>
-          <p className="text-sm text-gray-500">All tickets in the board's currently active sprint, live from JIRA.</p>
+          <h1 className="text-lg font-bold">{t("board.title")}</h1>
+          <p className="text-sm text-gray-500">{t("board.subtitle")}</p>
         </div>
         <button className="btn-ghost" onClick={() => refetch({ squadId, refresh: true })} disabled={loading}>
-          {loading ? "Loading…" : "↻ Refresh"}
+          {loading ? t("board.loading") : t("board.refresh")}
         </button>
       </div>
 
       {error && (
         <div className="card text-sm text-red-600 dark:text-red-400">
           {error.message.includes("JIRA_NOT_CONFIGURED")
-            ? "JIRA is not configured for this squad. Set it up in Settings."
-            : `Could not load tickets: ${error.message}`}
+            ? t("board.jiraNotConfigured")
+            : t("board.couldNotLoad", { message: error.message })}
         </div>
       )}
 
@@ -83,7 +85,7 @@ export default function Board() {
       {statuses.length > 0 && (
         <div className="card">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Filter by status
+            {t("board.filterByStatus")}
           </div>
           <div className="flex flex-wrap gap-2">
             {statuses.map((s: string) => {
@@ -97,7 +99,7 @@ export default function Board() {
                       ? `${statusColor(s)} border-transparent`
                       : "border-gray-300 bg-transparent text-gray-400 line-through dark:border-gray-700"
                   }`}
-                  title={on ? "Click to hide" : "Click to show"}
+                  title={on ? t("board.clickToHide") : t("board.clickToShow")}
                 >
                   {s}
                 </button>
@@ -105,7 +107,7 @@ export default function Board() {
             })}
           </div>
           <div className="mt-2 flex items-center justify-between">
-            <p className="text-xs text-gray-400">Done / Archived are hidden by default. Click a status to toggle.</p>
+            <p className="text-xs text-gray-400">{t("board.hiddenByDefaultHint")}</p>
             <button
               onClick={() => setCarryOnly((v) => !v)}
               className={`chip border ${
@@ -113,9 +115,9 @@ export default function Board() {
                   ? "border-transparent bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
                   : "border-gray-300 bg-transparent text-gray-400 dark:border-gray-700"
               }`}
-              title="Show only carry-over tickets"
+              title={t("board.carryOverTitle")}
             >
-              ↪ carry-over only
+              {t("board.carryOverOnly")}
             </button>
           </div>
         </div>
@@ -124,38 +126,38 @@ export default function Board() {
       <div className="card overflow-x-auto">
         <div className="mb-2 flex items-center justify-between gap-2">
           <span className="text-sm text-gray-500">
-            {filtered.length} shown / {tickets.length} total
+            {t("board.shownTotal", { shown: filtered.length, total: tickets.length })}
           </span>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500">Group:</label>
+            <label className="text-xs text-gray-500">{t("board.group")}</label>
             <select
               className="input max-w-[140px] py-1 text-xs"
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value as any)}
             >
-              <option value="none">None</option>
-              <option value="epic">By Epic</option>
-              <option value="story">By Parent/Story</option>
+              <option value="none">{t("board.groupNone")}</option>
+              <option value="epic">{t("board.groupEpic")}</option>
+              <option value="story">{t("board.groupStory")}</option>
             </select>
           </div>
         </div>
         <table className="w-full min-w-[640px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700">
-              <th className="p-2">Key</th>
-              <th className="p-2">Type</th>
-              <th className="p-2">Status</th>
-              <th className="p-2">Priority</th>
-              <th className="p-2">SP</th>
-              <th className="p-2">Summary</th>
-              <th className="p-2">Assignee</th>
+              <th className="p-2">{t("board.colKey")}</th>
+              <th className="p-2">{t("board.colType")}</th>
+              <th className="p-2">{t("board.colStatus")}</th>
+              <th className="p-2">{t("board.colPriority")}</th>
+              <th className="p-2">{t("board.colSp")}</th>
+              <th className="p-2">{t("board.colSummary")}</th>
+              <th className="p-2">{t("board.colAssignee")}</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && !loading && !error && (
               <tr>
                 <td colSpan={7} className="p-4 text-center text-gray-500">
-                  No tickets match the current filter.
+                  {t("board.noTickets")}
                 </td>
               </tr>
             )}
@@ -191,7 +193,7 @@ export default function Board() {
                     </td>
                     <td className="p-2 font-mono text-xs">{t.storyPoints ?? "—"}</td>
                     <td className="p-2">{t.summary}</td>
-                    <td className="p-2">{t.assignee ?? <span className="text-gray-400">Unassigned</span>}</td>
+                    <td className="p-2">{t.assignee ?? <span className="text-gray-400">{t("board.unassigned")}</span>}</td>
                   </tr>
                 ))}
               </Fragment>

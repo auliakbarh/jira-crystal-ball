@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { computeLeadSchedule } from "../lib/helpers";
 
 interface Sprint {
@@ -17,6 +18,7 @@ export default function LeadSchedule({
   sprint?: Sprint | null;
   currentDate: string;
 }) {
+  const { t } = useTranslation();
   const schedule = useMemo(() => {
     if (!sprint) return [];
     const hSet = new Set((holidays ?? []).map((h) => h.date));
@@ -32,19 +34,19 @@ export default function LeadSchedule({
 
   return (
     <div className="card">
-      <h2 className="mb-3 text-base font-bold">🎤 Standup Lead</h2>
+      <h2 className="mb-3 text-base font-bold">{t("panels.leadTitle")}</h2>
       {members.length === 0 ? (
-        <p className="text-sm text-gray-500">Add team members to build the rotation.</p>
+        <p className="text-sm text-gray-500">{t("panels.leadNoMembers")}</p>
       ) : (
         <>
           <div className="mb-3 rounded-lg bg-brand/10 px-3 py-2">
             <div className="text-xs uppercase tracking-wide text-gray-500">
-              {todayLead ? `Lead for ${currentDate}` : "No standup on selected date"}
+              {todayLead ? t("panels.leadFor", { date: currentDate }) : t("panels.leadNoStandup")}
             </div>
             {todayLead && <div className="text-lg font-bold text-brand">{todayLead.leadName}</div>}
             {todayLead?.coveringForName && (
               <div className="text-xs text-gray-500">
-                covering for {todayLead.coveringForName} ({todayLead.coverType?.toLowerCase()})
+                {t("panels.leadCoveringFor", { name: todayLead.coveringForName, type: todayLead.coverType?.toLowerCase() })}
               </div>
             )}
           </div>

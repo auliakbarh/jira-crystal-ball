@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import Modal from "./Modal";
 
 // In-app confirmation dialog — replaces window.confirm. Render conditionally
@@ -6,7 +7,7 @@ import Modal from "./Modal";
 export default function ConfirmModal({
   title,
   message,
-  confirmLabel = "Confirm",
+  confirmLabel,
   danger = false,
   busy = false,
   onConfirm,
@@ -20,19 +21,20 @@ export default function ConfirmModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal title={title} onClose={busy ? undefined : onClose}>
       <div className="text-sm text-gray-600 dark:text-gray-300">{message}</div>
       <div className="mt-4 flex justify-end gap-2">
         <button className="btn-ghost" disabled={busy} onClick={onClose}>
-          Cancel
+          {t("comp.cancel")}
         </button>
         <button
           className={danger ? "btn-danger" : "btn-primary"}
           disabled={busy}
           onClick={onConfirm}
         >
-          {busy ? "Working…" : confirmLabel}
+          {busy ? t("comp.working") : confirmLabel ?? t("comp.confirm")}
         </button>
       </div>
     </Modal>

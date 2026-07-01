@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { BLOCKERS, UPSERT_BLOCKER, DELETE_BLOCKER } from "../graphql";
 import { todayISO } from "../lib/helpers";
 
 export default function BlockersPanel({ squadId, sprintId }: { squadId: string; sprintId?: string }) {
+  const { t } = useTranslation();
   const [includeResolved, setIncludeResolved] = useState(false);
   const { data, refetch } = useQuery(BLOCKERS, { variables: { squadId, includeResolved } });
   const [upsert] = useMutation(UPSERT_BLOCKER);
@@ -54,19 +56,19 @@ export default function BlockersPanel({ squadId, sprintId }: { squadId: string; 
   return (
     <div className="card">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-bold">🚧 Blockers</h2>
+        <h2 className="text-base font-bold">{t("panels.blockersTitle")}</h2>
         <label className="flex items-center gap-1 text-xs text-gray-500">
           <input
             type="checkbox"
             checked={includeResolved}
             onChange={(e) => setIncludeResolved(e.target.checked)}
           />
-          show resolved
+          {t("panels.blockersShowResolved")}
         </label>
       </div>
 
       <ul className="space-y-2">
-        {blockers.length === 0 && <p className="text-sm text-gray-500">No active blockers 🎉</p>}
+        {blockers.length === 0 && <p className="text-sm text-gray-500">{t("panels.blockersEmpty")}</p>}
         {blockers.map((b: any) => (
           <li
             key={b.id}
@@ -79,8 +81,8 @@ export default function BlockersPanel({ squadId, sprintId }: { squadId: string; 
             <div className="font-medium">{b.description}</div>
             <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500">
               {b.jiraTicket && <span>🎫 {b.jiraTicket}</span>}
-              <span>found {b.foundDate}</span>
-              {b.resolvedDate && <span>resolved {b.resolvedDate}</span>}
+              <span>{t("panels.blockersFound", { date: b.foundDate })}</span>
+              {b.resolvedDate && <span>{t("panels.blockersResolvedOn", { date: b.resolvedDate })}</span>}
               {b.note && <span className="italic">{b.note}</span>}
             </div>
             {b.resolvedDate && b.resolveNote && (
@@ -91,17 +93,17 @@ export default function BlockersPanel({ squadId, sprintId }: { squadId: string; 
               <div className="mt-2 space-y-1.5">
                 <textarea
                   className="input min-h-[44px] text-xs"
-                  placeholder="Resolve note (how it was resolved)…"
+                  placeholder={t("panels.blockersResolveNotePlaceholder")}
                   value={resolveNote}
                   onChange={(e) => setResolveNote(e.target.value)}
                   autoFocus
                 />
                 <div className="flex gap-2">
                   <button className="btn-primary text-xs" onClick={() => resolve(b, resolveNote)}>
-                    Resolve
+                    {t("panels.blockersResolve")}
                   </button>
                   <button className="btn-ghost text-xs" onClick={() => { setResolvingId(null); setResolveNote(""); }}>
-                    Cancel
+                    {t("panels.blockersCancel")}
                   </button>
                 </div>
               </div>
@@ -111,13 +113,13 @@ export default function BlockersPanel({ squadId, sprintId }: { squadId: string; 
                   className="text-xs text-brand hover:underline"
                   onClick={() => (b.resolvedDate ? resolve(b) : (setResolvingId(b.id), setResolveNote("")))}
                 >
-                  {b.resolvedDate ? "Reopen" : "Mark resolved"}
+                  {b.resolvedDate ? t("panels.blockersReopen") : t("panels.blockersMarkResolved")}
                 </button>
                 <button
                   className="text-xs text-red-600 hover:underline"
                   onClick={() => del({ variables: { id: b.id } }).then(() => refetch())}
                 >
-                  Delete
+                  {t("panels.blockersDelete")}
                 </button>
               </div>
             )}
@@ -128,19 +130,19 @@ export default function BlockersPanel({ squadId, sprintId }: { squadId: string; 
       <div className="mt-3 space-y-2 border-t border-gray-100 pt-3 dark:border-gray-800">
         <input
           className="input"
-          placeholder="New blocker description…"
+          placeholder={t("panels.blockersNewDescPlaceholder")}
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
         />
         <div className="flex gap-2">
           <input
             className="input"
-            placeholder="JIRA ticket (optional)"
+            placeholder={t("panels.blockersTicketPlaceholder")}
             value={ticket}
             onChange={(e) => setTicket(e.target.value)}
           />
           <button className="btn-primary" onClick={add}>
-            Add
+            {t("panels.blockersAdd")}
           </button>
         </div>
       </div>

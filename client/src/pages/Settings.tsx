@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { useSquad } from "../context/SquadContext";
 import { useAuth } from "../context/AuthContext";
@@ -35,6 +36,7 @@ import JiraConfigForm from "../components/JiraConfigForm";
 const POSITIONS = ["FE", "BE", "QA", "PM", "FULLSTACK", "ALL"] as const;
 
 export default function Settings() {
+  const { t } = useTranslation();
   const { squadId, setSquadId } = useSquad();
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
@@ -55,12 +57,12 @@ export default function Settings() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold">Settings — {squad?.name}</h1>
+      <h1 className="text-xl font-bold">{t("settings.pageTitle", { name: squad?.name })}</h1>
 
       <SquadsSection currentId={squadId} setSquadId={setSquadId} isAdmin={isAdmin} />
 
       <section className="card">
-        <h2 className="mb-3 text-base font-bold">JIRA Board</h2>
+        <h2 className="mb-3 text-base font-bold">{t("settings.jiraBoardTitle")}</h2>
         <JiraConfigForm squadId={squadId} currentBoardId={squad?.defaultBoardId} onSaved={refetch} />
       </section>
 
@@ -76,6 +78,7 @@ export default function Settings() {
 
 // --------------------------- Admins (super-admin only) ---------------------------
 function AdminsSection() {
+  const { t } = useTranslation();
   const { data, refetch } = useQuery(ADMINS);
   const [create, { loading: creating }] = useMutation(CREATE_ADMIN);
   const [email, setEmail] = useState("");
@@ -93,16 +96,15 @@ function AdminsSection() {
       setPassword("");
       await refetch();
     } catch (e: any) {
-      setMsg(`Error: ${e.message}`);
+      setMsg(t("settings.errorPrefix", { message: e.message }));
     }
   };
 
   return (
     <section className="card">
-      <h2 className="mb-1 text-base font-bold">Admin Accounts</h2>
+      <h2 className="mb-1 text-base font-bold">{t("settings.adminAccountsTitle")}</h2>
       <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        Only you (the environment super admin) can add, edit, delete, or reset passwords for
-        admin accounts. The super admin account itself cannot be modified here.
+        {t("settings.adminAccountsDesc")}
       </p>
       <div className="space-y-2">
         {admins.map((a: any) => (
@@ -110,24 +112,24 @@ function AdminsSection() {
         ))}
       </div>
       <div className="mt-4 border-t border-gray-200 pt-3 dark:border-gray-700">
-        <div className="mb-2 text-sm font-semibold">Add admin</div>
+        <div className="mb-2 text-sm font-semibold">{t("settings.adminAdd")}</div>
         <div className="flex flex-wrap items-center gap-2">
           <input
             className="input max-w-[220px]"
-            placeholder="Email"
+            placeholder={t("settings.emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <input
             className="input max-w-[180px]"
-            placeholder="Name"
+            placeholder={t("settings.namePlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <input
             className="input max-w-[200px]"
             type="password"
-            placeholder="Password (min 6)"
+            placeholder={t("settings.passwordPlaceholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -136,7 +138,7 @@ function AdminsSection() {
             onClick={add}
             disabled={creating || !email.trim() || !name.trim() || password.length < 6}
           >
-            {creating ? "Adding…" : "Add"}
+            {creating ? t("settings.adding") : t("settings.add")}
           </button>
         </div>
       </div>
@@ -146,6 +148,7 @@ function AdminsSection() {
 }
 
 function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
+  const { t } = useTranslation();
   const [update, { loading: saving }] = useMutation(UPDATE_ADMIN);
   const [changePw, { loading: pwLoading }] = useMutation(CHANGE_ADMIN_PASSWORD);
   const [del, { loading: deleting }] = useMutation(DELETE_ADMIN);
@@ -164,7 +167,7 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
           <span className="ml-2 text-sm text-gray-500">{admin.email}</span>
         </div>
         <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
-          Super admin (env)
+          {t("settings.superAdminEnv")}
         </span>
       </div>
     );
@@ -177,7 +180,7 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
       setEditing(false);
       await refetch();
     } catch (e: any) {
-      setMsg(`Error: ${e.message}`);
+      setMsg(t("settings.errorPrefix", { message: e.message }));
     }
   };
   const resetPw = async () => {
@@ -185,9 +188,9 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
     try {
       await changePw({ variables: { id: admin.id, password: pw } });
       setPw("");
-      setMsg("Password updated.");
+      setMsg(t("settings.passwordUpdated"));
     } catch (e: any) {
-      setMsg(`Error: ${e.message}`);
+      setMsg(t("settings.errorPrefix", { message: e.message }));
     }
   };
   const remove = async () => {
@@ -196,7 +199,7 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
       await del({ variables: { id: admin.id } });
       await refetch();
     } catch (e: any) {
-      setMsg(`Error: ${e.message}`);
+      setMsg(t("settings.errorPrefix", { message: e.message }));
     } finally {
       setConfirming(false);
     }
@@ -211,16 +214,16 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
               className="input max-w-[180px]"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
+              placeholder={t("settings.namePlaceholder")}
             />
             <input
               className="input max-w-[220px]"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              placeholder={t("settings.emailPlaceholder")}
             />
             <button className="btn-primary" onClick={save} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
+              {saving ? t("settings.saving") : t("settings.save")}
             </button>
             <button
               className="text-sm text-gray-500 hover:underline"
@@ -230,7 +233,7 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
                 setEmail(admin.email);
               }}
             >
-              Cancel
+              {t("settings.cancel")}
             </button>
           </>
         ) : (
@@ -242,14 +245,14 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
                 className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
                 onClick={() => setEditing(true)}
               >
-                Edit
+                {t("settings.edit")}
               </button>
               <button
                 className="text-sm text-red-600 hover:underline dark:text-red-400"
                 onClick={() => setConfirming(true)}
                 disabled={deleting}
               >
-                Delete
+                {t("settings.delete")}
               </button>
             </div>
           </>
@@ -259,20 +262,20 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
         <input
           className="input max-w-[200px]"
           type="password"
-          placeholder="New password (min 6)"
+          placeholder={t("settings.newPasswordPlaceholder")}
           value={pw}
           onChange={(e) => setPw(e.target.value)}
         />
         <button className="btn-primary" onClick={resetPw} disabled={pwLoading || pw.length < 6}>
-          {pwLoading ? "Saving…" : "Reset password"}
+          {pwLoading ? t("settings.saving") : t("settings.resetPassword")}
         </button>
       </div>
       {msg && <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{msg}</div>}
       {confirming && (
         <ConfirmModal
-          title="Delete admin"
-          message={`Delete admin ${admin.email}? This cannot be undone.`}
-          confirmLabel="Delete"
+          title={t("settings.deleteAdminTitle")}
+          message={t("settings.deleteAdminMessage", { email: admin.email })}
+          confirmLabel={t("settings.delete")}
           danger
           busy={deleting}
           onConfirm={remove}
@@ -285,6 +288,7 @@ function AdminRow({ admin, refetch }: { admin: any; refetch: () => void }) {
 
 // --------------------------- Danger zone (admin) ---------------------------
 function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
+  const { t } = useTranslation();
   const apollo = useApolloClient();
   const [reset, { loading }] = useMutation(RESET_DATABASE);
   const [reseed, setReseed] = useState(true);
@@ -299,10 +303,10 @@ function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
       localStorage.removeItem("jcb_squad");
       setSquadId("");
       await apollo.resetStore(); // clear cache so the UI reflects the wipe
-      setMsg("Database reset complete.");
+      setMsg(t("settings.databaseResetComplete"));
       setConfirmText("");
     } catch (e: any) {
-      setMsg(`Error: ${e.message}`);
+      setMsg(t("settings.errorPrefix", { message: e.message }));
     } finally {
       setConfirming(false);
     }
@@ -310,33 +314,31 @@ function DangerZone({ setSquadId }: { setSquadId: (id: string) => void }) {
 
   return (
     <section className="card border-red-300 dark:border-red-900/60">
-      <h2 className="mb-1 text-base font-bold text-red-600 dark:text-red-400">⚠️ Danger Zone — Reset Database</h2>
+      <h2 className="mb-1 text-base font-bold text-red-600 dark:text-red-400">{t("settings.dangerZoneTitle")}</h2>
       <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        Deletes <b>all squads</b> and everything under them (members, leaves, holidays,
-        sprints, standup entries, blockers, JIRA configs). User accounts are kept. This
-        cannot be undone.
+        {t("settings.dangerZoneDesc")}
       </p>
       <label className="mb-3 flex items-center gap-2 text-sm">
         <input type="checkbox" checked={reseed} onChange={(e) => setReseed(e.target.checked)} />
-        Recreate default squads (Athens / Berlin / Cairo) after reset
+        {t("settings.reseedDefaults")}
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <input
           className="input max-w-[220px]"
-          placeholder='Type "RESET" to confirm'
+          placeholder={t("settings.resetConfirmPlaceholder")}
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
         />
         <button className="btn-danger" onClick={() => setConfirming(true)} disabled={loading || confirmText !== "RESET"}>
-          {loading ? "Resetting…" : "Reset Database"}
+          {loading ? t("settings.resetting") : t("settings.resetDatabase")}
         </button>
       </div>
       {msg && <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{msg}</div>}
       {confirming && (
         <ConfirmModal
-          title="Reset database"
-          message="This permanently deletes ALL squads and their data (members, leaves, holidays, sprints, standup entries, blockers, JIRA configs). User accounts are kept. This cannot be undone."
-          confirmLabel="Reset Database"
+          title={t("settings.resetDatabaseTitle")}
+          message={t("settings.resetDatabaseMessage")}
+          confirmLabel={t("settings.resetDatabase")}
           danger
           busy={loading}
           onConfirm={doReset}
@@ -357,6 +359,7 @@ function SquadsSection({
   setSquadId: (id: string) => void;
   isAdmin: boolean;
 }) {
+  const { t } = useTranslation();
   const { data, refetch } = useQuery(SQUADS);
   const [create] = useMutation(CREATE_SQUAD);
   const [del, { loading: deleting }] = useMutation(DELETE_SQUAD);
@@ -386,10 +389,10 @@ function SquadsSection({
 
   return (
     <section className="card">
-      <h2 className="mb-3 text-base font-bold">Squads / Teams</h2>
+      <h2 className="mb-3 text-base font-bold">{t("settings.squadsTitle")}</h2>
       <div className="mb-4 flex items-end gap-2">
         <div className="flex-1">
-          <label className="label">New squad name</label>
+          <label className="label">{t("settings.newSquadName")}</label>
           <input
             className="input"
             value={name}
@@ -398,7 +401,7 @@ function SquadsSection({
           />
         </div>
         <button className="btn-primary" onClick={add}>
-          Add Squad
+          {t("settings.addSquad")}
         </button>
       </div>
       <ul className="space-y-1.5">
@@ -416,9 +419,9 @@ function SquadsSection({
       </ul>
       {delTarget && (
         <ConfirmModal
-          title="Delete squad"
-          message={`Delete squad "${delTarget.label}"? All its sprints, members, blockers and JIRA config are removed. This cannot be undone.`}
-          confirmLabel="Delete"
+          title={t("settings.deleteSquadTitle")}
+          message={t("settings.deleteSquadMessage", { label: delTarget.label })}
+          confirmLabel={t("settings.delete")}
           danger
           busy={deleting}
           onConfirm={performDelete}
@@ -444,6 +447,7 @@ function SquadRow({
   onDelete: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(squad.name);
   const [boardId, setBoardId] = useState(squad.defaultBoardId ?? "");
@@ -503,7 +507,7 @@ function SquadRow({
           : "bg-gray-100 text-gray-500 dark:bg-gray-800"
       }`}
     >
-      {squad.jiraConfigured ? "JIRA ✓" : "no JIRA"}
+      {squad.jiraConfigured ? t("settings.jiraConfigured") : t("settings.noJira")}
     </span>
   );
 
@@ -515,7 +519,7 @@ function SquadRow({
         <input
           className="input max-w-[220px]"
           list={listId}
-          placeholder="field id or name"
+          placeholder={t("settings.fieldIdOrNamePlaceholder")}
           value={val}
           onChange={(e) => set(e.target.value)}
         />
@@ -532,68 +536,66 @@ function SquadRow({
         </datalist>
         <div className="flex flex-wrap items-end gap-2">
           <div>
-            <label className="label">Name</label>
+            <label className="label">{t("settings.name")}</label>
             <input className="input max-w-[200px]" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <label className="label">Board ID (optional)</label>
-            <input className="input max-w-[160px]" placeholder="e.g. ATH or 123" value={boardId} onChange={(e) => setBoardId(e.target.value)} />
+            <label className="label">{t("settings.boardIdOptional")}</label>
+            <input className="input max-w-[160px]" placeholder={t("settings.boardIdPlaceholder")} value={boardId} onChange={(e) => setBoardId(e.target.value)} />
           </div>
         </div>
         <div className="text-xs text-gray-500">
-          Story Points field — id (e.g. <code>customfield_10033</code>) or exact field name (e.g. "Story Points QA").
-          {fieldsLoading ? " Loading board fields…" : ` ${fields.length} fields available (see suggestions).`}
+          {t("settings.spFieldHelp")}
+          {fieldsLoading ? t("settings.loadingBoardFields") : t("settings.fieldsAvailable", { count: fields.length })}
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          {spInput("SP default", spDefault, setSpDefault)}
-          {spInput("SP FE", spFE, setSpFE)}
-          {spInput("SP BE", spBE, setSpBE)}
-          {spInput("SP QA", spQA, setSpQA)}
+          {spInput(t("settings.spDefault"), spDefault, setSpDefault)}
+          {spInput(t("settings.spFE"), spFE, setSpFE)}
+          {spInput(t("settings.spBE"), spBE, setSpBE)}
+          {spInput(t("settings.spQA"), spQA, setSpQA)}
         </div>
         <div className="text-xs text-gray-500">
-          Confluence export target — leave blank to use the global env defaults
-          (<code>CONFLUENCE_SPACE_KEY</code> / <code>CONFLUENCE_PARENT_ID</code>).
+          {t("settings.confluenceHelp")}
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div>
-            <label className="label">Confluence Space Key</label>
+            <label className="label">{t("settings.confluenceSpaceKey")}</label>
             <input
               className="input max-w-[200px]"
-              placeholder="e.g. MYHERO"
+              placeholder={t("settings.confluenceSpacePlaceholder")}
               value={confSpace}
               onChange={(e) => setConfSpace(e.target.value)}
             />
           </div>
           <div>
-            <label className="label">Confluence Parent ID</label>
+            <label className="label">{t("settings.confluenceParentId")}</label>
             <input
               className="input max-w-[200px]"
-              placeholder="e.g. 1119092737"
+              placeholder={t("settings.confluenceParentPlaceholder")}
               value={confParent}
               onChange={(e) => setConfParent(e.target.value)}
             />
           </div>
         </div>
         <div className="text-xs text-gray-500">
-          Tarot (planning poker) default scale — used when a host opens a new room (the host
-          can still override per-room). <code>?</code> and <code>☕</code> cards are always added.
+          {t("settings.tarotScaleHelp")}
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div>
-            <label className="label">Default scale</label>
+            <label className="label">{t("settings.defaultScale")}</label>
             <select className="input max-w-[160px]" value={tarotType} onChange={(e) => setTarotType(e.target.value)}>
-              <option value="">— (Fibonacci)</option>
-              <option value="FIBONACCI">Fibonacci</option>
-              <option value="SCRUM">Scrum</option>
-              <option value="CUSTOM">Custom</option>
+              <option value="">{t("settings.scaleFibonacciDefault")}</option>
+              <option value="FIBONACCI">{t("settings.scaleFibonacci")}</option>
+              <option value="SCRUM">{t("settings.scaleScrum")}</option>
+              <option value="CUSTOM">{t("settings.scaleCustom")}</option>
             </select>
           </div>
           {tarotType === "CUSTOM" && (
             <div>
-              <label className="label">Custom values</label>
+              <label className="label">{t("settings.customValues")}</label>
               <input
                 className="input max-w-[260px]"
-                placeholder="e.g. 1, 2, 3, 5, 8, 13"
+                placeholder={t("settings.customValuesPlaceholder")}
                 value={tarotValues}
                 onChange={(e) => setTarotValues(e.target.value)}
               />
@@ -603,7 +605,7 @@ function SquadRow({
         {/* Quick reference: list of fields with ids (filterable by browser datalist above) */}
         {fields.length > 0 && (
           <details className="text-xs text-gray-500">
-            <summary className="cursor-pointer">Board fields (name → id)</summary>
+            <summary className="cursor-pointer">{t("settings.boardFieldsSummary")}</summary>
             <div className="mt-1 max-h-40 overflow-y-auto">
               {fields.map((f: any) => (
                 <div key={f.id} className="flex justify-between gap-2 border-b border-gray-100 py-0.5 dark:border-gray-800">
@@ -616,10 +618,10 @@ function SquadRow({
         )}
         <div className="flex justify-end gap-2">
           <button className="btn-ghost text-xs" onClick={() => setEditing(false)}>
-            Cancel
+            {t("settings.cancel")}
           </button>
           <button className="btn-primary text-xs" onClick={save} disabled={loading}>
-            {loading ? "Saving…" : "Save"}
+            {loading ? t("settings.saving") : t("settings.save")}
           </button>
         </div>
       </li>
@@ -629,25 +631,25 @@ function SquadRow({
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 px-3 py-2 text-sm dark:border-gray-800">
       <span className="font-medium">{squad.name}</span>
-      {isCurrent && <span className="chip bg-brand text-white">current</span>}
+      {isCurrent && <span className="chip bg-brand text-white">{t("settings.current")}</span>}
       <span className="chip bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-        board: {squad.defaultBoardId || "—"}
+        {t("settings.boardLabel", { board: squad.defaultBoardId || "—" })}
       </span>
       {jiraChip}
       <div className="ml-auto flex gap-2">
         {!isCurrent && (
           <button className="text-xs text-brand hover:underline" onClick={onSwitch}>
-            Switch
+            {t("settings.switch")}
           </button>
         )}
         {isAdmin && (
           <button className="text-xs text-brand hover:underline" onClick={() => setEditing(true)}>
-            Edit
+            {t("settings.edit")}
           </button>
         )}
         {isAdmin && (
           <button className="text-xs text-red-600 hover:underline" onClick={onDelete}>
-            Delete
+            {t("settings.delete")}
           </button>
         )}
       </div>
@@ -657,6 +659,7 @@ function SquadRow({
 
 // --------------------------- Members + leaves ---------------------------
 function MembersSection({ squadId, members, refetch }: any) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [fullName, setFullName] = useState("");
   const [position, setPosition] = useState("FE");
@@ -686,18 +689,18 @@ function MembersSection({ squadId, members, refetch }: any) {
 
   return (
     <section className="card">
-      <h2 className="mb-3 text-base font-bold">Team Members</h2>
+      <h2 className="mb-3 text-base font-bold">{t("settings.teamMembersTitle")}</h2>
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <div className="flex-1 min-w-[120px]">
-          <label className="label">Name</label>
+          <label className="label">{t("settings.name")}</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="flex-1 min-w-[150px]">
-          <label className="label">Full name (optional)</label>
+          <label className="label">{t("settings.fullNameOptional")}</label>
           <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </div>
         <div>
-          <label className="label">Position</label>
+          <label className="label">{t("settings.position")}</label>
           <select className="input" value={position} onChange={(e) => setPosition(e.target.value)}>
             {POSITIONS.map((p) => (
               <option key={p}>{p}</option>
@@ -705,11 +708,11 @@ function MembersSection({ squadId, members, refetch }: any) {
           </select>
         </div>
         <div className="flex-1 min-w-[150px]">
-          <label className="label">JIRA account id (optional)</label>
+          <label className="label">{t("settings.jiraAccountIdOptional")}</label>
           <input
             className="input"
             list={usersListId}
-            placeholder={usersLoading ? "loading JIRA users…" : "pick a name or paste an account id"}
+            placeholder={usersLoading ? t("settings.loadingJiraUsers") : t("settings.jiraUserPlaceholder")}
             value={jiraId}
             onChange={(e) => setJiraId(e.target.value)}
           />
@@ -723,7 +726,7 @@ function MembersSection({ squadId, members, refetch }: any) {
           </datalist>
         </div>
         <button className="btn-primary" onClick={addMember}>
-          Add
+          {t("settings.add")}
         </button>
       </div>
 
@@ -747,6 +750,7 @@ function MembersSection({ squadId, members, refetch }: any) {
 
 // One member: read-only summary + inline edit (name / position / JIRA account id).
 function MemberRow({ member: m, members, refetch, del, jiraUsers, usersListId, usersLoading }: any) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(m.name);
   const [fullName, setFullName] = useState(m.fullName ?? "");
@@ -779,15 +783,15 @@ function MemberRow({ member: m, members, refetch, del, jiraUsers, usersListId, u
       {editing ? (
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex-1 min-w-[120px]">
-            <label className="label">Name</label>
+            <label className="label">{t("settings.name")}</label>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="flex-1 min-w-[150px]">
-            <label className="label">Full name (optional)</label>
+            <label className="label">{t("settings.fullNameOptional")}</label>
             <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </div>
           <div>
-            <label className="label">Position</label>
+            <label className="label">{t("settings.position")}</label>
             <select className="input" value={position} onChange={(e) => setPosition(e.target.value)}>
               {POSITIONS.map((p) => (
                 <option key={p}>{p}</option>
@@ -795,21 +799,21 @@ function MemberRow({ member: m, members, refetch, del, jiraUsers, usersListId, u
             </select>
           </div>
           <div className="flex-1 min-w-[150px]">
-            <label className="label">JIRA account id (optional)</label>
+            <label className="label">{t("settings.jiraAccountIdOptional")}</label>
             <input
               className="input"
               list={usersListId}
-              placeholder={usersLoading ? "loading JIRA users…" : "pick a name or paste an account id"}
+              placeholder={usersLoading ? t("settings.loadingJiraUsers") : t("settings.jiraUserPlaceholder")}
               value={jiraId}
               onChange={(e) => setJiraId(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
             <button className="btn-ghost text-xs" onClick={cancel}>
-              Cancel
+              {t("settings.cancel")}
             </button>
             <button className="btn-primary text-xs" onClick={save} disabled={loading}>
-              {loading ? "Saving…" : "Save"}
+              {loading ? t("settings.saving") : t("settings.save")}
             </button>
           </div>
         </div>
@@ -821,13 +825,13 @@ function MemberRow({ member: m, members, refetch, del, jiraUsers, usersListId, u
           {m.jiraAccountId && <span className="text-xs text-gray-400">({m.jiraAccountId})</span>}
           <div className="ml-auto flex gap-2">
             <button className="text-xs text-brand hover:underline" onClick={() => setEditing(true)}>
-              Edit
+              {t("settings.edit")}
             </button>
             <button
               className="text-xs text-red-600 hover:underline"
               onClick={() => del({ variables: { id: m.id } }).then(() => refetch())}
             >
-              Delete
+              {t("settings.delete")}
             </button>
           </div>
         </div>
@@ -838,6 +842,7 @@ function MemberRow({ member: m, members, refetch, del, jiraUsers, usersListId, u
 }
 
 function LeavesEditor({ member, members, refetch }: any) {
+  const { t } = useTranslation();
   const [type, setType] = useState("CUTI");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -862,14 +867,14 @@ function LeavesEditor({ member, members, refetch }: any) {
 
   return (
     <div className="mt-2 pl-1">
-      <div className="mb-1 text-xs font-semibold text-gray-500">Leave status (annual / sick / permission)</div>
+      <div className="mb-1 text-xs font-semibold text-gray-500">{t("settings.leaveStatusTitle")}</div>
       {(member.leaves ?? []).map((l: any) => (
         <div key={l.id} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
           <span className="chip bg-gray-100 dark:bg-gray-800">{LEAVE_LABELS[l.type] ?? l.type}</span>
           <span>
             {l.startDate} → {l.endDate}
           </span>
-          {l.substitute && <span>· cover: {l.substitute.name}</span>}
+          {l.substitute && <span>{t("settings.leaveCover", { name: l.substitute.name })}</span>}
           {l.note && <span className="italic">· {l.note}</span>}
           <button
             className="text-red-600 hover:underline"
@@ -890,7 +895,7 @@ function LeavesEditor({ member, members, refetch }: any) {
         <input type="date" className="input max-w-[140px] py-1 text-xs" value={start} onChange={(e) => setStart(e.target.value)} />
         <input type="date" className="input max-w-[140px] py-1 text-xs" value={end} onChange={(e) => setEnd(e.target.value)} />
         <select className="input max-w-[150px] py-1 text-xs" value={sub} onChange={(e) => setSub(e.target.value)}>
-          <option value="">Substitute…</option>
+          <option value="">{t("settings.substitutePlaceholder")}</option>
           {members
             .filter((x: any) => x.id !== member.id)
             .map((x: any) => (
@@ -899,9 +904,9 @@ function LeavesEditor({ member, members, refetch }: any) {
               </option>
             ))}
         </select>
-        <input className="input max-w-[160px] py-1 text-xs" placeholder="note" value={note} onChange={(e) => setNote(e.target.value)} />
+        <input className="input max-w-[160px] py-1 text-xs" placeholder={t("settings.notePlaceholder")} value={note} onChange={(e) => setNote(e.target.value)} />
         <button className="btn-ghost text-xs" onClick={addLeave}>
-          + leave
+          {t("settings.addLeave")}
         </button>
       </div>
     </div>
@@ -910,6 +915,7 @@ function LeavesEditor({ member, members, refetch }: any) {
 
 // --------------------------- Sprints ---------------------------
 function SprintsSection({ squadId, sprints, refetch }: any) {
+  const { t } = useTranslation();
   const [number, setNumber] = useState("");
   const [name, setName] = useState("");
   const [start, setStart] = useState("");
@@ -935,33 +941,33 @@ function SprintsSection({ squadId, sprints, refetch }: any) {
 
   return (
     <section className="card">
-      <h2 className="mb-3 text-base font-bold">Sprints</h2>
+      <h2 className="mb-3 text-base font-bold">{t("settings.sprintsTitle")}</h2>
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <div>
-          <label className="label">Number</label>
+          <label className="label">{t("settings.sprintNumber")}</label>
           <input className="input max-w-[90px]" type="number" value={number} onChange={(e) => setNumber(e.target.value)} />
         </div>
         <div className="flex-1 min-w-[120px]">
-          <label className="label">Name (optional)</label>
+          <label className="label">{t("settings.sprintNameOptional")}</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div>
-          <label className="label">Start</label>
+          <label className="label">{t("settings.sprintStart")}</label>
           <input type="date" className="input" value={start} onChange={(e) => setStart(e.target.value)} />
         </div>
         <div>
-          <label className="label">End</label>
+          <label className="label">{t("settings.sprintEnd")}</label>
           <input type="date" className="input" value={end} onChange={(e) => setEnd(e.target.value)} />
         </div>
         <button className="btn-primary" onClick={addSprint}>
-          Add Sprint
+          {t("settings.addSprint")}
         </button>
       </div>
 
       <ul className="space-y-1.5">
         {sprints.map((s: any) => (
           <li key={s.id} className="flex items-center gap-2 rounded-lg border border-gray-100 px-3 py-2 text-sm dark:border-gray-800">
-            <span className="font-semibold">Sprint {s.number}</span>
+            <span className="font-semibold">{t("settings.sprintLabel", { number: s.number })}</span>
             {s.name && <span className="text-gray-500">{s.name}</span>}
             <span className="text-xs text-gray-400">
               {s.startDate} → {s.endDate}
@@ -970,7 +976,7 @@ function SprintsSection({ squadId, sprints, refetch }: any) {
               className="ml-auto text-xs text-red-600 hover:underline"
               onClick={() => del({ variables: { id: s.id } }).then(() => refetch())}
             >
-              Delete
+              {t("settings.delete")}
             </button>
           </li>
         ))}
@@ -981,6 +987,7 @@ function SprintsSection({ squadId, sprints, refetch }: any) {
 
 // --------------------------- Holidays ---------------------------
 function HolidaysSection({ squadId, holidays, refetch }: any) {
+  const { t } = useTranslation();
   const [date, setDate] = useState("");
   const [name, setName] = useState("");
   const [add] = useMutation(ADD_HOLIDAY);
@@ -996,18 +1003,18 @@ function HolidaysSection({ squadId, holidays, refetch }: any) {
 
   return (
     <section className="card">
-      <h2 className="mb-3 text-base font-bold">Public Holidays</h2>
+      <h2 className="mb-3 text-base font-bold">{t("settings.publicHolidaysTitle")}</h2>
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <div>
-          <label className="label">Date</label>
+          <label className="label">{t("settings.holidayDate")}</label>
           <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div className="flex-1 min-w-[150px]">
-          <label className="label">Name</label>
+          <label className="label">{t("settings.name")}</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <button className="btn-primary" onClick={addHoliday}>
-          Add
+          {t("settings.add")}
         </button>
       </div>
       <ul className="flex flex-wrap gap-2">

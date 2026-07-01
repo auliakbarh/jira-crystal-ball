@@ -1,22 +1,25 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { ACTIVITY_LOG } from "../graphql";
 import { SkeletonLines } from "./Skeleton";
 
 const PAGE = 20;
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: TFunction): string {
   const then = new Date(iso).getTime();
   const diff = Date.now() - then;
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return t("panels.activityJustNow");
+  if (m < 60) return t("panels.activityMinutesAgo", { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return t("panels.activityHoursAgo", { count: h });
   return new Date(iso).toLocaleDateString();
 }
 
 export default function ActivityPanel({ squadId }: { squadId: string }) {
+  const { t } = useTranslation();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   // Debounce the query variable so we don't fire per keystroke.
@@ -55,17 +58,17 @@ export default function ActivityPanel({ squadId }: { squadId: string }) {
 
   return (
     <div className="card">
-      <h2 className="mb-2 text-base font-bold">🕒 Update Log</h2>
+      <h2 className="mb-2 text-base font-bold">{t("panels.activityTitle")}</h2>
       <input
         className="input mb-3 text-sm"
-        placeholder="Search updates (ticket, name, note…)"
+        placeholder={t("panels.activitySearchPlaceholder")}
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
       />
       {loading && logs.length === 0 ? (
         <SkeletonLines rows={5} />
       ) : logs.length === 0 ? (
-        <p className="text-sm text-gray-500">{search ? "No matches." : "No updates yet today."}</p>
+        <p className="text-sm text-gray-500">{search ? t("panels.activityNoMatches") : t("panels.activityNoUpdates")}</p>
       ) : (
         <div className="max-h-72 overflow-y-auto overscroll-contain pr-1" onScroll={onScroll}>
           <ul className="space-y-2">
@@ -73,24 +76,24 @@ export default function ActivityPanel({ squadId }: { squadId: string }) {
               <li key={l.id} className="text-sm">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-medium">{l.actor}</span>
-                  <span className="text-xs text-gray-400">{timeAgo(l.createdAt)}</span>
+                  <span className="text-xs text-gray-400">{timeAgo(l.createdAt, t)}</span>
                 </div>
                 <div className="text-gray-600 dark:text-gray-400">{l.message}</div>
                 {(l.prevText || l.newText) && (
                   <div className="mt-0.5 rounded bg-gray-50 px-1.5 py-1 text-xs dark:bg-gray-800/60">
                     <div className="text-red-600 line-through dark:text-red-400/80">
-                      {l.prevText ? l.prevText : <span className="italic opacity-60">(empty)</span>}
+                      {l.prevText ? l.prevText : <span className="italic opacity-60">{t("panels.activityEmpty")}</span>}
                     </div>
                     <div className="text-green-700 dark:text-green-300">
-                      {l.newText ? l.newText : <span className="italic opacity-60">(cleared)</span>}
+                      {l.newText ? l.newText : <span className="italic opacity-60">{t("panels.activityCleared")}</span>}
                     </div>
                   </div>
                 )}
               </li>
             ))}
           </ul>
-          {more && <p className="py-2 text-center text-xs text-gray-400">Loading…</p>}
-          {done && <p className="py-2 text-center text-xs text-gray-300">End of log</p>}
+          {more && <p className="py-2 text-center text-xs text-gray-400">{t("panels.activityLoading")}</p>}
+          {done && <p className="py-2 text-center text-xs text-gray-300">{t("panels.activityEndOfLog")}</p>}
         </div>
       )}
     </div>

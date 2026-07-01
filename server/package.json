@@ -15,7 +15,8 @@
     "seed:config": "tsx src/seed-config.ts",
     "token:encrypt": "tsx src/encryptToken.ts",
     "postinstall": "prisma generate",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run resolvers.integration"
   },
   "dependencies": {
     "@apollo/server": "^4.11.2",

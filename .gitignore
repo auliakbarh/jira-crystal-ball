@@ -5,6 +5,7 @@ build/
 .env.local
 .env.production
 .env.staging
+.env.raw.*
 *.log
 .DS_Store
 

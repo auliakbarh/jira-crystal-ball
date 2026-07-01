@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface P {
   id: string;
@@ -18,10 +19,11 @@ export default function Participants({
   canKick?: boolean;
   onKick?: (id: string, name: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="card">
       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-        Participants ({participants.length})
+        {t("tarot.participants", { count: participants.length })}
       </div>
       <ul className="space-y-1.5">
         <AnimatePresence initial={false}>
@@ -35,22 +37,22 @@ export default function Participants({
             >
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${p.online ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}
-                title={p.online ? "Online" : "Offline"}
+                title={p.online ? t("tarot.online") : t("tarot.offline")}
               />
               <span className="truncate">{p.name}</span>
               {p.isHost && (
                 <span className="chip bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
-                  Host
+                  {t("tarot.hostBadge")}
                 </span>
               )}
-              {!p.isHost && p.hasVoted && <span title="Voted">✅</span>}
+              {!p.isHost && p.hasVoted && <span title={t("tarot.voted")}>✅</span>}
               {canKick && !p.isHost && (
                 <button
                   className="ml-auto text-xs text-red-500 hover:underline"
                   onClick={() => onKick?.(p.id, p.name)}
-                  title="Kick participant"
+                  title={t("tarot.kickParticipantTitle")}
                 >
-                  Kick
+                  {t("tarot.kick")}
                 </button>
               )}
             </motion.li>

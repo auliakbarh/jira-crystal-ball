@@ -304,6 +304,29 @@ export const ACTIVE_SPRINT_TICKETS = gql`
   }
 `;
 
+export const GROOMING_BUCKETS = gql`
+  query GroomingBuckets($squadId: ID!, $refresh: Boolean) {
+    groomingBuckets(squadId: $squadId, refresh: $refresh) {
+      key
+      label
+      kind
+      tickets {
+        key
+        status
+        summary
+        url
+        priority
+        issueType
+        epicKey
+        epicName
+        parentKey
+        parentName
+        parentType
+      }
+    }
+  }
+`;
+
 export const NEXT_SPRINT_TICKETS = gql`
   query NextSprintTickets($squadId: ID!, $refresh: Boolean) {
     nextSprintTickets(squadId: $squadId, refresh: $refresh) {

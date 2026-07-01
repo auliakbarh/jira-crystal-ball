@@ -294,6 +294,18 @@ Then in the environment: set `JIRA_API_TOKEN_ENC` + `JIRA_ENC_KEY`, and **remove
 `JIRA_API_TOKEN` still wins if present, so this is fully opt-in and backward compatible. A
 wrong `JIRA_ENC_KEY` fails fast with a clear error.
 
+**Building a deploy env from a plaintext source.** A helper automates the above per
+environment: keep the plaintext values in `server/.env.raw.<env>` (gitignored) and run
+
+```bash
+node scripts/build-env.mjs production   # reads server/.env.raw.production
+node scripts/build-env.mjs staging      # → writes server/.env.<env> with the token encrypted
+```
+
+It copies every line from the `.raw` file, replaces `JIRA_API_TOKEN` with a freshly
+generated `JIRA_API_TOKEN_ENC` + `JIRA_ENC_KEY`, and appends `LOG_RETENTION_DAYS` if missing.
+Nothing is printed. Both `.env.raw.*` and `.env.*` stay gitignored.
+
 ## Security checklist (do before production)
 
 - [ ] Set a strong, unique `JWT_SECRET` (see "Generating a JWT secret" above).

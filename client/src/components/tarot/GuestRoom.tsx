@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { useToast } from "../../context/ToastContext";
 import { CAST_TAROT_VOTE } from "../../graphql";
 import { priorityColor } from "../../lib/helpers";
@@ -13,6 +14,7 @@ import RoundTimer from "./RoundTimer";
 import { ResultsTable } from "./HostRoom";
 
 export default function GuestRoom({ room, uid, refetchRoom }: any) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const toast = useToast();
   const roomId = room.id;
@@ -49,11 +51,11 @@ export default function GuestRoom({ room, uid, refetchRoom }: any) {
     setCasting(true);
     try {
       await cast({ variables: { roomId, key: uid, value, confirmed: isConfirm } });
-      if (isConfirm) toast.success("Card locked in.");
+      if (isConfirm) toast.success(t("tarot.cardLockedIn"));
       await refetchRoom();
     } catch (e: any) {
       setConfirmed(false); // let them retry
-      toast.error(e.message ?? "Could not submit your card");
+      toast.error(e.message ?? t("tarot.couldNotSubmitCard"));
     } finally {
       setCasting(false);
     }
@@ -68,14 +70,14 @@ export default function GuestRoom({ room, uid, refetchRoom }: any) {
           <div className="card flex items-center justify-between">
             <div>
               <h1 className="text-lg font-bold">🃏 {room.name}</h1>
-              <p className="text-sm text-gray-500">Session ended · estimation results</p>
+              <p className="text-sm text-gray-500">{t("tarot.sessionEndedResults")}</p>
             </div>
-            <button className="btn-ghost" onClick={() => navigate("/tarot")}>← Back to Tarot</button>
+            <button className="btn-ghost" onClick={() => navigate("/tarot")}>{t("tarot.backToTarot")}</button>
           </div>
           {room.results?.length ? (
             <ResultsTable results={room.results} />
           ) : (
-            <div className="card text-sm text-gray-500">No estimated tickets in this session.</div>
+            <div className="card text-sm text-gray-500">{t("tarot.noEstimatedTickets")}</div>
           )}
           <Participants participants={room.participants} />
         </div>
@@ -84,11 +86,11 @@ export default function GuestRoom({ room, uid, refetchRoom }: any) {
     return (
       <div className="card flex flex-col items-center gap-3 py-16 text-center">
         <div className="text-5xl">🙏</div>
-        <h1 className="text-xl font-bold">Thanks for participating!</h1>
-        <p className="text-sm text-gray-500">The planning session has ended.</p>
+        <h1 className="text-xl font-bold">{t("tarot.thanksForParticipating")}</h1>
+        <p className="text-sm text-gray-500">{t("tarot.planningSessionEnded")}</p>
         <div className="mt-2 flex gap-2">
-          <button className="btn-primary" onClick={() => setShowResults(true)}>📊 View results</button>
-          <button className="btn-ghost" onClick={() => navigate("/tarot")}>← Back to Tarot</button>
+          <button className="btn-primary" onClick={() => setShowResults(true)}>{t("tarot.viewResults")}</button>
+          <button className="btn-ghost" onClick={() => navigate("/tarot")}>{t("tarot.backToTarot")}</button>
         </div>
       </div>
     );
@@ -98,14 +100,14 @@ export default function GuestRoom({ room, uid, refetchRoom }: any) {
     <div className="space-y-5">
       <div className="card flex items-center justify-between gap-2">
         <h1 className="text-lg font-bold">🃏 {room.name}</h1>
-        <span className="shrink-0 text-xs text-gray-500">Host: {room.hostName}</span>
+        <span className="shrink-0 text-xs text-gray-500">{t("tarot.hostLabel", { name: room.hostName })}</span>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
         <div className="space-y-4">
           {!round ? (
             <div className="card">
-              <p className="mb-4 text-sm text-gray-500">Waiting for the host to start a session…</p>
+              <p className="mb-4 text-sm text-gray-500">{t("tarot.waitingForHost")}</p>
               <div className="flex flex-wrap gap-3 opacity-60">
                 {room.scaleValues.map((v: string, i: number) => (
                   <PokerCard key={i} faceUp={false} disabled />
@@ -136,18 +138,18 @@ export default function GuestRoom({ room, uid, refetchRoom }: any) {
                       <PokerCard key={v.participantId} value={v.value} name={v.name} faceUp disabled />
                     ))}
                   </div>
-                  <p className="mt-3 text-center text-sm font-semibold text-brand">{round.syncPercent}% team synchronization</p>
+                  <p className="mt-3 text-center text-sm font-semibold text-brand">{t("tarot.teamSynchronization", { percent: round.syncPercent })}</p>
                 </>
               ) : confirmed ? (
                 <>
-                  <p className="mb-3 text-sm text-gray-500">Card locked. Waiting for everyone else…</p>
+                  <p className="mb-3 text-sm text-gray-500">{t("tarot.cardLockedWaiting")}</p>
                   <div className="flex flex-wrap gap-3">
                     {onlineVoters.map((p: any) => <PokerCard key={p.id} faceUp={false} disabled />)}
                   </div>
                 </>
               ) : (
                 <>
-                  <p className="mb-3 text-sm text-gray-500">Pick a card, then click it again to confirm.</p>
+                  <p className="mb-3 text-sm text-gray-500">{t("tarot.pickCardHint")}</p>
                   <div className="flex flex-wrap gap-3">
                     {room.scaleValues.map((v: string) => {
                       const card = (
@@ -169,7 +171,7 @@ export default function GuestRoom({ room, uid, refetchRoom }: any) {
                   </div>
                   {selected && (
                     <p className="mt-3 text-sm text-gray-500">
-                      Selected <b>{cardDisplay(selected)}</b> — click it again to confirm.
+                      {t("tarot.selectedPrefix")} <b>{cardDisplay(selected)}</b> {t("tarot.selectedSuffix")}
                     </p>
                   )}
                 </>

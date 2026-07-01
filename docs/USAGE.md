@@ -197,26 +197,37 @@ Open **Velocity** for story-point trends across sprints (the last 12):
   **Completed** (points on Done/Closed/Resolved tickets), plus the **average completed**
   velocity for planning. Hover a sprint for its exact numbers.
 - **Burndown** — click any sprint bar to see its daily burndown below: **Remaining** points
-  vs the **Ideal** straight line across the sprint's calendar days.
+  vs the **Ideal** straight line across the sprint's calendar days. **Hover** the bars or the
+  burndown line for exact numbers per sprint / per day.
+- **Tips card** — a shuffleable (← Prev / Next →) info card with tips on keeping velocity
+  healthy (commit realistically, slice tickets, attack blockers early, watch the trend).
 
 All of this is derived from the **standup ticket snapshots** (story points + status recorded
 per day), so it fills in as you run standups — no extra JIRA calls, no manual entry.
 
 ## 9. Clairvoyance (Sprint Grooming)
 
-The **Clairvoyance** menu is a **read-only** view of the **next sprint**'s tickets — the
-JIRA *future*-state sprint that follows the active one (sprint + 1) — pulled live from
-JIRA. It's meant to support the **Sprint Grooming** session.
+The **Clairvoyance** menu is a **read-only** grooming view of upcoming work, pulled live
+from JIRA. It's meant to support the **Sprint Grooming** session.
 
-Each row shows the ticket **key** (links to JIRA), **type**, **summary**, **status** and
-**priority**, **grouped by parent/story**. If the next sprint has no items, or hasn't been
-created yet in JIRA, an empty state with a **↻ Reload** button is shown. Results are
-cached ~60s server-side; Reload forces a re-pull.
+A **source dropdown** lets you switch between grooming sources: every **future sprint** (the
+not-yet-started sprints on the board, in order) and the **Backlog** (issues not assigned to
+any sprint). Each option shows its ticket count.
+
+The selected source's tickets are shown **grouped by parent/story**, each row with the
+ticket **key** (links to JIRA), **type**, **summary**, **status** and **priority**. If no
+future sprints or backlog exist yet, an empty state with a **↻ Reload** button is shown.
+Results are cached ~60s server-side; Reload forces a re-pull.
 
 ## 10. Tarot (Planning Poker)
 
 The **Tarot** menu runs collaborative estimation of the next sprint's tickets — it
 supports **Sprint Planning**. Available to anyone logged in (guest or admin).
+
+**How to play card.** The landing page shows a shuffleable (← Prev / Next →) **How to play**
+card covering both roles: the **guest** flow (join, pick a card, confirm, special ❓/☕
+cards) and the **host** flow (start a session, guide the vote & reveal, decide points, run
+cycles, finish & sync to Jira).
 
 **Rooms.** The landing page lists rooms (newest first); **+ Create room** is top-right.
 Only **one ACTIVE room per squad** is allowed — while one is active, others **Join** it

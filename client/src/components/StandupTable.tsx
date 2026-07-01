@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { DASHBOARD, SQUAD } from "../graphql";
 import { hiddenByDefaultStatus, statusColor, issueTypeRank } from "../lib/helpers";
 import StandupRow from "./StandupRow";
@@ -20,6 +21,7 @@ export default function StandupTable({
   canEdit?: boolean;
   leadKey?: string;
 }) {
+  const { t } = useTranslation();
   const { data, loading, error } = useQuery(DASHBOARD, {
     variables: { sprintId, date },
     fetchPolicy: "cache-and-network",
@@ -127,31 +129,31 @@ export default function StandupTable({
       {datalist("jcb-be", beNames.length ? beNames : allNames)}
       {datalist("jcb-qa", qaNames.length ? qaNames : allNames)}
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="text-base font-bold">Tickets — {date}</h2>
+        <h2 className="text-base font-bold">{t("comp.ticketsHeader", { date })}</h2>
         <div className="flex items-center gap-2">
-          {loading && <span className="text-xs text-gray-400">refreshing…</span>}
-          <label className="text-xs text-gray-500">Group:</label>
+          {loading && <span className="text-xs text-gray-400">{t("comp.refreshing")}</span>}
+          <label className="text-xs text-gray-500">{t("comp.groupLabel")}</label>
           <select
             className="input max-w-[140px] py-1 text-xs"
             value={groupBy}
             onChange={(e) => setGroupBy(e.target.value as any)}
           >
-            <option value="none">None</option>
-            <option value="epic">By Epic</option>
-            <option value="story">By Parent/Story</option>
+            <option value="none">{t("comp.groupNone")}</option>
+            <option value="epic">{t("comp.groupByEpic")}</option>
+            <option value="story">{t("comp.groupByStory")}</option>
           </select>
         </div>
       </div>
       {error && (
         <div className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-          Could not load board tickets: {error.message}
+          {t("comp.couldNotLoadTickets", { message: error.message })}
         </div>
       )}
 
       {/* Status filter */}
       {statuses.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status:</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("comp.statusLabel")}</span>
           {statuses.map((s) => {
             const on = isShown(s);
             return (
@@ -163,7 +165,7 @@ export default function StandupTable({
                     ? `${statusColor(s)} border-transparent`
                     : "border-gray-300 bg-transparent text-gray-400 line-through dark:border-gray-700"
                 }`}
-                title={on ? "Click to hide" : "Click to show"}
+                title={on ? t("comp.clickToHide") : t("comp.clickToShow")}
               >
                 {s}
               </button>
@@ -176,12 +178,12 @@ export default function StandupTable({
                 ? "border-transparent bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
                 : "border-gray-300 bg-transparent text-gray-400 dark:border-gray-700"
             }`}
-            title="Show only carry-over tickets"
+            title={t("comp.showOnlyCarryOver")}
           >
-            ↪ carry-over only
+            {t("comp.carryOverOnly")}
           </button>
           <span className="text-xs text-gray-400">
-            ({filtered.length}/{rows.length}) · Done/Archived hidden by default · Enter / Alt+↑↓ to move between rows
+            {t("comp.filterSummary", { shown: filtered.length, total: rows.length })}
           </span>
         </div>
       )}
@@ -199,11 +201,11 @@ export default function StandupTable({
         </colgroup>
         <thead>
           <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700">
-            <th className="p-2">JIRA Ticket</th>
-            <th className="p-2">Assignees (FE/BE/QA)</th>
-            <th className="p-2">Update</th>
-            <th className="p-2">Progress</th>
-            <th className="p-2">Blocker Note</th>
+            <th className="p-2">{t("comp.colJiraTicket")}</th>
+            <th className="p-2">{t("comp.colAssignees")}</th>
+            <th className="p-2">{t("comp.colUpdate")}</th>
+            <th className="p-2">{t("comp.colProgress")}</th>
+            <th className="p-2">{t("comp.colBlockerNote")}</th>
             <th className="w-24 p-2 pr-4"></th>
           </tr>
         </thead>
@@ -213,8 +215,8 @@ export default function StandupTable({
             <tr>
               <td colSpan={6} className="p-4 text-center text-sm text-gray-500">
                 {rows.length === 0
-                  ? "No tickets. Check JIRA config in Settings, or board may be empty."
-                  : "No tickets match the current status filter."}
+                  ? t("comp.noTickets")
+                  : t("comp.noTicketsMatchFilter")}
               </td>
             </tr>
           )}

@@ -1,4 +1,5 @@
 import { useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { ACTIVE_SPRINT_TICKETS, BLOCKERS, STANDUP_ENTRIES } from "../graphql";
 import { statusBucket, dayBreakdown, LEAVE_LABELS, type StatusBucket } from "../lib/helpers";
 import Tooltip from "./Tooltip";
@@ -25,6 +26,14 @@ export default function CurrentSprintSummary({
   members: any[];
   holidays: { date: string }[];
 }) {
+  const { t } = useTranslation();
+  const bucketLabel: Record<StatusBucket, string> = {
+    Done: t("panels.summaryBucketDone"),
+    "In QA": t("panels.summaryBucketInQA"),
+    "In Progress": t("panels.summaryBucketInProgress"),
+    "To Do": t("panels.summaryBucketToDo"),
+    Other: t("panels.summaryBucketOther"),
+  };
   const { data: tData } = useQuery(ACTIVE_SPRINT_TICKETS, { variables: { squadId } });
   const { data: bData } = useQuery(BLOCKERS, { variables: { squadId, includeResolved: false } });
   const { data: eData } = useQuery(STANDUP_ENTRIES, { variables: { sprintId }, skip: !sprintId });
@@ -101,24 +110,24 @@ export default function CurrentSprintSummary({
 
   return (
     <div className="card">
-      <h2 className="mb-3 text-base font-bold">📊 Sprint Summary</h2>
+      <h2 className="mb-3 text-base font-bold">{t("panels.summaryTitle")}</h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div>
-          <div className="label">Performance</div>
+          <div className="label">{t("panels.summaryPerformance")}</div>
           <div className="text-2xl font-bold text-brand">{avgProgress}%</div>
-          <div className="text-xs text-gray-500">avg progress · {total} tickets</div>
+          <div className="text-xs text-gray-500">{t("panels.summaryAvgProgress", { count: total })}</div>
           <div className="mt-1 text-xs">
-            <span className="font-semibold text-green-600 dark:text-green-400">{done} done</span> ·{" "}
-            <span className="font-semibold text-amber-600 dark:text-amber-400">{carryOver} carry-over</span>
+            <span className="font-semibold text-green-600 dark:text-green-400">{t("panels.summaryDone", { count: done })}</span> ·{" "}
+            <span className="font-semibold text-amber-600 dark:text-amber-400">{t("panels.summaryCarryOver", { count: carryOver })}</span>
           </div>
         </div>
 
         <div className="md:col-span-2">
-          <div className="label">JIRA status ({total})</div>
+          <div className="label">{t("panels.summaryJiraStatus", { count: total })}</div>
           <div className="mb-1 flex h-3 w-full overflow-hidden rounded">
             {BUCKET_ORDER.map((b) =>
               dist[b] ? (
-                <div key={b} className={BUCKET_COLOR[b]} style={{ width: `${pct(dist[b])}%` }} title={`${b}: ${dist[b]}`} />
+                <div key={b} className={BUCKET_COLOR[b]} style={{ width: `${pct(dist[b])}%` }} title={`${bucketLabel[b]}: ${dist[b]}`} />
               ) : null,
             )}
           </div>
@@ -126,13 +135,13 @@ export default function CurrentSprintSummary({
             {BUCKET_ORDER.filter((b) => dist[b]).map((b) => (
               <span key={b} className="flex items-center gap-1">
                 <span className={`inline-block h-2 w-2 rounded-full ${BUCKET_COLOR[b]}`} />
-                {b}: {dist[b]} ({pct(dist[b])}%)
+                {bucketLabel[b]}: {dist[b]} ({pct(dist[b])}%)
               </span>
             ))}
           </div>
           <div className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
-            Carry-over (not Done): {carryOver} ({pct(carryOver)}%)
-            <Tooltip content="Tickets not yet Done (In QA + In Progress + To Do). These are expected to roll over (carry over) into the next sprint.">
+            {t("panels.summaryCarryOverNotDone", { count: carryOver, pct: pct(carryOver) })}
+            <Tooltip content={t("panels.summaryCarryOverTooltip")}>
               <span className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-gray-400 text-[9px] font-bold">
                 i
               </span>
@@ -141,45 +150,45 @@ export default function CurrentSprintSummary({
         </div>
 
         <div>
-          <div className="label">Blockers</div>
+          <div className="label">{t("panels.summaryBlockers")}</div>
           <div className="text-sm">
-            <b>{activeBlockers.length}</b> active
+            <b>{activeBlockers.length}</b> {t("panels.summaryActive")}
           </div>
-          <div className="label mt-2">Sprint</div>
+          <div className="label mt-2">{t("panels.summarySprint")}</div>
           <div className="text-xs">
-            {days.total} days · <b>{days.working}</b> working · {days.weekend} weekend · {days.holiday} holiday
+            {t("panels.summaryDaysTotal", { count: days.total })} · <b>{days.working}</b> {t("panels.summaryDaysWorking")} · {t("panels.summaryDaysWeekend", { count: days.weekend })} · {t("panels.summaryDaysHoliday", { count: days.holiday })}
           </div>
         </div>
       </div>
 
       <div className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
-        <div className="label">Team status (this sprint)</div>
+        <div className="label">{t("panels.summaryTeamStatus")}</div>
         <div className="flex flex-wrap gap-2 text-xs">
-          <span className="chip bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">Annual Leave: {team.CUTI}</span>
-          <span className="chip bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">Sick: {team.SAKIT}</span>
-          <span className="chip bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">Permission: {team.IZIN}</span>
+          <span className="chip bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">{t("panels.summaryAnnualLeave", { count: team.CUTI })}</span>
+          <span className="chip bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">{t("panels.summarySick", { count: team.SAKIT })}</span>
+          <span className="chip bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">{t("panels.summaryPermission", { count: team.IZIN })}</span>
         </div>
         {leaveDetails.length > 0 && (
           <ul className="mt-2 space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
             {leaveDetails.map((d, i) => (
               <li key={i}>
-                <b>{d.name}</b> — {LEAVE_LABELS[d.type] ?? d.type} {d.days} day{d.days === 1 ? "" : "s"}
-                {d.type === "CUTI" && d.sub && <span> · substitute: <b>{d.sub}</b></span>}
+                <b>{d.name}</b> — {LEAVE_LABELS[d.type] ?? d.type} {t("panels.summaryLeaveDays", { count: d.days })}
+                {d.type === "CUTI" && d.sub && <span> · {t("panels.summarySubstitute")}: <b>{d.sub}</b></span>}
               </li>
             ))}
           </ul>
         )}
 
-        <div className="label mt-3">Story points per member ({totalSP} total)</div>
+        <div className="label mt-3">{t("panels.summaryStoryPoints", { count: totalSP })}</div>
         {spByMember.size === 0 ? (
-          <p className="text-xs text-gray-400">No story points assigned yet.</p>
+          <p className="text-xs text-gray-400">{t("panels.summaryNoStoryPoints")}</p>
         ) : (
           <div className="flex flex-wrap gap-2 text-xs">
             {[...spByMember.entries()]
               .sort((a, b) => b[1] - a[1])
               .map(([name, pts]) => (
                 <span key={name} className="chip bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  {name}: <b className="ml-1">{pts} SP</b>
+                  {name}: <b className="ml-1">{t("panels.summarySpValue", { count: pts })}</b>
                 </span>
               ))}
           </div>

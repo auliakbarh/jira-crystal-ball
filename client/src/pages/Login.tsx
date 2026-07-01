@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useMutation } from "@apollo/client";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { LOGIN } from "../graphql";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [login, { loading }] = useMutation(LOGIN);
@@ -20,14 +22,14 @@ export default function Login() {
       const payload = res.data?.login;
       if (payload) {
         if (!payload.user.isAdmin) {
-          setError("This account is not an admin.");
+          setError(t("login.notAdmin"));
           return;
         }
         setAuth(payload.token, payload.user);
         navigate("/");
       }
     } catch (err: any) {
-      setError(err.message ?? "Login failed");
+      setError(err.message ?? t("login.loginFailed"));
     }
   };
 
@@ -36,8 +38,8 @@ export default function Login() {
       <form onSubmit={submit} className="card w-full max-w-sm space-y-4">
         <div className="text-center">
           <div className="text-4xl">🔮</div>
-          <h1 className="mt-1 text-xl font-bold">JIRA Crystal Ball</h1>
-          <p className="text-sm text-gray-500">Admin sign in</p>
+          <h1 className="mt-1 text-xl font-bold">{t("login.title")}</h1>
+          <p className="text-sm text-gray-500">{t("login.subtitle")}</p>
         </div>
 
         {error && (
@@ -47,7 +49,7 @@ export default function Login() {
         )}
 
         <div>
-          <label className="label">Email</label>
+          <label className="label">{t("login.email")}</label>
           <input
             className="input"
             type="email"
@@ -58,7 +60,7 @@ export default function Login() {
           />
         </div>
         <div>
-          <label className="label">Password</label>
+          <label className="label">{t("login.password")}</label>
           <input
             className="input"
             type="password"
@@ -68,15 +70,15 @@ export default function Login() {
           />
         </div>
         <button className="btn-primary w-full" disabled={loading}>
-          {loading ? "Signing in…" : "Sign in as admin"}
+          {loading ? t("login.signingIn") : t("login.signInAsAdmin")}
         </button>
 
         <div className="border-t border-gray-200 pt-3 text-center text-sm dark:border-gray-800">
           <Link to="/guest" className="text-brand hover:underline">
-            ← Continue as guest to run a standup
+            {t("login.continueAsGuest")}
           </Link>
         </div>
-        <p className="text-center text-[11px] text-gray-400">Created by Aulia Akbar Harahap · June 2026</p>
+        <p className="text-center text-[11px] text-gray-400">{t("login.createdBy")}</p>
       </form>
     </div>
   );

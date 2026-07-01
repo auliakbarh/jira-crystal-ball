@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { JIRA_ENV, TEST_JIRA, UPDATE_SQUAD } from "../graphql";
 
 /**
@@ -16,6 +17,7 @@ export default function JiraConfigForm({
   currentBoardId?: string | null;
   onSaved?: () => void;
 }) {
+  const { t } = useTranslation();
   const { data: envData } = useQuery(JIRA_ENV);
   const envCfg = envData?.jiraEnv;
 
@@ -31,7 +33,7 @@ export default function JiraConfigForm({
     setMsg(null);
     try {
       await update({ variables: { id: squadId, defaultBoardId: boardId } });
-      setMsg("Board id saved.");
+      setMsg(t("comp.boardIdSaved"));
       onSaved?.();
     } catch (e: any) {
       setErr(e.message);
@@ -43,9 +45,9 @@ export default function JiraConfigForm({
     setMsg(null);
     try {
       const res = await test();
-      setMsg(`✅ Connected as: ${res.data?.testJiraConfig}`);
+      setMsg(t("comp.connectedAs", { user: res.data?.testJiraConfig }));
     } catch (e: any) {
-      setErr(`❌ ${e.message}`);
+      setErr(t("comp.connectionError", { message: e.message }));
     }
   };
 
@@ -53,34 +55,33 @@ export default function JiraConfigForm({
     <div className="space-y-3">
       {/* Global credentials status */}
       <div className="rounded-md border border-gray-200 p-3 text-sm dark:border-gray-800">
-        <div className="mb-1 font-semibold">JIRA credentials (server environment)</div>
+        <div className="mb-1 font-semibold">{t("comp.jiraCredentialsTitle")}</div>
         {envCfg?.configured ? (
           <div className="text-gray-600 dark:text-gray-400">
-            <div>✅ Configured</div>
-            <div className="text-xs">Base URL: {envCfg.baseUrl}</div>
-            <div className="text-xs">Account: {envCfg.email}</div>
+            <div>{t("comp.configured")}</div>
+            <div className="text-xs">{t("comp.baseUrlLabel", { url: envCfg.baseUrl })}</div>
+            <div className="text-xs">{t("comp.accountLabel", { email: envCfg.email })}</div>
           </div>
         ) : (
           <div className="text-amber-600 dark:text-amber-400">
-            ⚠️ Not configured. Set <code>JIRA_BASE_URL</code>, <code>JIRA_EMAIL</code> and{" "}
-            <code>JIRA_API_TOKEN</code> in the server <code>.env</code>, then restart the server.
+            {t("comp.notConfiguredPrefix")} <code>JIRA_BASE_URL</code>, <code>JIRA_EMAIL</code>{" "}
+            {t("comp.notConfiguredAnd")} <code>JIRA_API_TOKEN</code> {t("comp.notConfiguredInServer")}{" "}
+            <code>.env</code>{t("comp.notConfiguredSuffix")}
           </div>
         )}
       </div>
 
       <div>
-        <label className="label">Board ID (optional)</label>
+        <label className="label">{t("comp.boardIdOptional")}</label>
         <input
           className="input"
-          placeholder={envCfg?.defaultBoardId ? `env default: ${envCfg.defaultBoardId}` : "e.g. 123 or project key ATH"}
+          placeholder={envCfg?.defaultBoardId ? t("comp.envDefaultPlaceholder", { id: envCfg.defaultBoardId }) : t("comp.boardIdPlaceholder")}
           value={boardId}
           onChange={(e) => setBoardId(e.target.value)}
         />
         <p className="mt-1 text-xs text-gray-500">
-          Per-squad board id (numeric id from <code>…/boards/123</code>, or a project key).
-          Leave blank to use the env default
-          {envCfg?.defaultBoardId ? ` (${envCfg.defaultBoardId})` : ""} — board ticket
-          views just stay empty if no board id is resolvable.
+          {t("comp.boardIdHelpBefore")} <code>…/boards/123</code>{t("comp.boardIdHelpAfter")}
+          {envCfg?.defaultBoardId ? ` (${envCfg.defaultBoardId})` : ""}{t("comp.boardIdHelpEnd")}
         </p>
       </div>
 
@@ -89,10 +90,10 @@ export default function JiraConfigForm({
 
       <div className="flex gap-2">
         <button className="btn-primary" onClick={onSave} disabled={loading}>
-          {loading ? "Saving…" : "Save board id"}
+          {loading ? t("comp.saving") : t("comp.saveBoardId")}
         </button>
         <button className="btn-ghost" onClick={onTest} disabled={testing || !envCfg?.configured}>
-          {testing ? "Testing…" : "Test connection"}
+          {testing ? t("comp.testing") : t("comp.testConnection")}
         </button>
       </div>
     </div>

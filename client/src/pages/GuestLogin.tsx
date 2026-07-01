@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { GUEST_LOGIN, SQUADS, MEMBER_SUGGESTIONS } from "../graphql";
 import { useAuth } from "../context/AuthContext";
 import { useSquad } from "../context/SquadContext";
 
 export default function GuestLogin() {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
   const [squadId, setLocalSquad] = useState("");
@@ -36,7 +38,7 @@ export default function GuestLogin() {
         setStep(2);
       }
     } catch (err: any) {
-      setError(err.message ?? "Could not continue");
+      setError(err.message ?? t("guest.couldNotContinue"));
     }
   };
 
@@ -51,8 +53,8 @@ export default function GuestLogin() {
       <div className="card w-full max-w-sm space-y-4">
         <div className="text-center">
           <div className="text-4xl">🔮</div>
-          <h1 className="mt-1 text-xl font-bold">Run a Standup</h1>
-          <p className="text-sm text-gray-500">Guest access — no account needed</p>
+          <h1 className="mt-1 text-xl font-bold">{t("guest.title")}</h1>
+          <p className="text-sm text-gray-500">{t("guest.subtitle")}</p>
         </div>
 
         {error && (
@@ -64,13 +66,13 @@ export default function GuestLogin() {
         {step === 1 && (
           <form onSubmit={continueAsGuest} className="space-y-4">
             <div>
-              <label className="label">Your name (standup lead)</label>
+              <label className="label">{t("guest.yourName")}</label>
               <input
                 className="input"
                 list="jcb-member-names"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Budi"
+                placeholder={t("guest.namePlaceholder")}
                 required
                 autoFocus
               />
@@ -83,7 +85,7 @@ export default function GuestLogin() {
               </datalist>
             </div>
             <button className="btn-primary w-full" disabled={loading || !name.trim()}>
-              {loading ? "Please wait…" : "Continue"}
+              {loading ? t("guest.pleaseWait") : t("guest.continue")}
             </button>
           </form>
         )}
@@ -91,12 +93,12 @@ export default function GuestLogin() {
         {step === 2 && (
           <div className="space-y-4">
             <div className="text-sm text-gray-500">
-              Lead: <b className="text-gray-800 dark:text-gray-100">{name}</b>
+              {t("guest.lead")} <b className="text-gray-800 dark:text-gray-100">{name}</b>
             </div>
             <div>
-              <label className="label">Squad</label>
+              <label className="label">{t("guest.squad")}</label>
               <select className="input" value={squadId} onChange={(e) => setLocalSquad(e.target.value)}>
-                <option value="">{loadingSquads ? "Loading…" : "Select a squad…"}</option>
+                <option value="">{loadingSquads ? t("guest.loading") : t("guest.selectSquad")}</option>
                 {squads.map((s: any) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -107,16 +109,16 @@ export default function GuestLogin() {
 
             {selected && (
               <div>
-                <label className="label">Board</label>
+                <label className="label">{t("guest.board")}</label>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="chip bg-gray-100 dark:bg-gray-800">
                     {selected.defaultBoardId || "—"}
                   </span>
                   {selected.jiraConfigured ? (
-                    <span className="text-green-600 dark:text-green-400">JIRA connected</span>
+                    <span className="text-green-600 dark:text-green-400">{t("guest.jiraConnected")}</span>
                   ) : (
                     <span className="text-amber-600 dark:text-amber-400">
-                      JIRA not configured — tickets won't load
+                      {t("guest.jiraNotConfigured")}
                     </span>
                   )}
                 </div>
@@ -124,17 +126,17 @@ export default function GuestLogin() {
             )}
 
             <button className="btn-primary w-full" onClick={enterDashboard} disabled={!squadId}>
-              Enter dashboard
+              {t("guest.enterDashboard")}
             </button>
           </div>
         )}
 
         <div className="text-center text-sm">
           <Link to="/login" className="text-brand hover:underline">
-            Admin login →
+            {t("guest.adminLogin")}
           </Link>
         </div>
-        <p className="text-center text-[11px] text-gray-400">Created by Aulia Akbar Harahap · June 2026</p>
+        <p className="text-center text-[11px] text-gray-400">{t("guest.createdBy")}</p>
       </div>
     </div>
   );

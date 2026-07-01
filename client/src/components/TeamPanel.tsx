@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { SQUAD, ADD_LEAVE, DELETE_LEAVE, ACTIVE_SPRINT_TICKETS, STANDUP_ENTRIES } from "../graphql";
 import { POSITION_COLORS, LEAVE_TYPES, LEAVE_LABELS, isOnLeave, todayISO } from "../lib/helpers";
 import { SkeletonLines } from "./Skeleton";
 
 export default function TeamPanel({ squadId, sprintId }: { squadId: string; sprintId?: string }) {
+  const { t } = useTranslation();
   const { data, loading, refetch } = useQuery(SQUAD, { variables: { id: squadId } });
   const today = todayISO();
   const members = data?.squad?.members ?? [];
@@ -41,12 +43,12 @@ export default function TeamPanel({ squadId, sprintId }: { squadId: string; spri
   return (
     <div className="card">
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-base font-bold">Team Members</h2>
-        {totalSP > 0 && <span className="text-xs text-gray-500">{totalSP} SP total</span>}
+        <h2 className="text-base font-bold">{t("panels.teamTitle")}</h2>
+        {totalSP > 0 && <span className="text-xs text-gray-500">{t("panels.teamSpTotal", { count: totalSP })}</span>}
       </div>
       {loading && members.length === 0 && <SkeletonLines rows={4} />}
       {!loading && members.length === 0 && (
-        <p className="text-sm text-gray-500">No members yet. Add them in Settings.</p>
+        <p className="text-sm text-gray-500">{t("panels.teamNoMembers")}</p>
       )}
       <ul className="space-y-2">
         {members.map((m: any) => {
@@ -61,31 +63,31 @@ export default function TeamPanel({ squadId, sprintId }: { squadId: string; spri
                 <span className="font-medium">{m.name}</span>
                 {spByMember.get(m.name) ? (
                   <span className="chip bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                    {spByMember.get(m.name)} SP
+                    {t("panels.teamSp", { count: spByMember.get(m.name) })}
                   </span>
                 ) : null}
                 {activeLeave ? (
                   <span className="ml-auto text-right text-xs">
                     <span className="chip bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
-                      {LEAVE_LABELS[activeLeave.type] ?? "Leave"}
+                      {LEAVE_LABELS[activeLeave.type] ?? t("panels.teamLeaveFallback")}
                     </span>
                     <div className="mt-0.5 text-gray-500">
                       {activeLeave.startDate} → {activeLeave.endDate}
                       {activeLeave.substitute && (
-                        <span> · cover: <b>{activeLeave.substitute.name}</b></span>
+                        <span> · {t("panels.teamCover")}: <b>{activeLeave.substitute.name}</b></span>
                       )}
                     </div>
                   </span>
                 ) : (
                   <span className="ml-auto chip bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                    Available
+                    {t("panels.teamAvailable")}
                   </span>
                 )}
                 <button
                   className="text-xs text-brand hover:underline"
                   onClick={() => setEditing(editing === m.id ? null : m.id)}
                 >
-                  {editing === m.id ? "Close" : "Status"}
+                  {editing === m.id ? t("panels.teamClose") : t("panels.teamStatus")}
                 </button>
               </div>
               {editing === m.id && (
@@ -100,6 +102,7 @@ export default function TeamPanel({ squadId, sprintId }: { squadId: string; spri
 }
 
 function LeaveEditor({ member, members, onChanged }: { member: any; members: any[]; onChanged: () => void }) {
+  const { t } = useTranslation();
   const [type, setType] = useState("CUTI");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -148,7 +151,7 @@ function LeaveEditor({ member, members, onChanged }: { member: any; members: any
         <input type="date" className="input max-w-[130px] py-1 text-xs" value={start} onChange={(e) => setStart(e.target.value)} />
         <input type="date" className="input max-w-[130px] py-1 text-xs" value={end} onChange={(e) => setEnd(e.target.value)} />
         <select className="input max-w-[120px] py-1 text-xs" value={sub} onChange={(e) => setSub(e.target.value)}>
-          <option value="">Substitute…</option>
+          <option value="">{t("panels.teamSubstitutePlaceholder")}</option>
           {members
             .filter((x: any) => x.id !== member.id)
             .map((x: any) => (
@@ -158,7 +161,7 @@ function LeaveEditor({ member, members, onChanged }: { member: any; members: any
             ))}
         </select>
         <button className="btn-ghost text-xs" onClick={addLeave}>
-          + set
+          {t("panels.teamSetLeave")}
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useSubscription, useApolloClient } from "@apollo/client";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useSquad } from "../context/SquadContext";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -31,6 +32,7 @@ import Modal from "../components/Modal";
 import JiraConfigForm from "../components/JiraConfigForm";
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { squadId } = useSquad();
   const [date, setDate] = useState(todayISO());
   const [dismissed, setDismissed] = useState(false);
@@ -146,10 +148,10 @@ export default function Dashboard() {
       await refetchSprint();
       if (!silent) {
         const s = res.data?.syncActiveSprint;
-        setSyncMsg(s ? `Synced Sprint ${s.number} from JIRA.` : "No active sprint found on the board.");
+        setSyncMsg(s ? t("dashboard.syncedFrom", { number: s.number }) : t("dashboard.noActiveOnBoard"));
       }
     } catch (e: any) {
-      if (!silent) setSyncMsg(`Sync failed: ${e.message}`);
+      if (!silent) setSyncMsg(t("dashboard.syncFailed", { msg: e.message }));
     }
   };
 
@@ -176,13 +178,8 @@ export default function Dashboard() {
     <div className="space-y-5">
       {/* JIRA not configured popup (global credentials missing) */}
       {squadData && !jiraConfigured && !dismissed && (
-        <Modal title="🔧 Configure JIRA first" onClose={() => setDismissed(true)}>
-          <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-            JIRA credentials are not set on the server. An admin must set{" "}
-            <code>JIRA_BASE_URL</code>, <code>JIRA_EMAIL</code> and <code>JIRA_API_TOKEN</code>{" "}
-            in the server <code>.env</code> and restart. You can still record standup updates
-            manually — only live ticket data needs JIRA.
-          </p>
+        <Modal title={t("dashboard.jiraModalTitle")} onClose={() => setDismissed(true)}>
+          <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">{t("dashboard.jiraModalBody")}</p>
           <JiraConfigForm
             squadId={squadId}
             currentBoardId={squadData?.squad?.defaultBoardId}
@@ -200,7 +197,7 @@ export default function Dashboard() {
           {sprint ? (
             <>
               <div className="text-lg font-bold">
-                Sprint {sprint.number}
+                {t("dashboard.sprint")} {sprint.number}
                 {sprint.name ? ` — ${sprint.name}` : ""}
               </div>
               <div className="text-sm text-gray-500">
@@ -209,12 +206,10 @@ export default function Dashboard() {
             </>
           ) : (
             <div className="text-sm text-gray-500">
-              No active sprint.{" "}
-              {jiraConfigured ? (
-                <span>Use “Sync from JIRA”, or </span>
-              ) : null}
+              {t("dashboard.noActiveSprint")}{" "}
+              {jiraConfigured ? <span>{t("dashboard.useSyncOr")}</span> : null}
               <Link to="/settings" className="text-brand hover:underline">
-                create one in Settings
+                {t("dashboard.createInSettings")}
               </Link>
               .
             </div>
@@ -223,12 +218,12 @@ export default function Dashboard() {
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">
           {jiraConfigured && (
-            <button className="btn-ghost shrink-0" onClick={() => doSync(false)} disabled={syncing} title="Pull active sprint from JIRA">
-              {syncing ? "Syncing…" : "↻ Sync from JIRA"}
+            <button className="btn-ghost shrink-0" onClick={() => doSync(false)} disabled={syncing} title={t("dashboard.syncTitle")}>
+              {syncing ? t("dashboard.syncing") : t("dashboard.syncFromJira")}
             </button>
           )}
           <div className="flex items-center gap-2">
-            <label className="label mb-0 shrink-0">Standup date</label>
+            <label className="label mb-0 shrink-0">{t("dashboard.standupDate")}</label>
             <input
               type="date"
               className="input max-w-[170px]"
@@ -250,39 +245,39 @@ export default function Dashboard() {
         >
           {!standup?.active && (
             <>
-              <span className="text-sm text-gray-500">No standup in progress.</span>
+              <span className="text-sm text-gray-500">{t("dashboard.noStandup")}</span>
               <button className="btn-primary ml-auto" onClick={begin}>
-                ▶ Start standup
+                {t("dashboard.startStandup")}
               </button>
             </>
           )}
           {isLeading && (
             <>
               <span className="text-sm">
-                🎤 You are leading this standup{" "}
+                {t("dashboard.youLeading")}{" "}
                 <span className="chip bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                  editing enabled
+                  {t("dashboard.editingEnabled")}
                 </span>
               </span>
               {standup?.startedAt && (
-                <span className="chip bg-gray-100 dark:bg-gray-800" title="Elapsed since start">
+                <span className="chip bg-gray-100 dark:bg-gray-800" title={t("dashboard.elapsedTitle")}>
                   ⏱ <Elapsed startedAt={standup.startedAt} />
                 </span>
               )}
               <button className="btn-ghost ml-auto" onClick={finish}>
-                ■ End standup
+                {t("dashboard.endStandup")}
               </button>
             </>
           )}
           {ledByOther && (
             <>
               <span className="text-sm">
-                🔒 Standup led by <b>{standup.leadName}</b> —{" "}
-                {isAdmin ? "you're admin (editing allowed)" : "read-only for you"}
+                {t("dashboard.ledBy")} <b>{standup.leadName}</b> —{" "}
+                {isAdmin ? t("dashboard.adminEditing") : t("dashboard.readOnly")}
               </span>
               {isAdmin && (
-                <button className="btn-ghost ml-auto" onClick={begin} title="Take over as admin">
-                  Take over
+                <button className="btn-ghost ml-auto" onClick={begin} title={t("dashboard.takeOverTitle")}>
+                  {t("dashboard.takeOver")}
                 </button>
               )}
             </>
@@ -292,7 +287,7 @@ export default function Dashboard() {
 
       {sprint && (
         <div className="card">
-          <h2 className="mb-2 text-sm font-bold">Sprint Timeline</h2>
+          <h2 className="mb-2 text-sm font-bold">{t("dashboard.sprintTimeline")}</h2>
           <SprintProgress
             startDate={sprint.startDate}
             endDate={sprint.endDate}
@@ -330,7 +325,7 @@ export default function Dashboard() {
           {sprint ? (
             <StandupTable squadId={squadId} sprintId={sprint.id} date={date} canEdit={canEdit} leadKey={LEAD_KEY} />
           ) : (
-            <div className="card text-sm text-gray-500">Create a sprint to start recording standup updates.</div>
+            <div className="card text-sm text-gray-500">{t("dashboard.createSprintHint")}</div>
           )}
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { todayISO } from "../lib/helpers";
 
 function daysBetween(aISO: string, bISO: string): number {
@@ -21,12 +22,13 @@ export default function SprintProgress({
   currentDate?: string;
   onSelect?: (iso: string) => void;
 }) {
+  const { t } = useTranslation();
   const today = todayISO();
   const selected = currentDate ?? today;
   const total = daysBetween(startDate, endDate) + 1; // inclusive
   if (total <= 0 || total > 400) return null;
 
-  const holiMap = new Map(holidays.map((h) => [h.date, h.name ?? "Holiday"]));
+  const holiMap = new Map(holidays.map((h) => [h.date, h.name ?? t("panels.progressHoliday")]));
 
   // Build one block per calendar day. Derive everything from the LOCAL date —
   // toISOString() would shift the day in non-UTC timezones and misalign weekends.
@@ -49,8 +51,8 @@ export default function SprintProgress({
   return (
     <div className="w-full">
       <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">
-        <span>{before ? "Not started" : after ? "Ended" : `Day ${elapsed} of ${total}`}</span>
-        <span>{after ? "done" : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`}</span>
+        <span>{before ? t("panels.progressNotStarted") : after ? t("panels.progressEnded") : t("panels.progressDayOf", { elapsed, total })}</span>
+        <span>{after ? t("panels.progressDoneLabel") : t("panels.progressDaysLeft", { count: daysLeft })}</span>
       </div>
       <div className="flex flex-wrap gap-1">
         {blocks.map((b) => {
@@ -73,9 +75,9 @@ export default function SprintProgress({
               key={b.iso}
               type="button"
               onClick={() => onSelect?.(b.iso)}
-              title={`${b.iso}${holiday ? ` · ${holiMap.get(b.iso)}` : weekend ? " · weekend" : ""}${
-                isToday ? " · today" : ""
-              } — click to set standup date`}
+              title={`${b.iso}${holiday ? ` · ${holiMap.get(b.iso)}` : weekend ? ` · ${t("panels.progressWeekend")}` : ""}${
+                isToday ? ` · ${t("panels.progressToday")}` : ""
+              } — ${t("panels.progressClickToSet")}`}
               className={`flex h-9 w-9 flex-col items-center justify-center rounded border text-center leading-none transition hover:opacity-80 ${cls} ${
                 isSelected ? "ring-2 ring-gray-500 dark:ring-gray-300" : ""
               }`}
@@ -87,10 +89,10 @@ export default function SprintProgress({
         })}
       </div>
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-400">
-        <span><span className="text-brand">■</span> elapsed</span>
-        <span><span className="text-green-500">■</span> today</span>
-        <span>▢ upcoming</span>
-        <span><span className="text-red-400">■</span> weekend/holiday</span>
+        <span><span className="text-brand">■</span> {t("panels.progressLegendElapsed")}</span>
+        <span><span className="text-green-500">■</span> {t("panels.progressLegendToday")}</span>
+        <span>▢ {t("panels.progressLegendUpcoming")}</span>
+        <span><span className="text-red-400">■</span> {t("panels.progressLegendWeekendHoliday")}</span>
       </div>
     </div>
   );

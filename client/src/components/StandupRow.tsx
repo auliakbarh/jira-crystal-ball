@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { SAVE_ENTRY, BLOCKERS, DASHBOARD, ACTIVITY_LOG, STANDUP_ENTRIES } from "../graphql";
 import { statusColor, priorityColor } from "../lib/helpers";
 import Tooltip from "./Tooltip";
@@ -45,6 +46,7 @@ export default function StandupRow({
   leadKey?: string;
   rowIndex?: number;
 }) {
+  const { t } = useTranslation();
   const ticketKey = row.ticket?.key ?? row.entry?.ticketKey ?? "";
   const status = row.ticket?.status ?? row.entry?.ticketStatus;
   const summary = row.ticket?.summary ?? row.entry?.ticketSummary;
@@ -173,8 +175,8 @@ export default function StandupRow({
             <Tooltip
               content={
                 row.ticket?.carryOverSprints?.length
-                  ? `Carry-over ×${row.ticket.carryOverCount} — from: ${row.ticket.carryOverSprints.join(", ")}`
-                  : "Carry-over — seen in an earlier sprint"
+                  ? t("comp.carryOverFrom", { count: row.ticket.carryOverCount, sprints: row.ticket.carryOverSprints.join(", ") })
+                  : t("comp.carryOverSeen")
               }
             >
               <span className="cursor-help text-xs font-semibold text-purple-600 dark:text-purple-300">
@@ -192,17 +194,17 @@ export default function StandupRow({
           )}
         </div>
         {summary && <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">{summary}</div>}
-        {assignee && <div className="mt-0.5 text-xs text-gray-400">JIRA: {assignee}</div>}
+        {assignee && <div className="mt-0.5 text-xs text-gray-400">{t("comp.jiraAssignee", { assignee })}</div>}
       </td>
 
       {/* Assignee inputs */}
       <td className="p-2 align-top">
         <div className="space-y-1">
-          <input data-col="fe" data-row={rowIndex} list="jcb-fe" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="FE" value={fe}
+          <input data-col="fe" data-row={rowIndex} list="jcb-fe" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder={t("comp.roleFE")} value={fe}
             onChange={(e) => { setFe(e.target.value); markDirty(); }} onBlur={onBlur} />
-          <input data-col="be" data-row={rowIndex} list="jcb-be" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="BE" value={be}
+          <input data-col="be" data-row={rowIndex} list="jcb-be" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder={t("comp.roleBE")} value={be}
             onChange={(e) => { setBe(e.target.value); markDirty(); }} onBlur={onBlur} />
-          <input data-col="qa" data-row={rowIndex} list="jcb-qa" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder="QA" value={qa}
+          <input data-col="qa" data-row={rowIndex} list="jcb-qa" disabled={!canEdit} className="input py-1 text-xs disabled:opacity-60" placeholder={t("comp.roleQA")} value={qa}
             onChange={(e) => { setQa(e.target.value); markDirty(); }} onBlur={onBlur} />
         </div>
       </td>
@@ -214,7 +216,7 @@ export default function StandupRow({
             data-col="update" data-row={rowIndex}
             disabled={!canEdit}
             className="input min-h-[64px] pr-6 text-sm disabled:opacity-60"
-            placeholder="Standup update…"
+            placeholder={t("comp.standupUpdatePlaceholder")}
             value={update}
             onChange={(e) => { setUpdate(e.target.value); markDirty(); }}
             onBlur={onBlur}
@@ -222,7 +224,7 @@ export default function StandupRow({
           <button
             type="button"
             className="absolute right-1 top-1 text-gray-400 hover:text-brand"
-            title="Expand"
+            title={t("comp.expand")}
             onClick={() => setExpand("update")}
           >
             ⤢
@@ -235,7 +237,7 @@ export default function StandupRow({
         {hasAssignees ? (
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold">{overallProgress}%</span>
-            <span className="text-[10px] text-gray-400">avg of assignees</span>
+            <span className="text-[10px] text-gray-400">{t("comp.avgOfAssignees")}</span>
           </div>
         ) : (
           <div className="flex items-center gap-2">
@@ -300,7 +302,7 @@ export default function StandupRow({
             data-col="blocker" data-row={rowIndex}
             disabled={!canEdit}
             className="input min-h-[64px] pr-6 text-sm disabled:opacity-60"
-            placeholder="Blocker note (syncs to Blockers)…"
+            placeholder={t("comp.blockerNotePlaceholder")}
             value={blocker}
             onChange={(e) => { setBlocker(e.target.value); markDirty(); }}
             onBlur={onBlur}
@@ -308,7 +310,7 @@ export default function StandupRow({
           <button
             type="button"
             className="absolute right-1 top-1 text-gray-400 hover:text-brand"
-            title="Expand"
+            title={t("comp.expand")}
             onClick={() => setExpand("blocker")}
           >
             ⤢
@@ -322,7 +324,7 @@ export default function StandupRow({
         </button>
         {expand && (
           <Modal
-            title={`${expand === "update" ? "Update" : "Blocker note"} — ${ticketKey}`}
+            title={`${expand === "update" ? t("comp.modalUpdate") : t("comp.modalBlockerNote")} — ${ticketKey}`}
             onClose={() => {
               setExpand(null);
               onBlur();
@@ -331,7 +333,7 @@ export default function StandupRow({
             <textarea
               className="input min-h-[240px] text-sm"
               autoFocus
-              placeholder={expand === "update" ? "Standup update…" : "Blocker note (syncs to Blockers)…"}
+              placeholder={expand === "update" ? t("comp.standupUpdatePlaceholder") : t("comp.blockerNotePlaceholder")}
               value={expand === "update" ? update : blocker}
               onChange={(e) => {
                 if (expand === "update") setUpdate(e.target.value);
@@ -347,7 +349,7 @@ export default function StandupRow({
                   onBlur();
                 }}
               >
-                Done
+                {t("comp.done")}
               </button>
             </div>
           </Modal>

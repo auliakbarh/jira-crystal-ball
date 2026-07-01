@@ -10,6 +10,7 @@ import {
   fetchActiveSprintInfo,
   fetchNextSprintIssues,
   fetchNextSprintInfo,
+  fetchGroomingBuckets,
   testConnection,
   listFields,
   listUsers,
@@ -95,6 +96,15 @@ export const squadResolvers = {
       if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
       if (!cfg.boardId) return [];
       return fetchNextSprintIssues(cfg, { force: !!refresh });
+    },
+
+    groomingBuckets: async (_p: unknown, { squadId, refresh }: { squadId: string; refresh?: boolean }, ctx: Context) => {
+      requireAuth(ctx);
+      const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
+      const cfg = jiraCfgForBoard(squad);
+      if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
+      if (!cfg.boardId) return [];
+      return fetchGroomingBuckets(cfg, { force: !!refresh });
     },
 
     jiraActiveSprint: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {
