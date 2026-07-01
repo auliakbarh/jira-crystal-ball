@@ -18,7 +18,9 @@
     "noSquadSelected": "Belum ada squad dipilih. Buat satu di atas untuk mulai.",
     "toggleTheme": "Ganti tema",
     "language": "Bahasa",
-    "footer": "🔮 JIRA Crystal Ball · Dibuat oleh Aulia Akbar Harahap · Juni 2026"
+    "footer": "🔮 JIRA Crystal Ball · Dibuat oleh Aulia Akbar Harahap · Juni 2026",
+    "hide": "Sembunyikan",
+    "show": "Tampilkan"
   },
   "help": {
     "heading": "❓ Cara memakai dashboard",

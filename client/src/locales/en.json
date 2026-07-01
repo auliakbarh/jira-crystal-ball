@@ -18,7 +18,9 @@
     "noSquadSelected": "No squad selected. Create one above to begin.",
     "toggleTheme": "Toggle theme",
     "language": "Language",
-    "footer": "🔮 JIRA Crystal Ball · Created by Aulia Akbar Harahap · June 2026"
+    "footer": "🔮 JIRA Crystal Ball · Created by Aulia Akbar Harahap · June 2026",
+    "hide": "Hide",
+    "show": "Show"
   },
   "help": {
     "heading": "❓ How to use the dashboard",
