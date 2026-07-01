@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { GUEST_LOGIN, SQUADS, MEMBER_SUGGESTIONS } from "../graphql";
 import { useAuth } from "../context/AuthContext";
 import { useSquad } from "../context/SquadContext";
+import FloatingDecor from "../components/FloatingDecor";
 
 export default function GuestLogin() {
   const { t } = useTranslation();
@@ -49,8 +50,9 @@ export default function GuestLogin() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="card w-full max-w-sm space-y-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      <FloatingDecor items={["🔮", "✨", "🌙", "⭐", "🃏", "📊"]} className="absolute inset-0" />
+      <div className="card relative z-10 w-full max-w-sm space-y-4">
         <div className="text-center">
           <div className="text-4xl">🔮</div>
           <h1 className="mt-1 text-xl font-bold">{t("guest.title")}</h1>

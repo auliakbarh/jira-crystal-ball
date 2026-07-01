@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LOGIN } from "../graphql";
 import { useAuth } from "../context/AuthContext";
+import FloatingDecor from "../components/FloatingDecor";
 
 export default function Login() {
   const { t } = useTranslation();
@@ -34,8 +35,9 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={submit} className="card w-full max-w-sm space-y-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      <FloatingDecor items={["🔮", "✨", "🌙", "⭐", "🃏", "📊"]} className="absolute inset-0" />
+      <form onSubmit={submit} className="card relative z-10 w-full max-w-sm space-y-4">
         <div className="text-center">
           <div className="text-4xl">🔮</div>
           <h1 className="mt-1 text-xl font-bold">{t("login.title")}</h1>

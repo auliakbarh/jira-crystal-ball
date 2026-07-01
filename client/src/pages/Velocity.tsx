@@ -4,6 +4,7 @@ import { useQuery } from "@apollo/client";
 import { useSquad } from "../context/SquadContext";
 import { VELOCITY, JIRA_VELOCITY, BURNDOWN } from "../graphql";
 import TipsCarousel, { TipCard } from "../components/TipsCarousel";
+import FloatingDecor from "../components/FloatingDecor";
 
 type V = {
   sprintId: string;
@@ -156,7 +157,13 @@ export default function Velocity() {
         <Burndown sprintId={currentSprint} label={rows.find((r) => r.sprintId === currentSprint)?.number} />
       )}
 
-      <TipsCarousel title={t("velocity.tipsTitle")} cards={VELOCITY_TIPS} />
+      <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
+        <TipsCarousel title={t("velocity.tipsTitle")} cards={VELOCITY_TIPS} />
+        <FloatingDecor
+          items={["📈", "📊", "🎯", "🔥", "🏁", "⚡"]}
+          className="relative hidden flex-1 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 md:block"
+        />
+      </div>
     </div>
   );
 }
