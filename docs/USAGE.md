@@ -193,17 +193,21 @@ entry stores the ticket's epic/parent at the time).
 
 Open **Velocity** for story-point trends across sprints (the last 12):
 
+- **Source toggle** — pick where the numbers come from:
+  - **From standups** — computed from **this tool's standup snapshots** (story points + status
+    recorded each day, stored in the app DB). It fills in as you run standups here — sprints
+    never run through a standup won't appear. Includes the burndown.
+  - **From JIRA** — computed **live from JIRA's closed sprints** (the board's story points), so
+    it works even without standups. No burndown for this source (JIRA has no per-day snapshot).
 - **Story points per sprint** — two bars per sprint: **Committed** (total points) vs
   **Completed** (points on Done/Closed/Resolved tickets), plus the **average completed**
   velocity for planning. Hover a sprint for its exact numbers.
-- **Burndown** — click any sprint bar to see its daily burndown below: **Remaining** points
-  vs the **Ideal** straight line across the sprint's calendar days. **Hover** the bars or the
-  burndown line for exact numbers per sprint / per day.
-- **Tips card** — a shuffleable (← Prev / Next →) info card with tips on keeping velocity
-  healthy (commit realistically, slice tickets, attack blockers early, watch the trend).
-
-All of this is derived from the **standup ticket snapshots** (story points + status recorded
-per day), so it fills in as you run standups — no extra JIRA calls, no manual entry.
+- **Burndown** (standups source) — click any sprint bar to see its daily burndown below:
+  **Remaining** vs the **Ideal** line across the sprint's calendar days. **Hover** the bars or
+  the burndown line for exact numbers.
+- **Tips card** — a stacked flashcard deck (auto-advances every 10s, hide/show, ← Prev / Next →)
+  with tips on keeping velocity healthy (commit realistically, slice tickets, attack blockers
+  early, watch the trend).
 
 ## 9. Clairvoyance (Sprint Grooming)
 

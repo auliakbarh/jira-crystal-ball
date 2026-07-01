@@ -179,11 +179,18 @@ Notes:
   `fetchGroomingBuckets` in `jira.ts`): returns grooming sources — every **future**
   (not-yet-started) sprint, each with its issues, plus the **Backlog** (`/board/{id}/backlog`).
   Powers the Clairvoyance source dropdown. All issue fetches are paginated.
-- **Velocity / burndown** (`resolvers/velocity.ts`): `velocity(squadId, limit)` returns
-  per-sprint `{ committedPoints, completedPoints, ticketCount, doneCount }` (oldest→newest,
-  last `limit`); `burndown(sprintId)` returns daily `{ date, remainingPoints, idealPoints }`.
-  Both derive from `StandupEntry` snapshots (latest per ticket; "done" = status in
-  done/closed/resolved/complete via `isDoneStatus`) — no extra JIRA calls. UI: **Velocity** page.
+- **Velocity / burndown** (`resolvers/velocity.ts`):
+  - `velocity(squadId, limit)` — per-sprint `{ committedPoints, completedPoints, ticketCount,
+    doneCount }` derived from **`StandupEntry` snapshots** in this tool's DB (latest per ticket;
+    "done" = status in done/closed/resolved/complete via `isDoneStatus`). No JIRA calls, so it
+    only reflects sprints that were actually run through standups here.
+  - `burndown(sprintId)` — daily `{ date, remainingPoints, idealPoints }`, also from
+    `StandupEntry` (DB source only).
+  - `jiraVelocity(squadId, limit)` — same shape but computed **live from JIRA** closed sprints
+    (`fetchJiraVelocity` in `jira.ts`: `/board/{id}/sprint?state=closed` → each sprint's issues,
+    committed = Σ story points, completed = Σ SP of Done/Closed/Resolved). No standups needed;
+    no burndown for this source (JIRA has no per-day snapshot here).
+  - UI: **Velocity** page with a **From standups / From JIRA** source toggle.
 - The `Date` scalar is serialized as `YYYY-MM-DD` (calendar dates, UTC-midnight parsed).
 
 ### Example

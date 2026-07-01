@@ -459,7 +459,12 @@
     "tip5Title": "Tangani blocker lebih awal",
     "tip5Body": "Tiket yang terblokir membekukan poinnya di burndown. Ungkap blocker di standup pada hari kemunculannya, bukan di akhir sprint — itulah pengungkit terbesar bagi velocity yang selesai.",
     "tip6Title": "Tren daripada sprint tunggal",
-    "tip6Body": "Satu sprint rendah bukan masalah; tren menurun adalah masalah. Perhatikan diagram batang antar sprint — garis selesai yang stabil atau naik perlahan adalah tujuannya, bukan lonjakan."
+    "tip6Body": "Satu sprint rendah bukan masalah; tren menurun adalah masalah. Perhatikan diagram batang antar sprint — garis selesai yang stabil atau naik perlahan adalah tujuannya, bukan lonjakan.",
+    "sourceStandup": "Dari standup",
+    "sourceJira": "Dari JIRA",
+    "sourceStandupHint": "Dihitung dari snapshot standup tool ini (story point + status tercatat tiap hari). Terisi seiring kamu menjalankan standup.",
+    "sourceJiraHint": "Dihitung langsung dari sprint JIRA yang sudah selesai (story point board). Tak perlu standup; burndown tidak tersedia untuk sumber ini.",
+    "noJiraData": "Tidak ada sprint selesai dengan story point di board JIRA."
   },
   "clairvoyance": {
     "loadError": "Tidak dapat memuat tiket: {{message}}",

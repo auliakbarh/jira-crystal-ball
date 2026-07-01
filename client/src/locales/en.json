@@ -459,7 +459,12 @@
     "tip5Title": "Attack blockers early",
     "tip5Body": "A blocked ticket freezes its points on the burndown. Surface blockers in standup the day they appear, not at sprint end — that’s the single biggest lever on completed velocity.",
     "tip6Title": "Trend over single sprints",
-    "tip6Body": "One low sprint isn’t a problem; a downward trend is. Watch the bar chart across sprints — a stable or gently rising completed line is the goal, not spikes."
+    "tip6Body": "One low sprint isn’t a problem; a downward trend is. Watch the bar chart across sprints — a stable or gently rising completed line is the goal, not spikes.",
+    "sourceStandup": "From standups",
+    "sourceJira": "From JIRA",
+    "sourceStandupHint": "Computed from this tool's standup snapshots (story points + status recorded each day). Fills in as you run standups.",
+    "sourceJiraHint": "Computed live from JIRA closed sprints (board story points). No standups needed; burndown is not available for this source.",
+    "noJiraData": "No closed sprints with story points found on the JIRA board."
   },
   "clairvoyance": {
     "loadError": "Could not load tickets: {{message}}",

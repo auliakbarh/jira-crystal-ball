@@ -351,7 +351,10 @@ export const typeDefs = /* GraphQL */ `
     admins: [User!]!
 
     # Per-sprint story-point velocity (oldest to newest); limit caps to the last N.
+    # Source: StandupEntry snapshots in this tool's DB (no live JIRA calls).
     velocity(squadId: ID!, limit: Int): [SprintVelocity!]!
+    # Same shape, computed LIVE from JIRA closed sprints (board story points).
+    jiraVelocity(squadId: ID!, limit: Int): [SprintVelocity!]!
     # Daily burndown for one sprint (remaining vs ideal).
     burndown(sprintId: ID!): [BurndownPoint!]!
 

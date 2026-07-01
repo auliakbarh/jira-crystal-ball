@@ -45,8 +45,9 @@ by value/effort within each group. ✅ = done.
 - [ ] **Export** sprint summary / logs to CSV/PDF.
 - ✅ **Velocity / burndown** across sprints (story points) — **Velocity** page: per-sprint
       committed vs completed bars + average velocity, click a sprint for its daily burndown
-      (remaining vs ideal). Derived from `StandupEntry` snapshots (`resolvers/velocity.ts`,
-      queries `velocity`/`burndown`); no extra JIRA calls.
+      (remaining vs ideal). **Two sources** via a toggle: `velocity`/`burndown` from
+      `StandupEntry` snapshots (DB), and `jiraVelocity` computed live from JIRA closed sprints
+      (`fetchJiraVelocity`). `resolvers/velocity.ts`.
 - [ ] **Notifications** — new blocker / standup start → Slack or email.
 
 ## Robustness / quality

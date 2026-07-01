@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@apollo/client";
 import { useSquad } from "../context/SquadContext";
-import { VELOCITY, BURNDOWN } from "../graphql";
+import { VELOCITY, JIRA_VELOCITY, BURNDOWN } from "../graphql";
 import TipsCarousel, { TipCard } from "../components/TipsCarousel";
 
 type V = {
@@ -27,16 +27,26 @@ export default function Velocity() {
     { icon: "🚧", title: t("velocity.tip5Title"), body: t("velocity.tip5Body") },
     { icon: "📈", title: t("velocity.tip6Title"), body: t("velocity.tip6Body") },
   ];
-  const { data, loading, error } = useQuery(VELOCITY, {
+  const [source, setSource] = useState<"standup" | "jira">("standup");
+  const db = useQuery(VELOCITY, {
     variables: { squadId, limit: 12 },
-    skip: !squadId,
+    skip: !squadId || source !== "standup",
     fetchPolicy: "cache-and-network",
   });
-  const rows: V[] = data?.velocity ?? [];
+  const jira = useQuery(JIRA_VELOCITY, {
+    variables: { squadId, limit: 12 },
+    skip: !squadId || source !== "jira",
+    fetchPolicy: "cache-and-network",
+  });
+  const active = source === "jira" ? jira : db;
+  const loading = active.loading;
+  const error = active.error;
+  const rows: V[] = (source === "jira" ? jira.data?.jiraVelocity : db.data?.velocity) ?? [];
   const [selected, setSelected] = useState<string>("");
   const [hover, setHover] = useState<number | null>(null);
 
-  const currentSprint = selected || rows[rows.length - 1]?.sprintId || "";
+  // Burndown only for the standup/DB source (JIRA has no per-day snapshots here).
+  const currentSprint = source === "standup" ? selected || rows[rows.length - 1]?.sprintId || "" : "";
 
   const avg = useMemo(() => {
     const done = rows.filter((r) => r.completedPoints > 0);
@@ -48,7 +58,26 @@ export default function Velocity() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold">{t("velocity.heading")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">{t("velocity.heading")}</h1>
+        <div className="flex items-center gap-1 rounded-lg border border-gray-200 p-0.5 text-sm dark:border-gray-700">
+          <button
+            className={`rounded-md px-3 py-1 ${source === "standup" ? "bg-brand text-white" : "text-gray-500"}`}
+            onClick={() => setSource("standup")}
+          >
+            {t("velocity.sourceStandup")}
+          </button>
+          <button
+            className={`rounded-md px-3 py-1 ${source === "jira" ? "bg-brand text-white" : "text-gray-500"}`}
+            onClick={() => setSource("jira")}
+          >
+            {t("velocity.sourceJira")}
+          </button>
+        </div>
+      </div>
+      <p className="-mt-3 text-xs text-gray-400">
+        {source === "jira" ? t("velocity.sourceJiraHint") : t("velocity.sourceStandupHint")}
+      </p>
 
       {error && (
         <div className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
@@ -66,7 +95,7 @@ export default function Velocity() {
 
         {rows.length === 0 && !loading ? (
           <p className="text-sm text-gray-500">
-            {t("velocity.noSprintData")}
+            {source === "jira" ? t("velocity.noJiraData") : t("velocity.noSprintData")}
           </p>
         ) : (
           <>

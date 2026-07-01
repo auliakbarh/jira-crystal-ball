@@ -489,6 +489,83 @@ async function _fetchGroomingBuckets(cfg: JiraConfigLike): Promise<GroomingBucke
   return buckets;
 }
 
+export interface JiraVelocityRow {
+  sprintId: string;
+  number: number;
+  name: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  committedPoints: number;
+  completedPoints: number;
+  ticketCount: number;
+  doneCount: number;
+}
+
+function isDoneName(status?: string | null): boolean {
+  const s = (status ?? "").trim().toLowerCase();
+  return s === "done" || s === "closed" || s === "resolved" || s === "complete" || s === "completed";
+}
+
+function parseSprintNumber(name: string): number | null {
+  const after = name.match(/sprint\s*#?\s*(\d+)/i);
+  const last = name.match(/(\d+)(?!.*\d)/);
+  const s = after?.[1] ?? last?.[1];
+  return s ? parseInt(s, 10) : null;
+}
+
+/** Per-closed-sprint velocity computed live from JIRA (committed vs Done SP). */
+export function fetchJiraVelocity(cfg: JiraConfigLike, limit: number, opts: JiraFetchOpts = {}): Promise<JiraVelocityRow[]> {
+  return cached(`jiraVelocity:${limit}`, cfg, !!opts.force, () => _fetchJiraVelocity(cfg, limit));
+}
+
+async function _fetchJiraVelocity(cfg: JiraConfigLike, limit: number): Promise<JiraVelocityRow[]> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const headers = jiraHeaders(cfg);
+  const boardId = await resolveBoardId(cfg, base);
+  const spIds = await resolveSpIds(cfg);
+  const fields = `summary,status,issuetype${spFieldsParam(spIds) ? "," + spFieldsParam(spIds) : ""}`;
+
+  const res = await fetch(`${base}/rest/agile/1.0/board/${boardId}/sprint?state=closed`, { headers });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA closed-sprint lookup failed (${res.status}): ${body.slice(0, 300)}`);
+  }
+  const data: any = await res.json();
+  let sprints: any[] = (data.values ?? []).filter((s: any) => s.startDate && s.endDate);
+  sprints.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  if (limit > 0) sprints = sprints.slice(-limit);
+
+  const out: JiraVelocityRow[] = [];
+  let seq = 0;
+  for (const s of sprints) {
+    seq += 1;
+    const issues = await paginateIssues(base, headers, `/rest/agile/1.0/board/${boardId}/sprint/${s.id}/issue`, fields, spIds);
+    let committed = 0;
+    let completed = 0;
+    let doneCount = 0;
+    for (const it of issues) {
+      const pts = typeof it.storyPoints === "number" ? it.storyPoints : 0;
+      committed += pts;
+      if (isDoneName(it.status)) {
+        completed += pts;
+        doneCount += 1;
+      }
+    }
+    out.push({
+      sprintId: String(s.id),
+      number: parseSprintNumber(String(s.name ?? "")) ?? seq,
+      name: s.name ?? null,
+      startDate: isoToDate(s.startDate),
+      endDate: isoToDate(s.endDate),
+      committedPoints: Math.round(committed * 100) / 100,
+      completedPoints: Math.round(completed * 100) / 100,
+      ticketCount: issues.length,
+      doneCount,
+    });
+  }
+  return out;
+}
+
 /** First future (next) sprint on the board, or null. */
 export function fetchNextSprintInfo(cfg: JiraConfigLike, opts: JiraFetchOpts = {}): Promise<JiraSprintInfo | null> {
   return cached("nextInfo", cfg, !!opts.force, () => _fetchNextSprintInfo(cfg));

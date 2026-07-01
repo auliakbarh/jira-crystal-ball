@@ -2,7 +2,8 @@
 // ideal). Both derive from StandupEntry snapshots — no extra JIRA calls.
 import type { Context } from "../context.js";
 import { requireAuth } from "../context.js";
-import { isDoneStatus } from "./shared.js";
+import { isDoneStatus, jiraCfgForBoard } from "./shared.js";
+import { fetchJiraVelocity } from "../jira.js";
 
 const sp = (e: { storyPoints: number | null }) => (typeof e.storyPoints === "number" ? e.storyPoints : 0);
 
@@ -44,6 +45,15 @@ export const velocityResolvers = {
         });
       }
       return out;
+    },
+
+    jiraVelocity: async (_p: unknown, { squadId, limit }: { squadId: string; limit?: number }, ctx: Context) => {
+      requireAuth(ctx);
+      const squad = await ctx.prisma.squad.findUnique({ where: { id: squadId } });
+      const cfg = jiraCfgForBoard(squad);
+      if (!cfg) throw new Error("JIRA_NOT_CONFIGURED");
+      if (!cfg.boardId) return [];
+      return fetchJiraVelocity(cfg, limit && limit > 0 ? limit : 12);
     },
 
     burndown: async (_p: unknown, { sprintId }: { sprintId: string }, ctx: Context) => {

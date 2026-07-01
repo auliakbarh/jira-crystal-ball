@@ -6,8 +6,10 @@ export type TipCard = { title: string; icon?: string; body: ReactNode };
 
 const AUTO_MS = 10_000;
 
-// Shuffleable info cards: auto-advances every 10s, hide/show toggle, and a
-// flashcard-style 3D flip between cards. Auto-advance pauses on hover / when hidden.
+// Shuffleable info cards rendered as a physical stack of flashcards: the top card
+// sits in front, the next few peek behind it, and advancing flings the top card
+// away while the stack slides forward. Auto-advances every 10s (pauses on hover /
+// when hidden) and can be hidden/shown.
 export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title?: string }) {
   const { t } = useTranslation();
   const [i, setI] = useState(0);
@@ -25,7 +27,6 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
     setI(((to % n) + n) % n);
   };
 
-  // Auto-advance; reset on manual nav (i in deps), pause on hover / hidden.
   useEffect(() => {
     if (hidden || paused || n <= 1) return;
     const id = setInterval(() => {
@@ -36,12 +37,14 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
   }, [hidden, paused, n, i]);
 
   if (n === 0) return null;
-  const c = cards[i];
 
-  const variants = {
-    enter: (d: number) => ({ rotateY: d > 0 ? 90 : -90, opacity: 0 }),
-    center: { rotateY: 0, opacity: 1 },
-    exit: (d: number) => ({ rotateY: d > 0 ? -90 : 90, opacity: 0 }),
+  // Cyclic offset of a card relative to the current top (-1..+2 are rendered):
+  // -1 = leaving (flings away), 0 = front, 1/2 = stacked behind.
+  const offsetOf = (idx: number) => {
+    let o = idx - i;
+    if (o > n / 2) o -= n;
+    if (o < -n / 2) o += n;
+    return o;
   };
 
   return (
@@ -73,34 +76,47 @@ export default function TipsCarousel({ cards, title }: { cards: TipCard[]; title
             transition={{ duration: 0.25 }}
             style={{ overflow: "hidden" }}
           >
+            {/* Card stack */}
             <div
-              className="relative mt-2"
-              style={{ perspective: 1200 }}
+              className="relative mt-3"
+              style={{ height: 168, perspective: 1200 }}
               onMouseEnter={() => setPaused(true)}
               onMouseLeave={() => setPaused(false)}
             >
-              <div style={{ minHeight: 132 }}>
-                <AnimatePresence mode="wait" custom={dir}>
+              {cards.map((card, idx) => {
+                const o = offsetOf(idx);
+                if (o < -1 || o > 2) return null;
+                const leaving = o < 0;
+                return (
                   <motion.div
-                    key={i}
-                    custom={dir}
-                    variants={variants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ duration: 0.35, ease: "easeInOut" }}
-                    style={{ transformStyle: "preserve-3d", backfaceVisibility: "hidden" }}
+                    key={idx}
+                    className="absolute inset-x-0 top-0 rounded-xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                    style={{ transformOrigin: "center bottom" }}
+                    initial={false}
+                    animate={
+                      leaving
+                        ? { y: -80, x: dir * 40, rotate: dir * -6, scale: 0.92, opacity: 0, zIndex: 30 }
+                        : {
+                            y: o * 14,
+                            scale: 1 - o * 0.05,
+                            opacity: o === 0 ? 1 : 0.55 - (o - 1) * 0.15,
+                            zIndex: 20 - o,
+                            rotate: 0,
+                            x: 0,
+                          }
+                    }
+                    transition={{ type: "spring", stiffness: 320, damping: 32 }}
                   >
                     <div className="flex items-start gap-3">
-                      {c.icon && <div className="shrink-0 text-3xl">{c.icon}</div>}
+                      {card.icon && <div className="shrink-0 text-3xl">{card.icon}</div>}
                       <div>
-                        <h3 className="font-semibold">{c.title}</h3>
-                        <div className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">{c.body}</div>
+                        <h3 className="font-semibold">{card.title}</h3>
+                        <div className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">{card.body}</div>
                       </div>
                     </div>
                   </motion.div>
-                </AnimatePresence>
-              </div>
+                );
+              })}
             </div>
 
             <div className="mt-3 flex items-center justify-between">

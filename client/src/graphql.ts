@@ -81,6 +81,22 @@ export const VELOCITY = gql`
   }
 `;
 
+export const JIRA_VELOCITY = gql`
+  query JiraVelocity($squadId: ID!, $limit: Int) {
+    jiraVelocity(squadId: $squadId, limit: $limit) {
+      sprintId
+      number
+      name
+      startDate
+      endDate
+      committedPoints
+      completedPoints
+      ticketCount
+      doneCount
+    }
+  }
+`;
+
 export const BURNDOWN = gql`
   query Burndown($sprintId: ID!) {
     burndown(sprintId: $sprintId) {
