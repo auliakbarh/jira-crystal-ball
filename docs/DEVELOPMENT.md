@@ -156,6 +156,61 @@ npm run dev:client   # frontend only (vite — HMR)
 | Prisma client type errors after schema edit | `cd server && npx prisma generate`. |
 | `401 Unauthorized` on GraphQL calls | Token missing/expired — log out and back in. |
 
+## Sharing on your local network (LAN)
+
+Let teammates on the **same wifi/office network** try your local instance — no
+tunnel needed. You bind both apps to your machine's LAN IP and point the client
+at it.
+
+### 1. Find your machine's LAN IP
+
+```bash
+ipconfig getifaddr en0        # wifi (try en1 if empty)
+```
+
+Example result: `10.10.5.130`. Use yours below.
+
+### 2. Point the client at your IP
+
+The client reads the server URL from `VITE_GRAPHQL_URL`. Set it to your **IP**
+(not `localhost` — else a teammate's browser hits their own machine). WebSocket
+subscriptions auto-derive (`http` → `ws`):
+
+```bash
+# client/.env
+VITE_GRAPHQL_URL="http://10.10.5.130:4000/graphql"
+```
+
+### 3. Bind Vite to the LAN
+
+The GraphQL server (`4000`) already binds all interfaces. Vite binds `localhost`
+by default — expose it with `host: true` in `vite.config.ts` (already set), or a
+one-off flag:
+
+```bash
+cd client && npm run dev -- --host
+```
+
+### 4. Run + share
+
+```bash
+npm run dev                          # both apps
+```
+
+Teammates open `http://10.10.5.130:5173` in their browser.
+
+### Notes & gotchas
+
+- **Restart Vite** after editing `client/.env` — env is baked at dev-server start.
+- **macOS firewall** may block `:4000` / `:5173`. System Settings → Network →
+  Firewall → allow `node`, or disable for the test.
+- **IP changes** on wifi reconnect / DHCP lease renewal — re-check
+  `ipconfig getifaddr en0` and re-set `VITE_GRAPHQL_URL` if it moved.
+- **Same network only** — teammates must be on the same wifi with no AP/client
+  isolation. For remote/off-network sharing use the ngrok section below.
+- **CORS** — in development the server allows all origins, so LAN works as-is.
+- Teammates need a login account (or guest login if enabled).
+
 ## Exposing locally with ngrok (dev + testing)
 
 Share your local instance (demo, testing on a phone, webhook callbacks) with
