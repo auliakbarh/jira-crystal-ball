@@ -485,7 +485,7 @@ export const typeDefs = /* GraphQL */ `
 
     # --- Fortune (Gemini ticket creator) ---
     fortuneModels: [String!]!
-    fortuneSearchTickets(squadId: ID!, query: String!): [FortuneTicketRef!]!
+    fortuneSearchTickets(squadId: ID!, query: String!, issueType: String): [FortuneTicketRef!]!
     fortuneDrafts(squadId: ID!): [FortuneDraftEntry!]!
     fortuneHistory(squadId: ID!, limit: Int): [FortuneHistoryEntry!]!
     geminiSettings: GeminiSettings!

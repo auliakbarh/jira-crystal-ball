@@ -153,6 +153,8 @@
     "importSearchTitle": "Find a ticket",
     "importSearchHint": "Search a ticket on this squad's board by key or title, then pick it to import.",
     "importKeyLabel": "Search by key or title",
+    "importTypeLabel": "Filter by issue type",
+    "importTypeAll": "All types",
     "importKeyPlaceholder": "e.g. ENG-1234 or “login redesign”",
     "importNoMatch": "No matching tickets on the board.",
     "updateBtn": "💾 Update ticket",

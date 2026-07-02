@@ -1019,8 +1019,8 @@ export const FORTUNE_MODELS = gql`
 `;
 
 export const FORTUNE_SEARCH_TICKETS = gql`
-  query FortuneSearchTickets($squadId: ID!, $query: String!) {
-    fortuneSearchTickets(squadId: $squadId, query: $query) {
+  query FortuneSearchTickets($squadId: ID!, $query: String!, $issueType: String) {
+    fortuneSearchTickets(squadId: $squadId, query: $query, issueType: $issueType) {
       key
       summary
       issueType

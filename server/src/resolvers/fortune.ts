@@ -199,10 +199,10 @@ export const fortuneResolvers = {
       }
     },
 
-    fortuneSearchTickets: async (_p: unknown, { squadId, query }: { squadId: string; query: string }, ctx: Context) => {
+    fortuneSearchTickets: async (_p: unknown, { squadId, query, issueType }: { squadId: string; query: string; issueType?: string }, ctx: Context) => {
       await requireMember(ctx);
       const { cfg } = await squadCfgOrThrow(ctx, squadId);
-      return searchBoardIssues(cfg, query);
+      return searchBoardIssues(cfg, query, issueType);
     },
 
     fortuneDrafts: async (_p: unknown, { squadId }: { squadId: string }, ctx: Context) => {

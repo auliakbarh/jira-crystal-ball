@@ -153,6 +153,8 @@
     "importSearchTitle": "Cari tiket",
     "importSearchHint": "Cari tiket di board squad ini via nomor atau judul, lalu pilih untuk di-import.",
     "importKeyLabel": "Cari via nomor atau judul",
+    "importTypeLabel": "Filter jenis tiket",
+    "importTypeAll": "Semua jenis",
     "importKeyPlaceholder": "mis. ENG-1234 atau “login redesign”",
     "importNoMatch": "Tidak ada tiket cocok di board.",
     "updateBtn": "💾 Update tiket",

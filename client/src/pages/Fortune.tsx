@@ -119,6 +119,7 @@ export default function Fortune() {
   // Import mode
   const [ticketQuery, setTicketQuery] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState("Epic"); // find-ticket type filter; "" = all
   const [ticketKey, setTicketKey] = useState("");
   const [importPrev, setImportPrev] = useState<string | null>(null);
   const [undoData, setUndoData] = useState<{ key: string; prev: string } | null>(null);
@@ -149,7 +150,7 @@ export default function Fortune() {
     return () => clearTimeout(id);
   }, [ticketQuery]);
   const { data: searchData, loading: searching, error: searchError } = useQuery(FORTUNE_SEARCH_TICKETS, {
-    variables: { squadId, query: searchTerm },
+    variables: { squadId, query: searchTerm, issueType: searchType || undefined },
     skip: !squadId || view !== "new" || mode !== "import" || step !== "input",
     fetchPolicy: "cache-and-network",
   });
@@ -489,7 +490,16 @@ export default function Fortune() {
               <h2 className="mb-1 text-base font-bold">{t("fortune.importSearchTitle")}</h2>
               <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">{t("fortune.importSearchHint")}</p>
               <label className="block text-sm font-medium">{t("fortune.importKeyLabel")}</label>
-              <input className="input mt-1 w-full" value={ticketQuery} onChange={(e) => setTicketQuery(e.target.value)} placeholder={t("fortune.importKeyPlaceholder")} />
+              <div className="mt-1 flex gap-2">
+                <input className="input w-full" value={ticketQuery} onChange={(e) => setTicketQuery(e.target.value)} placeholder={t("fortune.importKeyPlaceholder")} />
+                <select className="input w-32 shrink-0" value={searchType} onChange={(e) => setSearchType(e.target.value)} title={t("fortune.importTypeLabel")}>
+                  <option value="">{t("fortune.importTypeAll")}</option>
+                  <option value="Epic">Epic</option>
+                  <option value="Story">Story</option>
+                  <option value="Task">Task</option>
+                  <option value="Bug">Bug</option>
+                </select>
+              </div>
               <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-gray-200 dark:border-gray-800">
                 {searchError ? (
                   <div className="px-3 py-2 text-sm text-red-600 dark:text-red-400">{searchError.message}</div>

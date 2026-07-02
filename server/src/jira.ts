@@ -894,18 +894,24 @@ export async function findAccountIdByEmail(cfg: JiraConfigLike, email: string): 
 export interface FortuneTicketRef { key: string; summary: string; issueType: string | null; }
 
 /** Search the squad's board project by key or title (for the Import picker). */
-export async function searchBoardIssues(cfg: JiraConfigLike, query: string): Promise<FortuneTicketRef[]> {
+export async function searchBoardIssues(cfg: JiraConfigLike, query: string, issueType?: string): Promise<FortuneTicketRef[]> {
   const base = normalizeBaseUrl(cfg.baseUrl);
   const projectKey = await boardProjectKey(cfg);
-  const q = query.trim().replace(/["\\]/g, " ");
+  // Bare number (e.g. "578") = this squad's ticket <projectKey>-<num>.
+  const q = /^\d+$/.test(query.trim()) ? `${projectKey}-${query.trim()}` : query.trim().replace(/["\\]/g, " ");
   const isKey = /^[A-Za-z][A-Za-z0-9_]+-\d+$/.test(q);
-  const jql = q
-    ? isKey
-      ? `key = "${q}"`
-      : `project = "${projectKey}" AND summary ~ "${q}*" ORDER BY updated DESC`
-    : `project = "${projectKey}" ORDER BY updated DESC`;
+  // Optional type filter (from the picker dropdown). Blank/"all" = every type.
+  const t = (issueType ?? "").trim().replace(/["\\]/g, " ");
+  const typeClause = t && t.toLowerCase() !== "all" ? ` AND issuetype = "${t}"` : "";
+  // Always scope to this squad's project — key search included, so a key from
+  // another squad's project (e.g. ATH-1 while on Cairo) never leaks in.
+  const jql = isKey
+    ? `project = "${projectKey}" AND key = "${q}"`
+    : q
+      ? `project = "${projectKey}" AND summary ~ "${q}*"${typeClause} ORDER BY updated DESC`
+      : `project = "${projectKey}"${typeClause} ORDER BY updated DESC`;
   // Use the current /search/jql endpoint (legacy /search returns 410 Gone).
-  const params = new URLSearchParams({ jql, maxResults: "15", fields: "summary,issuetype" });
+  const params = new URLSearchParams({ jql, maxResults: "50", fields: "summary,issuetype" });
   const res = await fetch(`${base}/rest/api/3/search/jql?${params.toString()}`, { headers: jiraHeaders(cfg) });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
