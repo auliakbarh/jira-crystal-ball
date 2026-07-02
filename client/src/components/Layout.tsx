@@ -1,11 +1,11 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useMute } from "../context/MuteContext";
 import { useSquad } from "../context/SquadContext";
-import { SQUADS, CREATE_SQUAD } from "../graphql";
+import { SQUADS } from "../graphql";
 import { setLanguage } from "../i18n";
 import { playUi } from "../lib/sound";
 import { useEffect, useState } from "react";
@@ -50,22 +50,12 @@ export default function Layout() {
     };
   }, []);
   const { squadId, setSquadId } = useSquad();
-  const { data, refetch } = useQuery(SQUADS);
-  const [createSquad] = useMutation(CREATE_SQUAD);
-  const [newName, setNewName] = useState("");
+  const { data } = useQuery(SQUADS);
 
   const squads = data?.squads ?? [];
   // Auto-select the first squad when none is chosen OR the stored selection
   // points to a squad that no longer exists (e.g. after a DB reset).
   if (squads.length && !squads.some((s: any) => s.id === squadId)) setSquadId(squads[0].id);
-
-  const onCreate = async () => {
-    if (!newName.trim()) return;
-    const res = await createSquad({ variables: { name: newName.trim() } });
-    setNewName("");
-    await refetch();
-    if (res.data?.createSquad?.id) setSquadId(res.data.createSquad.id);
-  };
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `px-3 py-1.5 rounded-md text-sm font-medium ${
@@ -75,6 +65,12 @@ export default function Layout() {
   // "Crystal Ball" standup group (dropdown): Current Sprint + The Spread (Board).
   const loc = useLocation();
   const [ballOpen, setBallOpen] = useState(false);
+  // Mobile nav collapse (hamburger). Desktop (md+) always shows the full bar.
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Collapse the mobile menu whenever the route changes.
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [loc.pathname]);
   const ballActive = loc.pathname === "/" || loc.pathname === "/board" || loc.pathname === "/moon-phase";
   const ballItemClass = ({ isActive }: { isActive: boolean }) =>
     `block rounded px-3 py-1.5 text-sm ${
@@ -100,7 +96,20 @@ export default function Layout() {
             ))}
           </select>
 
-          <nav className="flex items-center gap-1">
+          <button
+            className="btn-ghost ml-auto md:hidden"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label={t("nav.menu")}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
+
+          <nav
+            className={`${
+              menuOpen ? "flex" : "hidden"
+            } w-full flex-col gap-1 md:flex md:w-auto md:flex-row md:items-center`}
+          >
             {/* Crystal Ball standup group — opens on hover or click */}
             <div className="relative" onMouseEnter={() => setBallOpen(true)} onMouseLeave={() => setBallOpen(false)}>
               <button
@@ -155,25 +164,15 @@ export default function Layout() {
             </NavLink>
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div
+            className={`${
+              menuOpen ? "flex" : "hidden"
+            } w-full flex-wrap items-center gap-2 border-t border-gray-200 pt-3 dark:border-gray-800 md:flex md:w-auto md:flex-1 md:flex-nowrap md:border-0 md:pt-0`}
+          >
             {user?.isGuest && (
-              <span className="chip bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+              <span className="chip w-fit bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
                 {t("common.guest")}
               </span>
-            )}
-            {!user?.isGuest && (
-              <>
-                <input
-                  className="input max-w-[130px]"
-                  placeholder={t("common.newSquad")}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && onCreate()}
-                />
-                <button className="btn-ghost" onClick={onCreate} title={t("common.createSquad")}>
-                  +
-                </button>
-              </>
             )}
             <select
               className="input max-w-[70px] py-1 text-xs"
@@ -190,8 +189,8 @@ export default function Layout() {
             <button className="btn-ghost" onClick={toggleMute} title={t(muted ? "common.unmute" : "common.mute")}>
               {muted ? "🔇" : "🔊"}
             </button>
-            <span className="hidden text-sm text-gray-500 sm:inline">{user?.name}</span>
-            <button className="btn-ghost" onClick={logout}>
+            <span className="ml-auto whitespace-nowrap text-sm text-gray-500">{user?.name}</span>
+            <button className="btn-ghost shrink-0" onClick={logout}>
               {t("common.logout")}
             </button>
           </div>
