@@ -75,7 +75,7 @@ export default function Layout() {
   // "Crystal Ball" standup group (dropdown): Current Sprint + The Spread (Board).
   const loc = useLocation();
   const [ballOpen, setBallOpen] = useState(false);
-  const ballActive = loc.pathname === "/" || loc.pathname === "/board";
+  const ballActive = loc.pathname === "/" || loc.pathname === "/board" || loc.pathname === "/moon-phase";
   const ballItemClass = ({ isActive }: { isActive: boolean }) =>
     `block rounded px-3 py-1.5 text-sm ${
       isActive ? "bg-brand text-white" : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
@@ -120,6 +120,9 @@ export default function Layout() {
                     </NavLink>
                     <NavLink to="/board" className={ballItemClass} onClick={() => setBallOpen(false)}>
                       {t("nav.board")}
+                    </NavLink>
+                    <NavLink to="/moon-phase" className={ballItemClass} onClick={() => setBallOpen(false)}>
+                      {t("nav.moonPhase")}
                     </NavLink>
                   </div>
                 </>

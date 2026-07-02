@@ -100,6 +100,38 @@ export const typeDefs = /* GraphQL */ `
     doneCount: Int!
   }
 
+  # Moon Phase — per-member daily mood (1..5).
+  type MoodEntry {
+    id: ID!
+    memberId: ID!
+    memberName: String!
+    date: Date!
+    mood: Int!
+  }
+
+  type MoodPoint {
+    date: Date!
+    mood: Int!
+  }
+
+  type MemberMoodSeries {
+    memberId: ID!
+    memberName: String!
+    position: String
+    points: [MoodPoint!]!
+    average: Float!
+  }
+
+  type SprintMood {
+    sprintId: ID!
+    number: Int!
+    name: String
+    startDate: Date!
+    endDate: Date!
+    teamAverage: Float!
+    members: [MemberMoodSeries!]!
+  }
+
   type SeedResult {
     squads: Int!
     membersCreated: Int!
@@ -441,6 +473,10 @@ export const typeDefs = /* GraphQL */ `
     jiraVelocity(squadId: ID!, limit: Int): [SprintVelocity!]!
     # Daily burndown for one sprint (remaining vs ideal).
     burndown(sprintId: ID!): [BurndownPoint!]!
+    # Moods recorded for a sprint on a given date (one per member who has one).
+    memberMoods(sprintId: ID!, date: Date!): [MoodEntry!]!
+    # Per-sprint mood series for the Moon Phase page (newest sprint first).
+    sprintMoodHistory(squadId: ID!, limit: Int): [SprintMood!]!
 
     # --- Tarot (planning poker) ---
     tarotRooms(squadId: ID!): [TarotRoomSummary!]!
@@ -505,11 +541,15 @@ export const typeDefs = /* GraphQL */ `
     syncActiveSprint(squadId: ID!): Sprint
 
     # Standup session lock. leadKey identifies the claiming client/tab.
-    startStandup(sprintId: ID!, leadName: String!, leadKey: String!): StandupSession!
+    # date (the standup day) seeds a default mood (5 = happy) for every member.
+    startStandup(sprintId: ID!, leadName: String!, leadKey: String!, date: Date): StandupSession!
     standupHeartbeat(sprintId: ID!, leadKey: String!): Boolean!
     endStandup(sprintId: ID!, leadKey: String!): Boolean!
 
     saveStandupEntry(input: StandupEntryInput!, leadKey: String): StandupEntry!
+
+    # Set a member's mood for a (sprint, date). Mood clamped 1..5.
+    setMood(sprintId: ID!, memberId: ID!, date: Date!, mood: Int!, leadKey: String): MoodEntry!
 
     upsertBlocker(squadId: ID!, id: ID, input: BlockerInput!): Blocker!
     deleteBlocker(id: ID!): Boolean!

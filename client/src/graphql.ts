@@ -107,6 +107,52 @@ export const BURNDOWN = gql`
   }
 `;
 
+export const MEMBER_MOODS = gql`
+  query MemberMoods($sprintId: ID!, $date: Date!) {
+    memberMoods(sprintId: $sprintId, date: $date) {
+      id
+      memberId
+      memberName
+      date
+      mood
+    }
+  }
+`;
+
+export const SPRINT_MOOD_HISTORY = gql`
+  query SprintMoodHistory($squadId: ID!, $limit: Int) {
+    sprintMoodHistory(squadId: $squadId, limit: $limit) {
+      sprintId
+      number
+      name
+      startDate
+      endDate
+      teamAverage
+      members {
+        memberId
+        memberName
+        position
+        average
+        points {
+          date
+          mood
+        }
+      }
+    }
+  }
+`;
+
+export const SET_MOOD = gql`
+  mutation SetMood($sprintId: ID!, $memberId: ID!, $date: Date!, $mood: Int!, $leadKey: String) {
+    setMood(sprintId: $sprintId, memberId: $memberId, date: $date, mood: $mood, leadKey: $leadKey) {
+      id
+      memberId
+      date
+      mood
+    }
+  }
+`;
+
 export const SEED_CONFIG = gql`
   mutation SeedConfig($json: String!) {
     seedConfig(json: $json) {
@@ -552,8 +598,8 @@ export const STANDUP_CHANGED = gql`
 `;
 
 export const START_STANDUP = gql`
-  mutation StartStandup($sprintId: ID!, $leadName: String!, $leadKey: String!) {
-    startStandup(sprintId: $sprintId, leadName: $leadName, leadKey: $leadKey) {
+  mutation StartStandup($sprintId: ID!, $leadName: String!, $leadKey: String!, $date: Date) {
+    startStandup(sprintId: $sprintId, leadName: $leadName, leadKey: $leadKey, date: $date) {
       sprintId
       leadName
       active

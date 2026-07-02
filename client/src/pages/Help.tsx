@@ -94,6 +94,15 @@ export default function Help() {
       ],
     },
     {
+      title: t("helpSections.moonPhaseTitle"),
+      items: [
+        t("helpSections.moonPhaseItem1"),
+        t("helpSections.moonPhaseItem2"),
+        t("helpSections.moonPhaseItem3"),
+        t("helpSections.moonPhaseItem4"),
+      ],
+    },
+    {
       title: t("helpSections.settingsTitle"),
       items: [
         t("helpSections.settingsItem1"),

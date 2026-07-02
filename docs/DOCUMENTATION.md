@@ -31,7 +31,7 @@ jira-crystal-ball/
         ├── graphql.ts         # all queries/mutations/subscriptions
         ├── context/           # Auth, Theme, Squad providers
         ├── components/        # Layout, Modal, panels, StandupTable/Row, tarot/*
-        ├── pages/             # Login, Dashboard, Board, Clairvoyance, Tarot, TarotRoom, PreviousSprints, Velocity, Settings
+        ├── pages/             # Login, Dashboard, Board, Clairvoyance, Tarot, TarotRoom, PreviousSprints, Velocity, MoonPhase, Settings
         └── lib/               # helpers.ts, tarot.ts (uid + card meta), sound.ts
 ```
 
@@ -203,6 +203,22 @@ Notes:
       `committedPoints` reflects the issues **currently** in that closed sprint (JIRA's Agile API
       exposes no sprint-start commitment snapshot). Only **closed** sprints appear. No burndown.
   - UI: **Velocity** page with a **From standups / From JIRA** source toggle.
+- **Mood / Moon Phase** (`resolvers/mood.ts`, model `MoodEntry`):
+  - Per-member daily mood, scale **1 (worst) .. 5 (best/happy)**; default 5 is a client-side
+    fallback when no `MoodEntry` row exists. Unique per `(sprintId, memberId, date)`.
+  - `memberMoods(sprintId, date)` — moods for one standup date (feeds the Stand Up team list).
+  - `setMood(sprintId, memberId, date, mood, leadKey)` — upsert (mood clamped 1..5). Requires a
+    **live standup session**: no/ended session → rejected ("Standup is not running"); when live,
+    only the session lead (`leadKey`) or an admin may write. Publishes `standupChanged` kind `"mood"`.
+  - `startStandup(..., date)` — on start, **seeds a default mood 5** for every squad member on
+    `date` (`createMany … skipDuplicates`, so existing picks are kept). This is the only place mood
+    rows are created implicitly — a day with no started standup has no mood rows.
+  - `sprintMoodHistory(squadId, limit)` — per-sprint `{ teamAverage, members[{ average, points[] }] }`,
+    newest sprint first; powers the **Moon Phase** page (team-average line + per-member heatmap +
+    previous-sprint browsing). **Day axis** = distinct mood dates (i.e. days a standup was started);
+    within a shown day a member with no explicit row still defaults to 5. Sprint with no started
+    standups returns `members: []`. UI: `pages/MoonPhase.tsx`, picker `components/MoodPicker.tsx`,
+    scale/colors `lib/mood.ts`. Nav: under the 🔮 Crystal Ball dropdown.
 - The `Date` scalar is serialized as `YYYY-MM-DD` (calendar dates, UTC-midnight parsed).
 
 ### Example

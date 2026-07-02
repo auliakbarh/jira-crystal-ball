@@ -9,7 +9,8 @@
     "velocity": "Hourglass Sands",
     "fortune": "Fortune",
     "settings": "Settings",
-    "help": "Help"
+    "help": "Help",
+    "moonPhase": "Moon Phase"
   },
   "common": {
     "guest": "Guest",
@@ -724,7 +725,12 @@
     "settingsItem4": "Member JIRA account id (optional) — the opaque Atlassian id (e.g. 5b10ac8d82e05b22cc7d4ef5), not the email; links the member to their JIRA assignee. The field is a picker: choose a JIRA user (name + email) from the dropdown to fill the id, or paste one manually.",
     "settingsItem5": "Admin Accounts — visible only to the environment super admin (the seeded SEED_ADMIN_EMAIL account). Add new admins (email + name + password), edit their name/email, reset their password, or delete them. Regular admins can use every other setting but cannot manage admin accounts. The super admin row is read-only and cannot be edited or deleted (prevents lockout).",
     "settingsItem6": "Danger Zone — reset the database (admin only).",
-    "standupItem8": "Hold — mark a ticket on hold (blocked / deprioritized) with the Hold button; the row greys out. Resume clears it. It's a visual cue saved per date; it doesn't change points or progress."
+    "standupItem8": "Hold — mark a ticket on hold (blocked / deprioritized) with the Hold button; the row greys out. Resume clears it. It's a visual cue saved per date; it doesn't change points or progress.",
+    "moonPhaseTitle": "🌙 Moon Phase (team mood)",
+    "moonPhaseItem1": "Each member on the Stand Up Meeting team list has a mood emoji (scale 1–5, default 😄). Only the chosen emoji shows.",
+    "moonPhaseItem2": "Click or hover the emoji to open the picker; hover any mood to read what it represents, then click to set it.",
+    "moonPhaseItem3": "Mood can only be set while a standup is running. Start Standup seeds a default 😄 for everyone that day; End Standup locks the pickers until it is started again.",
+    "moonPhaseItem4": "The Moon Phase page (under 🔮 Crystal Ball) charts team mood over the sprint and per member for days a standup was started, and lets you browse previous sprints."
   },
   "tarot": {
     "couldNotLoadRooms": "Could not load rooms: {{message}}",
@@ -879,5 +885,78 @@
     "tipHost4Body": "End the room once every ticket is pointed. Then Sync to Jira writes effort + per-role points to the squad's fields (reversible via Reset Jira). Guests can't sync — only a signed-in host/admin.",
     "guestNoSync": "Sign in to sync to Jira",
     "guestNoSyncHint": "Jira sync needs a logged-in account (host or admin). Guests can run the session but can't write to the Jira board."
+  },
+  "mood": {
+    "pickLabel": "Pick your mood",
+    "scaleHint": "1 = tough day · 5 = great day",
+    "moodOf": "Mood of {{name}}: {{mood}}",
+    "m1": {
+      "label": "Struggling",
+      "infos": [
+        "Overwhelmed or burning out",
+        "Blocked and frustrated",
+        "Needs help urgently"
+      ]
+    },
+    "m2": {
+      "label": "Low",
+      "infos": [
+        "Stressed or drained",
+        "Falling behind schedule",
+        "Low energy today"
+      ]
+    },
+    "m3": {
+      "label": "Okay",
+      "infos": [
+        "Getting by, nothing special",
+        "Steady but not thriving",
+        "Managing the workload"
+      ]
+    },
+    "m4": {
+      "label": "Good",
+      "infos": [
+        "Positive and focused",
+        "On track with work",
+        "Productive day"
+      ]
+    },
+    "m5": {
+      "label": "Great",
+      "infos": [
+        "Energized and confident",
+        "Everything is flowing",
+        "Loving the work today"
+      ]
+    },
+    "disabledHint": "Start the standup to set moods"
+  },
+  "moonPhase": {
+    "heading": "Moon Phase",
+    "subtitle": "Team mood through the sprint — and how it has waxed and waned over past sprints.",
+    "sprintLabel": "Sprint",
+    "dummyNotice": "Preview with sample data — mood tracking is not wired to the backend yet.",
+    "legend": "Mood",
+    "teamMoodTitle": "Team mood over the sprint",
+    "avgLabel": "Avg",
+    "perMemberTitle": "Mood per member",
+    "member": "Member",
+    "dayFirst": "Day 1",
+    "dayN": "Day {{n}}",
+    "dayLabel": "Day {{day}}",
+    "tipsTitle": "Reading the moon",
+    "tip1Title": "Mood is a signal",
+    "tip1Body": "A dipping curve often precedes a blocker or burnout — check in before it bottoms out.",
+    "tip2Title": "Talk, don't diagnose",
+    "tip2Body": "Use a low mood as a reason to ask, not a verdict. Context beats the number.",
+    "tip3Title": "Watch the trend",
+    "tip3Body": "One bad day is noise; three in a row is a pattern worth acting on.",
+    "tip4Title": "Celebrate the highs",
+    "tip4Body": "When the team glows, name what worked so you can repeat it next sprint.",
+    "current": "current",
+    "loadError": "Could not load mood data: {{message}}",
+    "noData": "No mood data yet. Set moods on the Stand Up Meeting page to see them here.",
+    "noSprintData": "No moods recorded for this sprint yet."
   }
 }

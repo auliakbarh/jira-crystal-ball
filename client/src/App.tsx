@@ -12,6 +12,7 @@ import Tarot from "./pages/Tarot";
 import TarotRoom from "./pages/TarotRoom";
 import PreviousSprints from "./pages/PreviousSprints";
 import Velocity from "./pages/Velocity";
+import MoonPhase from "./pages/MoonPhase";
 import Fortune from "./pages/Fortune";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="tarot/:roomId" element={<TarotRoom />} />
         <Route path="previous" element={<PreviousSprints />} />
         <Route path="velocity" element={<Velocity />} />
+        <Route path="moon-phase" element={<MoonPhase />} />
         <Route
           path="fortune"
           element={

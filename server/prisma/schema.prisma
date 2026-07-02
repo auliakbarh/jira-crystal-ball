@@ -184,6 +184,7 @@ model TeamMember {
 
   leaves            Leave[]      @relation("MemberLeaves")
   substituteLeaves  Leave[]      @relation("SubstituteLeaves")
+  moods             MoodEntry[]
 
   @@index([squadId])
 }
@@ -232,6 +233,7 @@ model Sprint {
 
   entries  StandupEntry[]
   blockers Blocker[]
+  moods    MoodEntry[]
 
   @@unique([squadId, number])
   @@index([squadId])
@@ -277,6 +279,25 @@ model StandupEntry {
 
   @@unique([sprintId, date, ticketKey])
   @@index([sprintId, date])
+}
+
+// Per-member daily mood during a sprint (Moon Phase). Scale 1 (worst) .. 5
+// (best/happy); default 5 is a client-side fallback when no row exists.
+model MoodEntry {
+  id         String     @id @default(cuid())
+  sprint     Sprint     @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  sprintId   String
+  member     TeamMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId   String
+  memberName String     // snapshot for display resilience
+  date       DateTime   @db.Date
+  mood       Int        // 1..5
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([sprintId, memberId, date])
+  @@index([sprintId, date])
+  @@index([memberId])
 }
 
 // Blocker tracking. Kept in sync from StandupEntry.blockerNote but also

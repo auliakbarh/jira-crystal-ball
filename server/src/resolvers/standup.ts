@@ -107,7 +107,7 @@ export const standupResolvers = {
   },
 
   Mutation: {
-    startStandup: async (_p: unknown, { sprintId, leadName, leadKey }: any, ctx: Context) => {
+    startStandup: async (_p: unknown, { sprintId, leadName, leadKey, date }: any, ctx: Context) => {
       requireAuth(ctx);
       const admin = await isAdminUser(ctx);
       const existing = await ctx.prisma.standupSession.findUnique({ where: { sprintId } });
@@ -123,6 +123,23 @@ export const standupResolvers = {
         create: { sprintId, leadName, leadKey, lastSeen: now },
         update: { leadName, leadKey, lastSeen: now },
       });
+
+      // Seed a default mood (5 = happy) for every squad member on this standup
+      // day, so Moon Phase reflects the default without anyone picking. Existing
+      // picks are kept (skipDuplicates on the (sprintId, memberId, date) unique).
+      if (date) {
+        const sprint = await ctx.prisma.sprint.findUnique({ where: { id: sprintId } });
+        if (sprint) {
+          const members = await ctx.prisma.teamMember.findMany({ where: { squadId: sprint.squadId } });
+          if (members.length) {
+            await ctx.prisma.moodEntry.createMany({
+              data: members.map((m) => ({ sprintId, memberId: m.id, memberName: m.name, date, mood: 5 })),
+              skipDuplicates: true,
+            });
+          }
+        }
+      }
+
       publishStandupChange(sprintId, "start");
       return { sprintId, leadName: s.leadName, active: true, isMine: true, startedAt: new Date(s.createdAt).toISOString() };
     },

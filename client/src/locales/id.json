@@ -9,7 +9,8 @@
     "velocity": "Hourglass Sands",
     "fortune": "Fortune",
     "settings": "Pengaturan",
-    "help": "Bantuan"
+    "help": "Bantuan",
+    "moonPhase": "Fase Bulan"
   },
   "common": {
     "guest": "Tamu",
@@ -724,7 +725,12 @@
     "settingsItem4": "Id akun JIRA anggota (opsional) — id Atlassian buram (mis. 5b10ac8d82e05b22cc7d4ef5), bukan email; menghubungkan anggota ke penerima tugas JIRA mereka. Field ini adalah picker: pilih pengguna JIRA (nama + email) dari dropdown untuk mengisi id, atau tempel manual.",
     "settingsItem5": "Akun Admin — hanya terlihat oleh super admin lingkungan (akun SEED_ADMIN_EMAIL yang disemai). Tambah admin baru (email + nama + kata sandi), edit nama/email mereka, reset kata sandi, atau hapus mereka. Admin biasa dapat menggunakan setiap pengaturan lain tetapi tidak dapat mengelola akun admin. Baris super admin hanya-baca dan tidak dapat diedit atau dihapus (mencegah terkunci).",
     "settingsItem6": "Zona Bahaya — reset basis data (hanya admin).",
-    "standupItem8": "Tahan — tandai tiket ditahan (terblokir / deprioritas) via tombol Hold; baris jadi abu-abu. Lanjut menghapusnya. Ini penanda visual per tanggal; tak mengubah poin atau progres."
+    "standupItem8": "Tahan — tandai tiket ditahan (terblokir / deprioritas) via tombol Hold; baris jadi abu-abu. Lanjut menghapusnya. Ini penanda visual per tanggal; tak mengubah poin atau progres.",
+    "moonPhaseTitle": "🌙 Fase Bulan (mood tim)",
+    "moonPhaseItem1": "Tiap anggota di daftar tim halaman Stand Up Meeting punya emoji mood (skala 1–5, default 😄). Hanya emoji terpilih yang tampil.",
+    "moonPhaseItem2": "Klik atau arahkan kursor ke emoji untuk membuka pemilih; arahkan ke tiap mood untuk membaca artinya, lalu klik untuk memilih.",
+    "moonPhaseItem3": "Mood hanya bisa diatur saat standup berjalan. Start Standup mengisi default 😄 untuk semua orang di hari itu; End Standup mengunci pemilih sampai distart lagi.",
+    "moonPhaseItem4": "Halaman Fase Bulan (di bawah 🔮 Crystal Ball) menampilkan grafik mood tim sepanjang sprint dan per anggota untuk hari yang standup-nya distart, serta menelusuri sprint sebelumnya."
   },
   "tarot": {
     "couldNotLoadRooms": "Tidak dapat memuat ruang: {{message}}",
@@ -879,5 +885,78 @@
     "tipHost4Body": "Akhiri ruang setelah semua tiket dipoin. Lalu Sinkron ke Jira menulis effort + poin per peran ke field squad (dapat dibatalkan via Reset Jira). Tamu tidak bisa sinkron — hanya host/admin yang masuk.",
     "guestNoSync": "Login untuk sync ke Jira",
     "guestNoSyncHint": "Sync Jira butuh akun yang login (host atau admin). Tamu bisa menjalankan sesi tapi tak bisa menulis ke board Jira."
+  },
+  "mood": {
+    "pickLabel": "Pilih mood kamu",
+    "scaleHint": "1 = hari berat · 5 = hari hebat",
+    "moodOf": "Mood {{name}}: {{mood}}",
+    "m1": {
+      "label": "Kesulitan",
+      "infos": [
+        "Kewalahan atau nyaris burnout",
+        "Terhambat dan frustrasi",
+        "Butuh bantuan segera"
+      ]
+    },
+    "m2": {
+      "label": "Rendah",
+      "infos": [
+        "Stres atau lelah",
+        "Mulai tertinggal jadwal",
+        "Energi rendah hari ini"
+      ]
+    },
+    "m3": {
+      "label": "Biasa",
+      "infos": [
+        "Jalan saja, tidak istimewa",
+        "Stabil tapi belum optimal",
+        "Masih bisa menangani beban"
+      ]
+    },
+    "m4": {
+      "label": "Baik",
+      "infos": [
+        "Positif dan fokus",
+        "Sesuai rencana kerja",
+        "Hari yang produktif"
+      ]
+    },
+    "m5": {
+      "label": "Hebat",
+      "infos": [
+        "Bersemangat dan percaya diri",
+        "Semua berjalan lancar",
+        "Menikmati pekerjaan hari ini"
+      ]
+    },
+    "disabledHint": "Mulai standup untuk mengatur mood"
+  },
+  "moonPhase": {
+    "heading": "Fase Bulan",
+    "subtitle": "Mood tim sepanjang sprint — dan bagaimana ia naik-turun di sprint-sprint sebelumnya.",
+    "sprintLabel": "Sprint",
+    "dummyNotice": "Pratinjau dengan data contoh — pelacakan mood belum terhubung ke backend.",
+    "legend": "Mood",
+    "teamMoodTitle": "Mood tim sepanjang sprint",
+    "avgLabel": "Rata2",
+    "perMemberTitle": "Mood per anggota",
+    "member": "Anggota",
+    "dayFirst": "Hari 1",
+    "dayN": "Hari {{n}}",
+    "dayLabel": "Hari {{day}}",
+    "tipsTitle": "Membaca bulan",
+    "tip1Title": "Mood adalah sinyal",
+    "tip1Body": "Kurva yang menurun sering mendahului blocker atau burnout — tanyakan sebelum jatuh ke dasar.",
+    "tip2Title": "Ajak bicara, jangan menilai",
+    "tip2Body": "Jadikan mood rendah alasan untuk bertanya, bukan vonis. Konteks lebih penting dari angka.",
+    "tip3Title": "Perhatikan tren",
+    "tip3Body": "Satu hari buruk itu wajar; tiga hari beruntun adalah pola yang perlu ditindak.",
+    "tip4Title": "Rayakan yang tinggi",
+    "tip4Body": "Saat tim bersemangat, sebutkan apa yang berhasil agar bisa diulang sprint depan.",
+    "current": "berjalan",
+    "loadError": "Gagal memuat data mood: {{message}}",
+    "noData": "Belum ada data mood. Atur mood di halaman Stand Up Meeting untuk melihatnya di sini.",
+    "noSprintData": "Belum ada mood tercatat untuk sprint ini."
   }
 }

@@ -217,6 +217,29 @@ Open **Velocity** for story-point trends across sprints (the last 12):
   with tips on keeping velocity healthy (commit realistically, slice tickets, attack blockers
   early, watch the trend).
 
+## 8b. Moon Phase (Team Mood)
+
+Track how the team **feels** through the sprint, alongside how much it ships.
+
+- **Setting a mood** — on the **Stand Up Meeting** page, each member in the team list shows a
+  mood emoji (scale **1–5**, default 😄 "Great"). Only the selected emoji is shown. Click or
+  hover it to open the picker; **hover** any of the five moods to read what it represents (a few
+  cues per mood), then **click** to set it. The member's emoji updates to the chosen mood.
+- **When / who** — mood can only be set while a standup is **running**. Clicking **Start
+  Standup** seeds a default 😄 (5) for every member on that date; the lead (or an admin) can then
+  adjust any member's mood. After **End Standup** the pickers lock again (start a new standup to
+  edit). If a standup was never started for a day, no mood is saved for it. Mood is recorded
+  **per member, per standup date** (follows the date picker at the top of the page).
+- **Moon Phase page** — under the 🔮 **Crystal Ball** menu. It shows:
+  - a **team-average mood line** across the sprint's recorded days,
+  - a **per-member heatmap** (one colored emoji cell per member per day, plus each member's
+    average), and
+  - a **sprint selector** to browse mood from **previous sprints** (history), newest first.
+- **Default is happy** — the day axis is every day a standup was started (moods were seeded).
+  On those days a member who never adjusted their mood stays 😄 (5), so the default is reflected
+  without anyone choosing it. Days without a started standup never appear; a sprint with no
+  started standups shows a friendly placeholder.
+
 ## 9. Clairvoyance (Sprint Grooming)
 
 The **Clairvoyance** menu is a **read-only** grooming view of upcoming work, pulled live
