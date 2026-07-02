@@ -173,7 +173,7 @@ ngrok config add-authtoken <YOUR_TOKEN>   # from the ngrok dashboard
 ### 2. Start both apps + two tunnels
 
 Run the apps as usual (`npm run dev`), then start both tunnels. The free plan
-allows multiple tunnels via a config file — create `~/.config/ngrok/ngrok.yml`:
+allows multiple tunnels via a config file — create `~/.config/ngrok/ngrok.yml` or check `~/Library/Application Support/ngrok/ngrok.yml`:
 
 ```yaml
 version: "3"
