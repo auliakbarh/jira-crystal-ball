@@ -745,3 +745,249 @@ export async function testConnection(cfg: JiraConfigLike): Promise<string> {
   const data: any = await res.json();
   return data.displayName ?? data.emailAddress ?? "ok";
 }
+
+// ─── Fortune: create / update / search / resolve (markdown ⇄ ADF) ────────────
+
+// markdown → Atlassian Document Format. Handles headings, bullet lists (incl.
+// checkboxes), GFM pipe tables, inline links + bold; single newlines inside a
+// block become hardBreaks (keeps stacked Gherkin clauses). Unrecognised → paragraph.
+interface ADFNode { type: string; [k: string]: unknown; }
+const HEADING_RE = /^(#{1,6})\s+(.*)$/;
+const LIST_RE = /^\s*[-*]\s+(.*)$/;
+const TABLE_ROW_RE = /^\s*\|.*\|\s*$/;
+const TABLE_SEP_RE = /^\s*\|?[\s:|-]+\|?\s*$/;
+
+function inlineNodes(text: string): ADFNode[] {
+  const nodes: ADFNode[] = [];
+  const re = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push({ type: "text", text: text.slice(last, m.index) });
+    if (m[1] !== undefined) nodes.push({ type: "text", text: m[1], marks: [{ type: "link", attrs: { href: m[2] } }] });
+    else nodes.push({ type: "text", text: m[3], marks: [{ type: "strong" }] });
+    last = re.lastIndex;
+  }
+  if (last < text.length) nodes.push({ type: "text", text: text.slice(last) });
+  return nodes.filter((n) => (n as any).text !== "");
+}
+function paragraphFromLines(lines: string[]): ADFNode {
+  const content: ADFNode[] = [];
+  for (const line of lines) {
+    const inline = inlineNodes(line);
+    if (!inline.length) continue;
+    if (content.length) content.push({ type: "hardBreak" });
+    content.push(...inline);
+  }
+  return { type: "paragraph", content };
+}
+function splitCells(row: string): string[] {
+  return row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+}
+
+export function toADF(text: string): object {
+  const lines = (text ?? "").replace(/\r\n/g, "\n").split("\n");
+  const content: ADFNode[] = [];
+  let i = 0;
+  const isTableStart = (idx: number) =>
+    TABLE_ROW_RE.test(lines[idx]) && idx + 1 < lines.length && TABLE_SEP_RE.test(lines[idx + 1]) && lines[idx + 1].includes("-");
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trim() === "") { i++; continue; }
+    const h = line.match(HEADING_RE);
+    if (h) { content.push({ type: "heading", attrs: { level: Math.min(h[1].length, 6) }, content: inlineNodes(h[2].trim()) }); i++; continue; }
+    if (isTableStart(i)) {
+      const header = splitCells(lines[i]);
+      i += 2;
+      const rows: ADFNode[] = [{ type: "tableRow", content: header.map((c) => ({ type: "tableHeader", content: [paragraphFromLines([c])] })) }];
+      while (i < lines.length && TABLE_ROW_RE.test(lines[i])) {
+        const cells = splitCells(lines[i]);
+        rows.push({ type: "tableRow", content: cells.map((c) => ({ type: "tableCell", content: [paragraphFromLines([c])] })) });
+        i++;
+      }
+      content.push({ type: "table", attrs: { isNumberColumnEnabled: false, layout: "default" }, content: rows });
+      continue;
+    }
+    if (LIST_RE.test(line)) {
+      const items: ADFNode[] = [];
+      while (i < lines.length && LIST_RE.test(lines[i])) {
+        const raw = lines[i].match(LIST_RE)![1];
+        const cb = raw.match(/^\[([ xX])\]\s+(.*)$/);
+        const itemText = cb ? `${cb[1].trim() ? "☑" : "☐"} ${cb[2]}` : raw;
+        items.push({ type: "listItem", content: [paragraphFromLines([itemText])] });
+        i++;
+      }
+      content.push({ type: "bulletList", content: items });
+      continue;
+    }
+    const para: string[] = [];
+    while (i < lines.length && lines[i].trim() !== "" && !HEADING_RE.test(lines[i]) && !LIST_RE.test(lines[i]) && !isTableStart(i)) {
+      para.push(lines[i]); i++;
+    }
+    if (para.length) content.push(paragraphFromLines(para));
+  }
+  if (!content.length) content.push({ type: "paragraph", content: [] });
+  return { type: "doc", version: 1, content };
+}
+
+// ADF → plain markdown-ish text (for importing a ticket's description into the
+// editor / Gemini). Lossy but preserves headings, lists, tables, links, breaks.
+export function adfToText(node: any): string {
+  if (!node) return "";
+  const walkInline = (nodes: any[]): string =>
+    (nodes ?? [])
+      .map((n) => {
+        if (n.type === "text") {
+          const link = (n.marks ?? []).find((m: any) => m.type === "link");
+          return link ? `[${n.text}](${link.attrs?.href ?? ""})` : n.text ?? "";
+        }
+        if (n.type === "hardBreak") return "\n";
+        return "";
+      })
+      .join("");
+  const block = (n: any): string => {
+    switch (n.type) {
+      case "heading": return `${"#".repeat(n.attrs?.level ?? 1)} ${walkInline(n.content)}`;
+      case "paragraph": return walkInline(n.content);
+      case "bulletList": return (n.content ?? []).map((li: any) => `- ${(li.content ?? []).map(block).join(" ")}`).join("\n");
+      case "orderedList": return (n.content ?? []).map((li: any, idx: number) => `${idx + 1}. ${(li.content ?? []).map(block).join(" ")}`).join("\n");
+      case "listItem": return (n.content ?? []).map(block).join(" ");
+      case "table":
+        return (n.content ?? [])
+          .map((row: any) => `| ${(row.content ?? []).map((cell: any) => (cell.content ?? []).map(block).join(" ")).join(" | ")} |`)
+          .join("\n");
+      default: return (n.content ?? []).map(block).join("\n");
+    }
+  };
+  if (node.type === "doc") return (node.content ?? []).map(block).join("\n\n").trim();
+  return block(node);
+}
+
+/** Resolve the JIRA project key for a squad's board (agile board → location). */
+export async function boardProjectKey(cfg: JiraConfigLike): Promise<string> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const boardId = await resolveBoardId(cfg, base);
+  const res = await fetch(`${base}/rest/agile/1.0/board/${boardId}`, { headers: jiraHeaders(cfg) });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA board lookup failed (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const data: any = await res.json();
+  const key = data?.location?.projectKey;
+  if (!key) throw new Error("Could not resolve a project key from the squad's board.");
+  return String(key);
+}
+
+/** Resolve a JIRA accountId from an email (user search). Null if none/no perm. */
+export async function findAccountIdByEmail(cfg: JiraConfigLike, email: string): Promise<string | null> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const res = await fetch(`${base}/rest/api/3/user/search?query=${encodeURIComponent(email)}`, {
+    headers: jiraHeaders(cfg),
+  }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const arr: any[] = await res.json().catch(() => []);
+  const exact = arr.find((u) => (u.emailAddress ?? "").toLowerCase() === email.toLowerCase());
+  return (exact ?? arr[0])?.accountId ?? null;
+}
+
+export interface FortuneTicketRef { key: string; summary: string; issueType: string | null; }
+
+/** Search the squad's board project by key or title (for the Import picker). */
+export async function searchBoardIssues(cfg: JiraConfigLike, query: string): Promise<FortuneTicketRef[]> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const projectKey = await boardProjectKey(cfg);
+  const q = query.trim().replace(/["\\]/g, " ");
+  const isKey = /^[A-Za-z][A-Za-z0-9_]+-\d+$/.test(q);
+  const jql = q
+    ? isKey
+      ? `key = "${q}"`
+      : `project = "${projectKey}" AND summary ~ "${q}*" ORDER BY updated DESC`
+    : `project = "${projectKey}" ORDER BY updated DESC`;
+  // Use the current /search/jql endpoint (legacy /search returns 410 Gone).
+  const params = new URLSearchParams({ jql, maxResults: "15", fields: "summary,issuetype" });
+  const res = await fetch(`${base}/rest/api/3/search/jql?${params.toString()}`, { headers: jiraHeaders(cfg) });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA search failed (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const data: any = await res.json();
+  return (data.issues ?? []).map((issue: any) => ({
+    key: issue.key,
+    summary: issue.fields?.summary ?? issue.key,
+    issueType: issue.fields?.issuetype?.name ?? null,
+  }));
+}
+
+export interface FortuneImportedIssue { key: string; summary: string; description: string; issueType: string; url: string; }
+
+/** Fetch one issue's summary + description(as text) + type, for Import mode. */
+export async function getIssueForFortune(cfg: JiraConfigLike, issueKey: string): Promise<FortuneImportedIssue> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const params = new URLSearchParams({ fields: "summary,description,issuetype" });
+  const res = await fetch(`${base}/rest/api/3/issue/${encodeURIComponent(issueKey)}?${params.toString()}`, {
+    headers: jiraHeaders(cfg),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`JIRA issue read failed for ${issueKey} (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const data: any = await res.json();
+  const f = data.fields ?? {};
+  return {
+    key: data.key,
+    summary: f.summary ?? "",
+    description: f.description ? adfToText(f.description) : "",
+    issueType: f.issuetype?.name ?? "Task",
+    url: `${base}/browse/${data.key}`,
+  };
+}
+
+export interface CreateIssueInput {
+  projectKey: string;
+  summary: string;
+  description?: string; // markdown → ADF
+  issueType: string;
+  reporterAccountId?: string | null;
+  parentKey?: string | null;
+  labels?: string[];
+}
+
+/** Create an issue. POST /rest/api/3/issue. Returns key + browse url. */
+export async function createIssue(cfg: JiraConfigLike, input: CreateIssueInput): Promise<{ key: string; url: string }> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const fields: Record<string, unknown> = {
+    project: { key: input.projectKey },
+    summary: input.summary,
+    issuetype: { name: input.issueType },
+  };
+  if (input.description) fields.description = toADF(input.description);
+  if (input.reporterAccountId) fields.reporter = { id: input.reporterAccountId };
+  if (input.parentKey) fields.parent = { key: input.parentKey };
+  if (input.labels?.length) fields.labels = input.labels;
+
+  const res = await fetch(`${base}/rest/api/3/issue`, {
+    method: "POST",
+    headers: jiraHeaders(cfg),
+    body: JSON.stringify({ fields }),
+  });
+  const body: any = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const errs = body?.errors ? JSON.stringify(body.errors) : (body?.errorMessages ?? []).join(", ") || res.statusText;
+    throw new Error(`JIRA create failed (${res.status}): ${errs}`);
+  }
+  for (const k of jiraCache.keys()) jiraCache.delete(k);
+  return { key: body.key, url: `${base}/browse/${body.key}` };
+}
+
+/** Update summary/description on an issue (Fortune import refine). */
+export async function updateIssueContent(
+  cfg: JiraConfigLike,
+  issueKey: string,
+  content: { summary?: string; description?: string },
+): Promise<void> {
+  const fields: Record<string, unknown> = {};
+  if (content.summary != null) fields.summary = content.summary;
+  if (content.description != null) fields.description = toADF(content.description);
+  await updateIssueFields(cfg, issueKey, fields);
+}

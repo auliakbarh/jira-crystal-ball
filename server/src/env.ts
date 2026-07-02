@@ -25,6 +25,23 @@ function resolveJiraToken(): string {
   return "";
 }
 
+// Resolve the Gemini API key from plaintext (GEMINI_API_KEY) or encrypted
+// (GEMINI_API_KEY_ENC + GEMINI_ENC_KEY). Mirrors resolveJiraToken — plaintext wins.
+function resolveGeminiToken(): string {
+  const plain = process.env.GEMINI_API_KEY;
+  if (plain) return plain;
+  const enc = process.env.GEMINI_API_KEY_ENC;
+  const key = process.env.GEMINI_ENC_KEY;
+  if (enc && key) {
+    try {
+      return decryptSecret(enc, key);
+    } catch {
+      throw new Error("Failed to decrypt GEMINI_API_KEY_ENC — check GEMINI_ENC_KEY.");
+    }
+  }
+  return "";
+}
+
 export const env = {
   databaseUrl: required("DATABASE_URL"),
   jwtSecret: required("JWT_SECRET", "dev-insecure-secret"),
@@ -52,6 +69,11 @@ export const env = {
     // Story Points custom field id (varies per JIRA site; Cloud default below).
     storyPointsField: process.env.JIRA_STORY_POINTS_FIELD ?? "customfield_10016",
   },
+  // Gemini (Fortune ticket creator). Key may be plaintext or encrypted at rest.
+  gemini: {
+    apiKey: resolveGeminiToken(),
+    defaultModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+  },
   // Confluence export (same Atlassian site/credentials as JIRA by default).
   confluence: {
     baseUrl: process.env.CONFLUENCE_BASE_URL ?? process.env.JIRA_BASE_URL ?? "",
@@ -63,4 +85,9 @@ export const env = {
 /** True when the global JIRA credentials are present in the environment. */
 export function hasJiraCreds(): boolean {
   return Boolean(env.jira.baseUrl && env.jira.email && env.jira.apiToken);
+}
+
+/** True when a Gemini API key is configured (plaintext or decrypted). */
+export function hasGeminiKey(): boolean {
+  return Boolean(env.gemini.apiKey);
 }

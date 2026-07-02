@@ -49,6 +49,57 @@ model Squad {
   blockers   Blocker[]
   logs       ActivityLog[]
   tarotRooms TarotRoom[]
+  fortuneDrafts   FortuneDraft[]
+  fortuneHistory  FortuneHistory[]
+}
+
+// ---------------------------------------------------------------------------
+// Fortune — Gemini-powered ticket creator. Drafts (WIP) + history (log).
+// Shared per-squad: any member sees them; delete gated to creator/super-admin.
+// payload/turns/usage stored as JSON strings (shapes owned by the client).
+// ---------------------------------------------------------------------------
+model FortuneDraft {
+  id            String   @id @default(cuid())
+  squad         Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  squadId       String
+  createdById   String
+  createdByName String
+  mode          String   // single | epic | import
+  summary       String
+  payload       String   // JSON: { single } | { plan }
+  requirementText String?
+  turns         String?  // JSON: [{ role, text }]
+  usage         String?  // JSON: usage snapshot
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([squadId, updatedAt])
+}
+
+// Global key/value app settings editable at runtime by admins (e.g. Gemini
+// temperature). Env vars remain the default when a key is absent.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model FortuneHistory {
+  id        String   @id @default(cuid())
+  squad     Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  squadId   String
+  actorId   String
+  actorName String
+  action    String   // generated | created | updated | reverted
+  mode      String   // single | epic | import
+  summary   String
+  jiraKey   String?
+  payload   String?  // JSON snapshot for recreate
+  turns     String?  // JSON context
+  usage     String?  // JSON usage
+  createdAt DateTime @default(now())
+
+  @@index([squadId, createdAt])
 }
 
 // A live "standup in progress" lock. One active session per sprint: only the
@@ -133,6 +184,7 @@ model TeamMember {
 
   leaves            Leave[]      @relation("MemberLeaves")
   substituteLeaves  Leave[]      @relation("SubstituteLeaves")
+  moods             MoodEntry[]
 
   @@index([squadId])
 }
@@ -181,6 +233,7 @@ model Sprint {
 
   entries  StandupEntry[]
   blockers Blocker[]
+  moods    MoodEntry[]
 
   @@unique([squadId, number])
   @@index([squadId])
@@ -226,6 +279,25 @@ model StandupEntry {
 
   @@unique([sprintId, date, ticketKey])
   @@index([sprintId, date])
+}
+
+// Per-member daily mood during a sprint (Moon Phase). Scale 1 (worst) .. 5
+// (best/happy); default 5 is a client-side fallback when no row exists.
+model MoodEntry {
+  id         String     @id @default(cuid())
+  sprint     Sprint     @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  sprintId   String
+  member     TeamMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId   String
+  memberName String     // snapshot for display resilience
+  date       DateTime   @db.Date
+  mood       Int        // 1..5
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([sprintId, memberId, date])
+  @@index([sprintId, date])
+  @@index([memberId])
 }
 
 // Blocker tracking. Kept in sync from StandupEntry.blockerNote but also

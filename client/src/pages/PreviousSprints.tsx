@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@apollo/client";
 import { useSquad } from "../context/SquadContext";
@@ -437,17 +438,27 @@ function SprintSummary({
         {/* Status distribution */}
         <div className="md:col-span-2">
           <div className="label">{t("previous.jiraStatus", { total })}</div>
-          <div className="mb-1 flex h-3 w-full overflow-hidden rounded">
-            {BUCKET_ORDER.map((b) =>
-              dist[b] ? (
-                <div
-                  key={b}
-                  className={BUCKET_COLOR[b]}
-                  style={{ width: `${pct(dist[b])}%` }}
-                  title={`${b}: ${dist[b]} (${pct(dist[b])}%)`}
-                />
-              ) : null,
-            )}
+          <div className="mb-1 h-3 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+            {(() => {
+              const present = BUCKET_ORDER.filter((b) => dist[b]);
+              return (
+                <motion.div
+                  className="flex h-full w-full"
+                  initial={{ clipPath: "inset(0 100% 0 0)" }}
+                  animate={{ clipPath: "inset(0 0% 0 0)" }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
+                >
+                  {present.map((b, i) => (
+                    <div
+                      key={b}
+                      className={`${BUCKET_COLOR[b]} ${i === 0 ? "rounded-l-full" : ""} ${i === present.length - 1 ? "rounded-r-full" : ""}`}
+                      style={{ flexBasis: 0, flexGrow: dist[b] }}
+                      title={`${b}: ${dist[b]} (${pct(dist[b])}%)`}
+                    />
+                  ))}
+                </motion.div>
+              );
+            })()}
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
             {BUCKET_ORDER.filter((b) => dist[b]).map((b) => (

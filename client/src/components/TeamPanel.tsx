@@ -1,16 +1,47 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { useTranslation } from "react-i18next";
-import { SQUAD, ADD_LEAVE, DELETE_LEAVE, ACTIVE_SPRINT_TICKETS, STANDUP_ENTRIES } from "../graphql";
+import { SQUAD, ADD_LEAVE, DELETE_LEAVE, ACTIVE_SPRINT_TICKETS, STANDUP_ENTRIES, MEMBER_MOODS, SET_MOOD } from "../graphql";
 import { POSITION_COLORS, LEAVE_TYPES, LEAVE_LABELS, isOnLeave, todayISO } from "../lib/helpers";
+import { LEAD_KEY } from "../lib/leadKey";
+import { MOOD_DEFAULT, type MoodValue } from "../lib/mood";
 import { SkeletonLines } from "./Skeleton";
+import MoodPicker from "./MoodPicker";
 
-export default function TeamPanel({ squadId, sprintId }: { squadId: string; sprintId?: string }) {
+export default function TeamPanel({
+  squadId,
+  sprintId,
+  date,
+  canEdit = true,
+}: {
+  squadId: string;
+  sprintId?: string;
+  date?: string;
+  canEdit?: boolean;
+}) {
   const { t } = useTranslation();
   const { data, loading, refetch } = useQuery(SQUAD, { variables: { id: squadId } });
   const today = todayISO();
   const members = data?.squad?.members ?? [];
   const [editing, setEditing] = useState<string | null>(null);
+
+  // Per-member mood for the selected standup date (Moon Phase feed).
+  const moodDate = date ?? today;
+  const moodQuery = useQuery(MEMBER_MOODS, {
+    variables: { sprintId, date: moodDate },
+    skip: !sprintId,
+    fetchPolicy: "cache-and-network",
+  });
+  const moodByMember = new Map<string, MoodValue>(
+    (moodQuery.data?.memberMoods ?? []).map((m: any) => [m.memberId, m.mood as MoodValue]),
+  );
+  const [setMood] = useMutation(SET_MOOD, {
+    refetchQueries: sprintId ? [{ query: MEMBER_MOODS, variables: { sprintId, date: moodDate } }] : [],
+  });
+  const changeMood = (memberId: string, mood: MoodValue) => {
+    if (!sprintId) return;
+    setMood({ variables: { sprintId, memberId, date: moodDate, mood, leadKey: LEAD_KEY } });
+  };
 
   // Story points per member: role SP (FE/BE/QA) from the board ticket, attributed
   // to the latest standup assignee of that role on each ticket (fallback default).
@@ -59,6 +90,12 @@ export default function TeamPanel({ squadId, sprintId }: { squadId: string; spri
               className="rounded-lg border border-gray-100 px-2.5 py-2 dark:border-gray-800"
             >
               <div className="flex flex-wrap items-center gap-2">
+                <MoodPicker
+                  name={m.name}
+                  value={moodByMember.get(m.id) ?? MOOD_DEFAULT}
+                  disabled={!canEdit || !sprintId}
+                  onChange={(v) => changeMood(m.id, v)}
+                />
                 <span className={`chip ${POSITION_COLORS[m.position]}`}>{m.position}</span>
                 <span className="font-medium">{m.name}</span>
                 {spByMember.get(m.name) ? (

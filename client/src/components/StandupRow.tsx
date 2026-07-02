@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { useMutation } from "@apollo/client";
 import { useTranslation } from "react-i18next";
 import { SAVE_ENTRY, BLOCKERS, DASHBOARD, ACTIVITY_LOG, STANDUP_ENTRIES } from "../graphql";
@@ -289,8 +290,13 @@ export default function StandupRow({
             </div>
           </div>
         )}
-        <div className="mt-1 h-1.5 w-full rounded bg-gray-200 dark:bg-gray-800">
-          <div className="h-1.5 rounded bg-brand" style={{ width: `${overallProgress}%` }} />
+        <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-800">
+          <motion.div
+            className="h-1.5 rounded-full bg-brand"
+            initial={{ width: 0 }}
+            animate={{ width: `${overallProgress}%` }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          />
         </div>
 
         {/* Per-assignee progress — only for roles with a name filled in */}
@@ -304,8 +310,13 @@ export default function StandupRow({
             .map((r) => (
               <div key={r.role} className="flex items-center gap-1">
                 <span className="w-6 text-[10px] font-semibold text-gray-500">{r.role}</span>
-                <div className="h-1 flex-1 rounded bg-gray-200 dark:bg-gray-800">
-                  <div className="h-1 rounded bg-brand/70" style={{ width: `${r.val}%` }} />
+                <div className="h-1 flex-1 rounded-full bg-gray-200 dark:bg-gray-800">
+                  <motion.div
+                    className="h-1 rounded-full bg-brand/70"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${r.val}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  />
                 </div>
                 <input
                   type="number" min={0} max={100} value={r.val} disabled={!canEdit}

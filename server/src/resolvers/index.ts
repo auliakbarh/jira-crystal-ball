@@ -6,6 +6,8 @@ import { confluenceResolvers } from "./confluence.js";
 import { tarotResolvers } from "./tarot.js";
 import { adminResolvers } from "./admin.js";
 import { velocityResolvers } from "./velocity.js";
+import { moodResolvers } from "./mood.js";
+import { fortuneResolvers } from "./fortune.js";
 
 type Map = Record<string, any>;
 
@@ -22,5 +24,5 @@ function mergeMaps(...parts: Map[]): Map {
 
 export const resolvers = {
   Date: DateScalar,
-  ...mergeMaps(squadResolvers, standupResolvers, confluenceResolvers, tarotResolvers, adminResolvers, velocityResolvers, fieldResolvers),
+  ...mergeMaps(squadResolvers, standupResolvers, confluenceResolvers, tarotResolvers, adminResolvers, velocityResolvers, moodResolvers, fortuneResolvers, fieldResolvers),
 };

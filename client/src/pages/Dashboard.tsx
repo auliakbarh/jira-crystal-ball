@@ -15,6 +15,7 @@ import {
   END_STANDUP,
   STANDUP_CHANGED,
   DASHBOARD,
+  MEMBER_MOODS,
 } from "../graphql";
 import { todayISO } from "../lib/helpers";
 import { LEAD_KEY } from "../lib/leadKey";
@@ -73,12 +74,17 @@ export default function Dashboard() {
       if (kind === "entry" && sprint) {
         apollo.refetchQueries({ include: [DASHBOARD] });
       }
+      if ((kind === "mood" || kind === "start") && sprint) {
+        apollo.refetchQueries({ include: [MEMBER_MOODS] });
+      }
     },
   });
   const standup = standupData?.activeStandup;
   const isLeading = !!standup?.isMine;
   const ledByOther = !!standup?.active && !standup.isMine;
   const canEdit = isAdmin || !standup?.active || isLeading;
+  // Mood is only editable while a standup is actively running (by the lead/admin).
+  const moodEditable = !!standup?.active && (isLeading || isAdmin);
 
   const logsRefetch = squadId
     ? [{ query: STANDUP_LOGS, variables: { squadId, limit: 20, offset: 0 } }]
@@ -90,8 +96,9 @@ export default function Dashboard() {
   const begin = async () => {
     const leadName = user?.name || "Lead";
     try {
-      await startStandup({ variables: { sprintId: sprint.id, leadName, leadKey: LEAD_KEY } });
+      await startStandup({ variables: { sprintId: sprint.id, leadName, leadKey: LEAD_KEY, date } });
       refetchStandup();
+      apollo.refetchQueries({ include: [MEMBER_MOODS] });
     } catch (e: any) {
       toast.error(e.message);
       refetchStandup();
@@ -316,7 +323,7 @@ export default function Dashboard() {
             sprint={sprint}
             currentDate={date}
           />
-          <TeamPanel squadId={squadId} sprintId={sprint?.id} />
+          <TeamPanel squadId={squadId} sprintId={sprint?.id} date={date} canEdit={moodEditable} />
           <BlockersPanel squadId={squadId} sprintId={sprint?.id} />
           <ActivityPanel squadId={squadId} />
           <StandupDurationLog squadId={squadId} />

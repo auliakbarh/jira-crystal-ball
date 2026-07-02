@@ -40,6 +40,21 @@ async function purgeOldTarotRooms() {
   }
 }
 
+// Purge Fortune history past the retention window (default 90 days). 0 disables.
+// Only removes the log rows — created JIRA tickets are untouched. Drafts kept.
+const FORTUNE_HISTORY_RETENTION_DAYS = Number(process.env.FORTUNE_HISTORY_RETENTION_DAYS ?? "90");
+
+async function purgeOldFortuneHistory() {
+  if (!Number.isFinite(FORTUNE_HISTORY_RETENTION_DAYS) || FORTUNE_HISTORY_RETENTION_DAYS <= 0) return;
+  const cutoff = new Date(Date.now() - FORTUNE_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  try {
+    const res = await prisma.fortuneHistory.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    if (res.count) console.log(`🧹 Purged ${res.count} Fortune history row(s) older than ${FORTUNE_HISTORY_RETENTION_DAYS}d`);
+  } catch (e: any) {
+    console.error("Fortune history purge failed:", e?.message ?? e);
+  }
+}
+
 // Purge ActivityLog / StandupLog rows past the retention window. 0 (default)
 // disables — keep everything. Both are audit/history tables that grow forever.
 const LOG_RETENTION_DAYS = Number(process.env.LOG_RETENTION_DAYS ?? "0");
@@ -74,6 +89,15 @@ export function startScheduler() {
     LOG_RETENTION_DAYS > 0
       ? `Scheduler: activity/standup log retention = ${LOG_RETENTION_DAYS} days.`
       : "Scheduler: activity/standup log retention disabled.",
+  );
+
+  // Fortune history retention, same cadence.
+  setTimeout(() => void purgeOldFortuneHistory(), 30_000);
+  setInterval(() => void purgeOldFortuneHistory(), 60 * 60 * 1000);
+  console.log(
+    FORTUNE_HISTORY_RETENTION_DAYS > 0
+      ? `Scheduler: Fortune history retention = ${FORTUNE_HISTORY_RETENTION_DAYS} days.`
+      : "Scheduler: Fortune history retention disabled.",
   );
 
   if (!confluenceConfigured()) {

@@ -155,3 +155,72 @@ npm run dev:client   # frontend only (vite — HMR)
 | Dashboard ticket table empty | JIRA not configured or bad credentials — Settings → **Test connection**. Verify Board ID. |
 | Prisma client type errors after schema edit | `cd server && npx prisma generate`. |
 | `401 Unauthorized` on GraphQL calls | Token missing/expired — log out and back in. |
+
+## Exposing locally with ngrok (dev + testing)
+
+Share your local instance (demo, testing on a phone, webhook callbacks) with
+[ngrok](https://ngrok.com). You expose **two** ports: the client (Vite `5173`)
+and the GraphQL server (`4000`). WebSocket subscriptions ride the same server
+tunnel automatically (`https` → `wss`).
+
+### 1. One-time setup
+
+```bash
+brew install ngrok        # or: https://ngrok.com/download
+ngrok config add-authtoken <YOUR_TOKEN>   # from the ngrok dashboard
+```
+
+### 2. Start both apps + two tunnels
+
+Run the apps as usual (`npm run dev`), then start both tunnels. The free plan
+allows multiple tunnels via a config file — create `~/.config/ngrok/ngrok.yml`:
+
+```yaml
+version: "3"
+agent:
+  authtoken: <YOUR_TOKEN>
+tunnels:
+  jcb-web:
+    proto: http
+    addr: 5173
+  jcb-api:
+    proto: http
+    addr: 4000
+```
+
+```bash
+ngrok start --all
+```
+
+ngrok prints two `https://<random>.ngrok-free.app` URLs — one for `5173`
+(the UI) and one for `4000` (the API).
+
+### 3. Point the client at the API tunnel
+
+The client reads the server URL from `VITE_GRAPHQL_URL`. Set it to the **API**
+tunnel and restart Vite (env is baked at dev-server start):
+
+```bash
+# client/.env
+VITE_GRAPHQL_URL="https://<api-random>.ngrok-free.app/graphql"
+```
+
+Then open the **web** tunnel URL (`https://<web-random>.ngrok-free.app`).
+
+### Notes & gotchas
+
+- **Vite host allow-list.** Vite blocks unknown hosts; `*.ngrok-free.app` /
+  `*.ngrok.app` / `*.ngrok.io` are already allowed in `vite.config.ts`
+  (`server.allowedHosts`). Add your custom domain there if you use one.
+- **WebSocket.** Subscriptions (standup/tarot live updates) use the API tunnel
+  over `wss://…/graphql` — no extra config; it's derived from `VITE_GRAPHQL_URL`.
+- **CORS.** In development the server allows all origins, so tunnels work as-is.
+  If you run the server with `NODE_ENV=production`, add the **web** tunnel origin
+  to `CORS_ORIGINS` in `server/.env` (it gates both HTTP and the WS handshake).
+- **ngrok warning page.** The free plan shows an interstitial on first visit —
+  click through once, or send the `ngrok-skip-browser-warning` header for API
+  clients. Browsers loading the UI just click through.
+- **URLs change** each restart on the free plan. Re-set `VITE_GRAPHQL_URL` and
+  restart Vite whenever the API tunnel URL changes (or use a reserved domain).
+- **Never expose a production DB / real secrets** over a casual tunnel — use a
+  throwaway dev database and test JIRA/Gemini credentials.

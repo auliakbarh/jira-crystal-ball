@@ -100,6 +100,38 @@ export const typeDefs = /* GraphQL */ `
     doneCount: Int!
   }
 
+  # Moon Phase — per-member daily mood (1..5).
+  type MoodEntry {
+    id: ID!
+    memberId: ID!
+    memberName: String!
+    date: Date!
+    mood: Int!
+  }
+
+  type MoodPoint {
+    date: Date!
+    mood: Int!
+  }
+
+  type MemberMoodSeries {
+    memberId: ID!
+    memberName: String!
+    position: String
+    points: [MoodPoint!]!
+    average: Float!
+  }
+
+  type SprintMood {
+    sprintId: ID!
+    number: Int!
+    name: String
+    startDate: Date!
+    endDate: Date!
+    teamAverage: Float!
+    members: [MemberMoodSeries!]!
+  }
+
   type SeedResult {
     squads: Int!
     membersCreated: Int!
@@ -327,6 +359,82 @@ export const typeDefs = /* GraphQL */ `
     time: String!
   }
 
+  # --------------------------- Fortune (Gemini ticket creator) ---------------
+  # payload / turns / usage are JSON strings (shapes owned by the client).
+  input FortuneFileInput {
+    name: String!
+    mimeType: String!
+    data: String! # base64 (no data: prefix)
+  }
+
+  type FortuneUsage {
+    promptTokens: Int!
+    outputTokens: Int!
+    totalTokens: Int!
+    model: String!
+    estCostUSD: Float!
+    estCostIDR: Float!
+  }
+
+  type FortuneResult {
+    mode: String! # single | epic | import
+    payload: String! # JSON: { single } | { plan }
+    turns: String! # JSON: [{ role, text }]
+    usage: FortuneUsage!
+    ticketKey: String # import only
+    prev: String # import only: JSON snapshot for undo
+  }
+
+  type FortuneTicketRef {
+    key: String!
+    summary: String!
+    issueType: String
+  }
+
+  type FortuneCreateResult {
+    mode: String!
+    created: String # JSON { key, url }
+    epic: String # JSON { key, url }
+    children: String # JSON [{ status, key, url, input, error }]
+    reporterWarning: String # set when the reporter email couldn't be applied
+  }
+
+  type FortuneDraftEntry {
+    id: ID!
+    mode: String!
+    summary: String!
+    createdById: ID!
+    createdByName: String!
+    createdAt: String!
+    updatedAt: String!
+    payload: String!
+    requirementText: String
+    turns: String
+    usage: String
+    canDelete: Boolean!
+  }
+
+  type GeminiSettings {
+    temperature: Float!
+    defaultTemperature: Float!
+    model: String!
+    configured: Boolean!
+  }
+
+  type FortuneHistoryEntry {
+    id: ID!
+    action: String! # generated | created | updated | reverted
+    mode: String!
+    summary: String!
+    byId: ID!
+    byName: String!
+    createdAt: String!
+    jiraKey: String
+    payload: String
+    turns: String
+    usage: String
+  }
+
   type Query {
     health: Health!
     me: User
@@ -365,11 +473,22 @@ export const typeDefs = /* GraphQL */ `
     jiraVelocity(squadId: ID!, limit: Int): [SprintVelocity!]!
     # Daily burndown for one sprint (remaining vs ideal).
     burndown(sprintId: ID!): [BurndownPoint!]!
+    # Moods recorded for a sprint on a given date (one per member who has one).
+    memberMoods(sprintId: ID!, date: Date!): [MoodEntry!]!
+    # Per-sprint mood series for the Moon Phase page (newest sprint first).
+    sprintMoodHistory(squadId: ID!, limit: Int): [SprintMood!]!
 
     # --- Tarot (planning poker) ---
     tarotRooms(squadId: ID!): [TarotRoomSummary!]!
     tarotRoom(id: ID!, key: String): TarotRoom
     tarotTickets(roomId: ID!, refresh: Boolean): [TarotTicket!]!
+
+    # --- Fortune (Gemini ticket creator) ---
+    fortuneModels: [String!]!
+    fortuneSearchTickets(squadId: ID!, query: String!): [FortuneTicketRef!]!
+    fortuneDrafts(squadId: ID!): [FortuneDraftEntry!]!
+    fortuneHistory(squadId: ID!, limit: Int): [FortuneHistoryEntry!]!
+    geminiSettings: GeminiSettings!
   }
 
   type Mutation {
@@ -422,11 +541,15 @@ export const typeDefs = /* GraphQL */ `
     syncActiveSprint(squadId: ID!): Sprint
 
     # Standup session lock. leadKey identifies the claiming client/tab.
-    startStandup(sprintId: ID!, leadName: String!, leadKey: String!): StandupSession!
+    # date (the standup day) seeds a default mood (5 = happy) for every member.
+    startStandup(sprintId: ID!, leadName: String!, leadKey: String!, date: Date): StandupSession!
     standupHeartbeat(sprintId: ID!, leadKey: String!): Boolean!
     endStandup(sprintId: ID!, leadKey: String!): Boolean!
 
     saveStandupEntry(input: StandupEntryInput!, leadKey: String): StandupEntry!
+
+    # Set a member's mood for a (sprint, date). Mood clamped 1..5.
+    setMood(sprintId: ID!, memberId: ID!, date: Date!, mood: Int!, leadKey: String): MoodEntry!
 
     upsertBlocker(squadId: ID!, id: ID, input: BlockerInput!): Blocker!
     deleteBlocker(id: ID!): Boolean!
@@ -467,6 +590,18 @@ export const typeDefs = /* GraphQL */ `
     syncTarotToJira(roomId: ID!, key: String!, fields: [String!]!): TarotSyncResult!
     # Host: restore JIRA field values captured before the last sync.
     resetTarotSync(roomId: ID!, key: String!): Boolean!
+
+    # --- Fortune (Gemini ticket creator). Non-guest only for JIRA writes. ---
+    fortuneGenerate(squadId: ID!, mode: String!, lang: String, issuetype: String, model: String, text: String, files: [FortuneFileInput!]): FortuneResult!
+    fortuneRefine(squadId: ID!, mode: String!, model: String, instruction: String!, payload: String!, turns: String!): FortuneResult!
+    fortuneImport(squadId: ID!, ticketKey: String!): FortuneResult!
+    fortuneCreate(squadId: ID!, mode: String!, payload: String!, reporterEmail: String): FortuneCreateResult!
+    fortuneUpdate(squadId: ID!, ticketKey: String!, payload: String!): Boolean!
+    fortuneUndo(squadId: ID!, ticketKey: String!, prev: String!): Boolean!
+    saveFortuneDraft(squadId: ID!, id: ID, mode: String!, summary: String!, payload: String!, requirementText: String, turns: String, usage: String): FortuneDraftEntry!
+    deleteFortuneDraft(id: ID!): Boolean!
+    # Admin only: set the global Gemini sampling temperature (0..2).
+    setGeminiTemperature(value: Float!): Float!
   }
 
   type ConfluenceExport {

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, ReactNode } from "react";
+import { playUi } from "../lib/sound";
 
 type ToastKind = "success" | "error" | "info";
 interface Toast {
@@ -29,6 +30,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((message: string, kind: ToastKind = "info") => {
     const id = ++idRef.current;
     setToasts((t) => [...t, { id, kind, message }]);
+    if (kind === "success") playUi("success");
+    else if (kind === "error") playUi("error");
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
   }, []);
 
